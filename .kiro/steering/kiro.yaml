@@ -1,0 +1,30 @@
+version: "1.0"
+project:
+  name: "VeraProof AI"
+  type: "Agentic-B2B-SaaS"
+  stack:
+    - aws-lightsail-containers
+    - fast-api
+    - opencv
+    - bedrock-agentcore
+
+steering:
+  - .kiro/steering/veraproof-standards.md
+
+agents:
+  orchestrator:
+    type: "bedrock-agentcore"
+    config:
+      memory: enabled
+      policy_enforcement: "fraud-prevention-v1"
+  coder:
+    model: "claude-3-5-sonnet-20241022" # Default Kiro agent
+    hooks:
+      on_save: "generate-unit-tests"
+
+aws_environment:
+  region: "us-east-1" # Or your local Chennai-preferred region
+  services:
+    - kinesis-video-streams
+    - sagemaker
+    - dynamodb

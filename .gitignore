@@ -1,0 +1,111 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+.venv
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# SSL Certificates (local development)
+*.pem
+*.key
+*.crt
+*.cer
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Angular
+/partner-dashboard/.angular/
+/partner-dashboard/dist/
+/partner-dashboard/tmp/
+/partner-dashboard/out-tsc/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+coverage/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Executables
+*.exe
+ngrok.exe
+
+# Backup files
+*-backup.*
+*-original-backup.*
+
+# Documentation (temporary/local)
+STARTUP_STATUS.md
+START_BACKEND_AND_GET_URL.txt
+TEST_SESSION.md
+VERIFICATION_FIXES.md
+FINAL_SUMMARY.md
+DESKTOP_TEST_INSTRUCTIONS.md
+
+# Scripts folder is kept for local development
+# (scripts/ folder is version controlled)
+
+# Test files
+test.html
+test_api.py

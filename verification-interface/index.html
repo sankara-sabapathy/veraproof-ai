@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeraProof AI - Verification</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Landing Page -->
+        <div id="landing-page" class="page active">
+            <div class="landing-container">
+                <div class="logo-section">
+                    <h1 class="brand-title">VeraProof AI</h1>
+                    <p class="brand-tagline">Physics-First Fraud Detection</p>
+                </div>
+                
+                <div class="hero-section">
+                    <h2>Verify Your Identity</h2>
+                    <p>Secure video verification using advanced sensor fusion technology</p>
+                </div>
+                
+                <div class="features">
+                    <div class="feature">
+                        <span class="icon">🔒</span>
+                        <h3>Secure</h3>
+                        <p>Military-grade encryption</p>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">⚡</span>
+                        <h3>Fast</h3>
+                        <p>Results in 3 seconds</p>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">🎯</span>
+                        <h3>Accurate</h3>
+                        <p>Physics-based detection</p>
+                    </div>
+                </div>
+                
+                <button id="start-verification-btn" class="btn-primary">Start Verification</button>
+                
+                <div class="footer-links">
+                    <a href="#" id="partner-login-link">Partner Login</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Check Page -->
+        <div id="device-check-page" class="page">
+            <div class="container">
+                <h2>Device Check</h2>
+                <div id="device-status" class="status-box">
+                    <p>Checking device compatibility...</p>
+                </div>
+                <div id="device-error" class="error-box hidden"></div>
+                <button id="continue-verification-btn" class="btn-primary hidden">Continue to Verification</button>
+                <button id="request-permissions-btn" class="btn-secondary hidden">Grant Permissions</button>
+            </div>
+        </div>
+
+        <!-- Verification Page -->
+        <div id="verification-page" class="page">
+            <div class="container">
+                <div id="branding-logo" class="branding-logo hidden"></div>
+                
+                <div class="video-container">
+                    <video id="video-preview" autoplay playsinline muted></video>
+                    <canvas id="video-canvas" class="hidden"></canvas>
+                </div>
+                
+                <div class="instructions">
+                    <h2 id="phase-title">Preparing...</h2>
+                    <p id="phase-instruction">Please wait while we set up your verification</p>
+                </div>
+                
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                
+                <div id="status-message" class="status-message"></div>
+            </div>
+        </div>
+
+        <!-- Result Page -->
+        <div id="result-page" class="page">
+            <div class="container">
+                <div id="result-content" class="result-content">
+                    <div id="result-icon" class="result-icon"></div>
+                    <h2 id="result-title"></h2>
+                    <p id="result-message"></p>
+                    <div id="result-score" class="result-score"></div>
+                    <button id="redirect-btn" class="btn-primary">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Page -->
+        <div id="error-page" class="page">
+            <div class="container">
+                <div class="error-content">
+                    <span class="error-icon">⚠️</span>
+                    <h2>Verification Error</h2>
+                    <p id="error-message"></p>
+                    <button id="retry-btn" class="btn-secondary">Try Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js?v=9"></script>
+</body>
+</html>

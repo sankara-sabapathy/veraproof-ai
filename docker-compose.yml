@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: veraproof-postgres
+    environment:
+      POSTGRES_DB: veraproof
+      POSTGRES_USER: veraproof
+      POSTGRES_PASSWORD: veraproof_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veraproof"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - veraproof-network
+
+  localstack:
+    image: localstack/localstack:latest
+    container_name: veraproof-localstack
+    environment:
+      SERVICES: s3
+      DEBUG: 0
+    ports:
+      - "4566:4566"
+    networks:
+      - veraproof-network
+
+volumes:
+  postgres_data:
+
+networks:
+  veraproof-network:
+    driver: bridge
