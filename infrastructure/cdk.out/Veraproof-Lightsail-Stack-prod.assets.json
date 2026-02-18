@@ -1,0 +1,20 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "15a673bc3278b3f3223614c5c16165cc655f6e451f12fa780ce6a2e774127f67": {
+      "source": {
+        "path": "Veraproof-Lightsail-Stack-prod.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "612850243659-ap-south-1": {
+          "bucketName": "cdk-hnb659fds-assets-612850243659-ap-south-1",
+          "objectKey": "15a673bc3278b3f3223614c5c16165cc655f6e451f12fa780ce6a2e774127f67.json",
+          "region": "ap-south-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-file-publishing-role-612850243659-ap-south-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

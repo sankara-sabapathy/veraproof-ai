@@ -1,0 +1,1854 @@
+{
+  "version": "tree-0.1",
+  "tree": {
+    "id": "App",
+    "path": "",
+    "children": {
+      "Veraproof-Storage-Stack-prod": {
+        "id": "Veraproof-Storage-Stack-prod",
+        "path": "Veraproof-Storage-Stack-prod",
+        "children": {
+          "Veraproof-Artifacts-Bucket-prod": {
+            "id": "Veraproof-Artifacts-Bucket-prod",
+            "path": "Veraproof-Storage-Stack-prod/Veraproof-Artifacts-Bucket-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Storage-Stack-prod/Veraproof-Artifacts-Bucket-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::S3::Bucket",
+                  "aws:cdk:cloudformation:props": {
+                    "bucketEncryption": {
+                      "serverSideEncryptionConfiguration": [
+                        {
+                          "serverSideEncryptionByDefault": {
+                            "sseAlgorithm": "AES256"
+                          }
+                        }
+                      ]
+                    },
+                    "bucketName": "veraproof-artifacts-prod-612850243659",
+                    "corsConfiguration": {
+                      "corsRules": [
+                        {
+                          "maxAge": 3600,
+                          "allowedHeaders": [
+                            "*"
+                          ],
+                          "allowedMethods": [
+                            "GET",
+                            "PUT",
+                            "POST"
+                          ],
+                          "allowedOrigins": [
+                            "*"
+                          ]
+                        }
+                      ]
+                    },
+                    "lifecycleConfiguration": {
+                      "rules": [
+                        {
+                          "expirationInDays": 90,
+                          "id": "Delete-After-90-Days",
+                          "status": "Enabled",
+                          "transitions": [
+                            {
+                              "storageClass": "GLACIER",
+                              "transitionInDays": 30
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "publicAccessBlockConfiguration": {
+                      "blockPublicAcls": true,
+                      "blockPublicPolicy": true,
+                      "ignorePublicAcls": true,
+                      "restrictPublicBuckets": true
+                    },
+                    "tags": [
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ],
+                    "versioningConfiguration": {
+                      "status": "Enabled"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.CfnBucket",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_s3.Bucket",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Branding-Bucket-prod": {
+            "id": "Veraproof-Branding-Bucket-prod",
+            "path": "Veraproof-Storage-Stack-prod/Veraproof-Branding-Bucket-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Storage-Stack-prod/Veraproof-Branding-Bucket-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::S3::Bucket",
+                  "aws:cdk:cloudformation:props": {
+                    "bucketEncryption": {
+                      "serverSideEncryptionConfiguration": [
+                        {
+                          "serverSideEncryptionByDefault": {
+                            "sseAlgorithm": "AES256"
+                          }
+                        }
+                      ]
+                    },
+                    "bucketName": "veraproof-branding-prod-612850243659",
+                    "corsConfiguration": {
+                      "corsRules": [
+                        {
+                          "maxAge": 3600,
+                          "allowedHeaders": [
+                            "*"
+                          ],
+                          "allowedMethods": [
+                            "GET"
+                          ],
+                          "allowedOrigins": [
+                            "*"
+                          ]
+                        }
+                      ]
+                    },
+                    "publicAccessBlockConfiguration": {
+                      "blockPublicAcls": true,
+                      "blockPublicPolicy": true,
+                      "ignorePublicAcls": true,
+                      "restrictPublicBuckets": false
+                    },
+                    "tags": [
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ],
+                    "versioningConfiguration": {
+                      "status": "Enabled"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.CfnBucket",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_s3.Bucket",
+              "version": "2.120.0"
+            }
+          },
+          "Artifacts-Bucket-Name-prod": {
+            "id": "Artifacts-Bucket-Name-prod",
+            "path": "Veraproof-Storage-Stack-prod/Artifacts-Bucket-Name-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Artifacts-Bucket-ARN-prod": {
+            "id": "Artifacts-Bucket-ARN-prod",
+            "path": "Veraproof-Storage-Stack-prod/Artifacts-Bucket-ARN-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Branding-Bucket-Name-prod": {
+            "id": "Branding-Bucket-Name-prod",
+            "path": "Veraproof-Storage-Stack-prod/Branding-Bucket-Name-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Branding-Bucket-ARN-prod": {
+            "id": "Branding-Bucket-ARN-prod",
+            "path": "Veraproof-Storage-Stack-prod/Branding-Bucket-ARN-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "Veraproof-Storage-Stack-prod/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "Veraproof-Storage-Stack-prod/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.5.0"
+            }
+          },
+          "Exports": {
+            "id": "Exports",
+            "path": "Veraproof-Storage-Stack-prod/Exports",
+            "children": {
+              "Output{\"Fn::GetAtt\":[\"VeraproofArtifactsBucketprodEA52E173\",\"Arn\"]}": {
+                "id": "Output{\"Fn::GetAtt\":[\"VeraproofArtifactsBucketprodEA52E173\",\"Arn\"]}",
+                "path": "Veraproof-Storage-Stack-prod/Exports/Output{\"Fn::GetAtt\":[\"VeraproofArtifactsBucketprodEA52E173\",\"Arn\"]}",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnOutput",
+                  "version": "2.120.0"
+                }
+              },
+              "Output{\"Fn::GetAtt\":[\"VeraproofBrandingBucketprod7F3191F1\",\"Arn\"]}": {
+                "id": "Output{\"Fn::GetAtt\":[\"VeraproofBrandingBucketprod7F3191F1\",\"Arn\"]}",
+                "path": "Veraproof-Storage-Stack-prod/Exports/Output{\"Fn::GetAtt\":[\"VeraproofBrandingBucketprod7F3191F1\",\"Arn\"]}",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnOutput",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.5.0"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "Veraproof-Storage-Stack-prod/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.120.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "Veraproof-Storage-Stack-prod/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.120.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.120.0"
+        }
+      },
+      "Veraproof-Auth-Stack-prod": {
+        "id": "Veraproof-Auth-Stack-prod",
+        "path": "Veraproof-Auth-Stack-prod",
+        "children": {
+          "Veraproof-User-Pool-prod": {
+            "id": "Veraproof-User-Pool-prod",
+            "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod",
+            "children": {
+              "smsRole": {
+                "id": "smsRole",
+                "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/smsRole",
+                "children": {
+                  "ImportsmsRole": {
+                    "id": "ImportsmsRole",
+                    "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/smsRole/ImportsmsRole",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.Resource",
+                      "version": "2.120.0"
+                    }
+                  },
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/smsRole/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                      "aws:cdk:cloudformation:props": {
+                        "assumeRolePolicyDocument": {
+                          "Statement": [
+                            {
+                              "Action": "sts:AssumeRole",
+                              "Condition": {
+                                "StringEquals": {
+                                  "sts:ExternalId": "VeraproofAuthStackprodVeraproofUserPoolprod5D38B345"
+                                }
+                              },
+                              "Effect": "Allow",
+                              "Principal": {
+                                "Service": "cognito-idp.amazonaws.com"
+                              }
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        },
+                        "policies": [
+                          {
+                            "policyName": "sns-publish",
+                            "policyDocument": {
+                              "Statement": [
+                                {
+                                  "Action": "sns:Publish",
+                                  "Effect": "Allow",
+                                  "Resource": "*"
+                                }
+                              ],
+                              "Version": "2012-10-17"
+                            }
+                          }
+                        ],
+                        "tags": [
+                          {
+                            "key": "CostCenter",
+                            "value": "Engineering"
+                          },
+                          {
+                            "key": "ManagedBy",
+                            "value": "AWS-CDK"
+                          },
+                          {
+                            "key": "Project",
+                            "value": "VeraProof-AI"
+                          },
+                          {
+                            "key": "Stage",
+                            "value": "prod"
+                          }
+                        ]
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.Role",
+                  "version": "2.120.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Cognito::UserPool",
+                  "aws:cdk:cloudformation:props": {
+                    "accountRecoverySetting": {
+                      "recoveryMechanisms": [
+                        {
+                          "name": "verified_email",
+                          "priority": 1
+                        }
+                      ]
+                    },
+                    "adminCreateUserConfig": {
+                      "allowAdminCreateUserOnly": false
+                    },
+                    "autoVerifiedAttributes": [
+                      "email"
+                    ],
+                    "emailVerificationMessage": "The verification code to your new account is {####}",
+                    "emailVerificationSubject": "Verify your new account",
+                    "enabledMfas": [
+                      "SMS_MFA",
+                      "SOFTWARE_TOKEN_MFA"
+                    ],
+                    "mfaConfiguration": "OPTIONAL",
+                    "policies": {
+                      "passwordPolicy": {
+                        "temporaryPasswordValidityDays": 3,
+                        "minimumLength": 8,
+                        "requireLowercase": true,
+                        "requireUppercase": true,
+                        "requireNumbers": true,
+                        "requireSymbols": true
+                      }
+                    },
+                    "schema": [
+                      {
+                        "name": "email",
+                        "mutable": true,
+                        "required": true
+                      },
+                      {
+                        "name": "family_name",
+                        "mutable": true,
+                        "required": false
+                      },
+                      {
+                        "name": "given_name",
+                        "mutable": true,
+                        "required": false
+                      },
+                      {
+                        "name": "tenant_id",
+                        "attributeDataType": "String",
+                        "mutable": false
+                      },
+                      {
+                        "name": "subscription_tier",
+                        "attributeDataType": "String",
+                        "mutable": true
+                      }
+                    ],
+                    "smsConfiguration": {
+                      "externalId": "VeraproofAuthStackprodVeraproofUserPoolprod5D38B345",
+                      "snsCallerArn": {
+                        "Fn::GetAtt": [
+                          "VeraproofUserPoolprodsmsRole2ACD2C06",
+                          "Arn"
+                        ]
+                      }
+                    },
+                    "smsVerificationMessage": "The verification code to your new account is {####}",
+                    "userPoolTags": {
+                      "CostCenter": "Engineering",
+                      "ManagedBy": "AWS-CDK",
+                      "Project": "VeraProof-AI",
+                      "Stage": "prod"
+                    },
+                    "usernameAttributes": [
+                      "email"
+                    ],
+                    "userPoolAddOns": {
+                      "advancedSecurityMode": "ENFORCED"
+                    },
+                    "userPoolName": "veraproof-partners-prod",
+                    "verificationMessageTemplate": {
+                      "defaultEmailOption": "CONFIRM_WITH_CODE",
+                      "emailMessage": "The verification code to your new account is {####}",
+                      "emailSubject": "Verify your new account",
+                      "smsMessage": "The verification code to your new account is {####}"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cognito.CfnUserPool",
+                  "version": "2.120.0"
+                }
+              },
+              "Veraproof-Dashboard-Client-prod": {
+                "id": "Veraproof-Dashboard-Client-prod",
+                "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Veraproof-Dashboard-Client-prod",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Veraproof-Dashboard-Client-prod/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::Cognito::UserPoolClient",
+                      "aws:cdk:cloudformation:props": {
+                        "accessTokenValidity": 60,
+                        "allowedOAuthFlows": [
+                          "code"
+                        ],
+                        "allowedOAuthFlowsUserPoolClient": true,
+                        "allowedOAuthScopes": [
+                          "email",
+                          "openid",
+                          "profile"
+                        ],
+                        "callbackUrLs": [
+                          "https://dashboard-prod.veraproof.ai/callback",
+                          "http://localhost:4200/callback"
+                        ],
+                        "clientName": "veraproof-dashboard-prod",
+                        "explicitAuthFlows": [
+                          "ALLOW_USER_PASSWORD_AUTH",
+                          "ALLOW_USER_SRP_AUTH",
+                          "ALLOW_REFRESH_TOKEN_AUTH"
+                        ],
+                        "generateSecret": false,
+                        "idTokenValidity": 60,
+                        "logoutUrLs": [
+                          "https://dashboard-prod.veraproof.ai/logout",
+                          "http://localhost:4200/logout"
+                        ],
+                        "preventUserExistenceErrors": "ENABLED",
+                        "refreshTokenValidity": 43200,
+                        "supportedIdentityProviders": [
+                          "COGNITO"
+                        ],
+                        "tokenValidityUnits": {
+                          "idToken": "minutes",
+                          "accessToken": "minutes",
+                          "refreshToken": "minutes"
+                        },
+                        "userPoolId": {
+                          "Ref": "VeraproofUserPoolprod3274BDB4"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_cognito.CfnUserPoolClient",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cognito.UserPoolClient",
+                  "version": "2.120.0"
+                }
+              },
+              "Veraproof-Auth-Domain-prod": {
+                "id": "Veraproof-Auth-Domain-prod",
+                "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Veraproof-Auth-Domain-prod",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Veraproof-Auth-Domain-prod/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::Cognito::UserPoolDomain",
+                      "aws:cdk:cloudformation:props": {
+                        "domain": "veraproof-auth-prod",
+                        "userPoolId": {
+                          "Ref": "VeraproofUserPoolprod3274BDB4"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_cognito.CfnUserPoolDomain",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cognito.UserPoolDomain",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cognito.UserPool",
+              "version": "2.120.0"
+            }
+          },
+          "User-Pool-ID-prod": {
+            "id": "User-Pool-ID-prod",
+            "path": "Veraproof-Auth-Stack-prod/User-Pool-ID-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "User-Pool-ARN-prod": {
+            "id": "User-Pool-ARN-prod",
+            "path": "Veraproof-Auth-Stack-prod/User-Pool-ARN-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "User-Pool-Client-ID-prod": {
+            "id": "User-Pool-Client-ID-prod",
+            "path": "Veraproof-Auth-Stack-prod/User-Pool-Client-ID-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Auth-Domain-prod": {
+            "id": "Auth-Domain-prod",
+            "path": "Veraproof-Auth-Stack-prod/Auth-Domain-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "Veraproof-Auth-Stack-prod/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "Veraproof-Auth-Stack-prod/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.5.0"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "Veraproof-Auth-Stack-prod/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.120.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "Veraproof-Auth-Stack-prod/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.120.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.120.0"
+        }
+      },
+      "Veraproof-Lightsail-Stack-prod": {
+        "id": "Veraproof-Lightsail-Stack-prod",
+        "path": "Veraproof-Lightsail-Stack-prod",
+        "children": {
+          "Veraproof-Lightsail-Database-prod": {
+            "id": "Veraproof-Lightsail-Database-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Database-prod",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::Lightsail::Database",
+              "aws:cdk:cloudformation:props": {
+                "backupRetention": true,
+                "masterDatabaseName": "veraproof",
+                "masterUsername": "veraproof_admin",
+                "preferredBackupWindow": "03:00-04:00",
+                "preferredMaintenanceWindow": "mon:04:00-mon:05:00",
+                "publiclyAccessible": false,
+                "relationalDatabaseBlueprintId": "postgres_16",
+                "relationalDatabaseBundleId": "micro_2_0",
+                "relationalDatabaseName": "veraproof-db-prod",
+                "rotateMasterUserPassword": true,
+                "tags": [
+                  {
+                    "key": "CostCenter",
+                    "value": "Engineering"
+                  },
+                  {
+                    "key": "ManagedBy",
+                    "value": "AWS-CDK"
+                  },
+                  {
+                    "key": "Project",
+                    "value": "VeraProof-AI"
+                  },
+                  {
+                    "key": "Stage",
+                    "value": "prod"
+                  }
+                ]
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_lightsail.CfnDatabase",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Lightsail-Container-prod": {
+            "id": "Veraproof-Lightsail-Container-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Container-prod",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::Lightsail::Container",
+              "aws:cdk:cloudformation:props": {
+                "isDisabled": false,
+                "power": "micro",
+                "scale": 1,
+                "serviceName": "veraproof-api-prod",
+                "tags": [
+                  {
+                    "key": "CostCenter",
+                    "value": "Engineering"
+                  },
+                  {
+                    "key": "ManagedBy",
+                    "value": "AWS-CDK"
+                  },
+                  {
+                    "key": "Project",
+                    "value": "VeraProof-AI"
+                  },
+                  {
+                    "key": "Stage",
+                    "value": "prod"
+                  }
+                ]
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_lightsail.CfnContainer",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Lightsail-Role-prod": {
+            "id": "Veraproof-Lightsail-Role-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod",
+            "children": {
+              "ImportVeraproof-Lightsail-Role-prod": {
+                "id": "ImportVeraproof-Lightsail-Role-prod",
+                "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/ImportVeraproof-Lightsail-Role-prod",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.120.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "lightsail.amazonaws.com"
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "description": "IAM role for Lightsail container service - prod",
+                    "roleName": "veraproof-lightsail-role-prod",
+                    "tags": [
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.120.0"
+                }
+              },
+              "DefaultPolicy": {
+                "id": "DefaultPolicy",
+                "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/DefaultPolicy",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/DefaultPolicy/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::IAM::Policy",
+                      "aws:cdk:cloudformation:props": {
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "s3:Abort*",
+                                "s3:DeleteObject*",
+                                "s3:GetBucket*",
+                                "s3:GetObject*",
+                                "s3:List*",
+                                "s3:PutObject",
+                                "s3:PutObjectLegalHold",
+                                "s3:PutObjectRetention",
+                                "s3:PutObjectTagging",
+                                "s3:PutObjectVersionTagging"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                {
+                                  "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC"
+                                },
+                                {
+                                  "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2"
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC"
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2"
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Action": [
+                                "ssm:GetParameter",
+                                "ssm:GetParameters",
+                                "ssm:GetParametersByPath"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": "arn:aws:ssm:ap-south-1:612850243659:parameter/veraproof/prod/*"
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        },
+                        "policyName": "VeraproofLightsailRoleprodDefaultPolicy0BAA770B",
+                        "roles": [
+                          {
+                            "Ref": "VeraproofLightsailRoleprodDF7E4F5C"
+                          }
+                        ]
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_iam.CfnPolicy",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.Policy",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-DB-Endpoint-prod": {
+            "id": "Veraproof-DB-Endpoint-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Veraproof-DB-Endpoint-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Lightsail-Stack-prod/Veraproof-DB-Endpoint-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::SSM::Parameter",
+                  "aws:cdk:cloudformation:props": {
+                    "description": "Lightsail database endpoint for prod",
+                    "name": "/veraproof/prod/database/endpoint",
+                    "tags": {
+                      "CostCenter": "Engineering",
+                      "ManagedBy": "AWS-CDK",
+                      "Project": "VeraProof-AI",
+                      "Stage": "prod"
+                    },
+                    "tier": "Standard",
+                    "type": "String",
+                    "value": {
+                      "Fn::GetAtt": [
+                        "VeraproofLightsailDatabaseprod",
+                        "DatabaseArn"
+                      ]
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_ssm.CfnParameter",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_ssm.StringParameter",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-DB-Port-prod": {
+            "id": "Veraproof-DB-Port-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Veraproof-DB-Port-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Lightsail-Stack-prod/Veraproof-DB-Port-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::SSM::Parameter",
+                  "aws:cdk:cloudformation:props": {
+                    "description": "Lightsail database port for prod",
+                    "name": "/veraproof/prod/database/port",
+                    "tags": {
+                      "CostCenter": "Engineering",
+                      "ManagedBy": "AWS-CDK",
+                      "Project": "VeraProof-AI",
+                      "Stage": "prod"
+                    },
+                    "tier": "Standard",
+                    "type": "String",
+                    "value": "5432"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_ssm.CfnParameter",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_ssm.StringParameter",
+              "version": "2.120.0"
+            }
+          },
+          "Lightsail-Container-Service-prod": {
+            "id": "Lightsail-Container-Service-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Lightsail-Container-Service-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Lightsail-Database-Name-prod": {
+            "id": "Lightsail-Database-Name-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Lightsail-Database-Name-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Lightsail-API-URL-prod": {
+            "id": "Lightsail-API-URL-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Lightsail-API-URL-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Lightsail-Database-Endpoint-prod": {
+            "id": "Lightsail-Database-Endpoint-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Lightsail-Database-Endpoint-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Lightsail-Database-Port-prod": {
+            "id": "Lightsail-Database-Port-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Lightsail-Database-Port-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Lightsail-IAM-Role-ARN-prod": {
+            "id": "Lightsail-IAM-Role-ARN-prod",
+            "path": "Veraproof-Lightsail-Stack-prod/Lightsail-IAM-Role-ARN-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "Veraproof-Lightsail-Stack-prod/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "Veraproof-Lightsail-Stack-prod/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.5.0"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "Veraproof-Lightsail-Stack-prod/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.120.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "Veraproof-Lightsail-Stack-prod/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.120.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.120.0"
+        }
+      },
+      "Veraproof-Frontend-Stack-prod": {
+        "id": "Veraproof-Frontend-Stack-prod",
+        "path": "Veraproof-Frontend-Stack-prod",
+        "children": {
+          "Veraproof-Dashboard-Bucket-prod": {
+            "id": "Veraproof-Dashboard-Bucket-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::S3::Bucket",
+                  "aws:cdk:cloudformation:props": {
+                    "bucketEncryption": {
+                      "serverSideEncryptionConfiguration": [
+                        {
+                          "serverSideEncryptionByDefault": {
+                            "sseAlgorithm": "AES256"
+                          }
+                        }
+                      ]
+                    },
+                    "bucketName": "veraproof-dashboard-prod-612850243659",
+                    "publicAccessBlockConfiguration": {
+                      "blockPublicAcls": true,
+                      "blockPublicPolicy": true,
+                      "ignorePublicAcls": true,
+                      "restrictPublicBuckets": true
+                    },
+                    "tags": [
+                      {
+                        "key": "aws-cdk:auto-delete-objects",
+                        "value": "true"
+                      },
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.CfnBucket",
+                  "version": "2.120.0"
+                }
+              },
+              "Policy": {
+                "id": "Policy",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Policy",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Policy/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::S3::BucketPolicy",
+                      "aws:cdk:cloudformation:props": {
+                        "bucket": {
+                          "Ref": "VeraproofDashboardBucketprodDFE3BE55"
+                        },
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "s3:DeleteObject*",
+                                "s3:GetBucket*",
+                                "s3:List*",
+                                "s3:PutBucketPolicy"
+                              ],
+                              "Effect": "Allow",
+                              "Principal": {
+                                "AWS": {
+                                  "Fn::GetAtt": [
+                                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                                    "Arn"
+                                  ]
+                                }
+                              },
+                              "Resource": [
+                                {
+                                  "Fn::GetAtt": [
+                                    "VeraproofDashboardBucketprodDFE3BE55",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "VeraproofDashboardBucketprodDFE3BE55",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Action": [
+                                "s3:GetBucket*",
+                                "s3:GetObject*",
+                                "s3:List*"
+                              ],
+                              "Effect": "Allow",
+                              "Principal": {
+                                "CanonicalUser": {
+                                  "Fn::GetAtt": [
+                                    "VeraproofDashboardOAIprodDD84E604",
+                                    "S3CanonicalUserId"
+                                  ]
+                                }
+                              },
+                              "Resource": [
+                                {
+                                  "Fn::GetAtt": [
+                                    "VeraproofDashboardBucketprodDFE3BE55",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "VeraproofDashboardBucketprodDFE3BE55",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Action": "s3:GetObject",
+                              "Effect": "Allow",
+                              "Principal": {
+                                "CanonicalUser": {
+                                  "Fn::GetAtt": [
+                                    "VeraproofDashboardOAIprodDD84E604",
+                                    "S3CanonicalUserId"
+                                  ]
+                                }
+                              },
+                              "Resource": {
+                                "Fn::Join": [
+                                  "",
+                                  [
+                                    {
+                                      "Fn::GetAtt": [
+                                        "VeraproofDashboardBucketprodDFE3BE55",
+                                        "Arn"
+                                      ]
+                                    },
+                                    "/*"
+                                  ]
+                                ]
+                              }
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_s3.CfnBucketPolicy",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.BucketPolicy",
+                  "version": "2.120.0"
+                }
+              },
+              "AutoDeleteObjectsCustomResource": {
+                "id": "AutoDeleteObjectsCustomResource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/AutoDeleteObjectsCustomResource",
+                "children": {
+                  "Default": {
+                    "id": "Default",
+                    "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/AutoDeleteObjectsCustomResource/Default",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.CfnResource",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CustomResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_s3.Bucket",
+              "version": "2.120.0"
+            }
+          },
+          "Custom::S3AutoDeleteObjectsCustomResourceProvider": {
+            "id": "Custom::S3AutoDeleteObjectsCustomResourceProvider",
+            "path": "Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider",
+            "children": {
+              "Staging": {
+                "id": "Staging",
+                "path": "Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Staging",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.AssetStaging",
+                  "version": "2.120.0"
+                }
+              },
+              "Role": {
+                "id": "Role",
+                "path": "Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.120.0"
+                }
+              },
+              "Handler": {
+                "id": "Handler",
+                "path": "Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CustomResourceProviderBase",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Verification-Bucket-prod": {
+            "id": "Veraproof-Verification-Bucket-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::S3::Bucket",
+                  "aws:cdk:cloudformation:props": {
+                    "bucketEncryption": {
+                      "serverSideEncryptionConfiguration": [
+                        {
+                          "serverSideEncryptionByDefault": {
+                            "sseAlgorithm": "AES256"
+                          }
+                        }
+                      ]
+                    },
+                    "bucketName": "veraproof-verification-prod-612850243659",
+                    "publicAccessBlockConfiguration": {
+                      "blockPublicAcls": true,
+                      "blockPublicPolicy": true,
+                      "ignorePublicAcls": true,
+                      "restrictPublicBuckets": true
+                    },
+                    "tags": [
+                      {
+                        "key": "aws-cdk:auto-delete-objects",
+                        "value": "true"
+                      },
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.CfnBucket",
+                  "version": "2.120.0"
+                }
+              },
+              "Policy": {
+                "id": "Policy",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Policy",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Policy/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::S3::BucketPolicy",
+                      "aws:cdk:cloudformation:props": {
+                        "bucket": {
+                          "Ref": "VeraproofVerificationBucketprod36F0BC48"
+                        },
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "s3:DeleteObject*",
+                                "s3:GetBucket*",
+                                "s3:List*",
+                                "s3:PutBucketPolicy"
+                              ],
+                              "Effect": "Allow",
+                              "Principal": {
+                                "AWS": {
+                                  "Fn::GetAtt": [
+                                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                                    "Arn"
+                                  ]
+                                }
+                              },
+                              "Resource": [
+                                {
+                                  "Fn::GetAtt": [
+                                    "VeraproofVerificationBucketprod36F0BC48",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "VeraproofVerificationBucketprod36F0BC48",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Action": [
+                                "s3:GetBucket*",
+                                "s3:GetObject*",
+                                "s3:List*"
+                              ],
+                              "Effect": "Allow",
+                              "Principal": {
+                                "CanonicalUser": {
+                                  "Fn::GetAtt": [
+                                    "VeraproofVerificationOAIprod4FDCD5A0",
+                                    "S3CanonicalUserId"
+                                  ]
+                                }
+                              },
+                              "Resource": [
+                                {
+                                  "Fn::GetAtt": [
+                                    "VeraproofVerificationBucketprod36F0BC48",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "VeraproofVerificationBucketprod36F0BC48",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Action": "s3:GetObject",
+                              "Effect": "Allow",
+                              "Principal": {
+                                "CanonicalUser": {
+                                  "Fn::GetAtt": [
+                                    "VeraproofVerificationOAIprod4FDCD5A0",
+                                    "S3CanonicalUserId"
+                                  ]
+                                }
+                              },
+                              "Resource": {
+                                "Fn::Join": [
+                                  "",
+                                  [
+                                    {
+                                      "Fn::GetAtt": [
+                                        "VeraproofVerificationBucketprod36F0BC48",
+                                        "Arn"
+                                      ]
+                                    },
+                                    "/*"
+                                  ]
+                                ]
+                              }
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_s3.CfnBucketPolicy",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.BucketPolicy",
+                  "version": "2.120.0"
+                }
+              },
+              "AutoDeleteObjectsCustomResource": {
+                "id": "AutoDeleteObjectsCustomResource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/AutoDeleteObjectsCustomResource",
+                "children": {
+                  "Default": {
+                    "id": "Default",
+                    "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/AutoDeleteObjectsCustomResource/Default",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.CfnResource",
+                      "version": "2.120.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CustomResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_s3.Bucket",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Dashboard-OAI-prod": {
+            "id": "Veraproof-Dashboard-OAI-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-OAI-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-OAI-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+                  "aws:cdk:cloudformation:props": {
+                    "cloudFrontOriginAccessIdentityConfig": {
+                      "comment": "OAI for VeraProof Dashboard - prod"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudfront.CfnCloudFrontOriginAccessIdentity",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudfront.OriginAccessIdentity",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Verification-OAI-prod": {
+            "id": "Veraproof-Verification-OAI-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-OAI-prod",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-OAI-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+                  "aws:cdk:cloudformation:props": {
+                    "cloudFrontOriginAccessIdentityConfig": {
+                      "comment": "OAI for VeraProof Verification - prod"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudfront.CfnCloudFrontOriginAccessIdentity",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudfront.OriginAccessIdentity",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Dashboard-Distribution-prod": {
+            "id": "Veraproof-Dashboard-Distribution-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Distribution-prod",
+            "children": {
+              "Origin1": {
+                "id": "Origin1",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Distribution-prod/Origin1",
+                "constructInfo": {
+                  "fqn": "constructs.Construct",
+                  "version": "10.5.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Distribution-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudFront::Distribution",
+                  "aws:cdk:cloudformation:props": {
+                    "distributionConfig": {
+                      "enabled": true,
+                      "origins": [
+                        {
+                          "domainName": {
+                            "Fn::GetAtt": [
+                              "VeraproofDashboardBucketprodDFE3BE55",
+                              "RegionalDomainName"
+                            ]
+                          },
+                          "id": "VeraproofFrontendStackprodVeraproofDashboardDistributionprodOrigin1051A9CD5",
+                          "s3OriginConfig": {
+                            "originAccessIdentity": {
+                              "Fn::Join": [
+                                "",
+                                [
+                                  "origin-access-identity/cloudfront/",
+                                  {
+                                    "Ref": "VeraproofDashboardOAIprodDD84E604"
+                                  }
+                                ]
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "defaultCacheBehavior": {
+                        "pathPattern": "*",
+                        "targetOriginId": "VeraproofFrontendStackprodVeraproofDashboardDistributionprodOrigin1051A9CD5",
+                        "allowedMethods": [
+                          "GET",
+                          "HEAD",
+                          "OPTIONS"
+                        ],
+                        "cachedMethods": [
+                          "GET",
+                          "HEAD",
+                          "OPTIONS"
+                        ],
+                        "cachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                        "compress": true,
+                        "viewerProtocolPolicy": "redirect-to-https"
+                      },
+                      "comment": "VeraProof Dashboard Distribution - prod",
+                      "customErrorResponses": [
+                        {
+                          "errorCachingMinTtl": 300,
+                          "errorCode": 404,
+                          "responseCode": 200,
+                          "responsePagePath": "/index.html"
+                        },
+                        {
+                          "errorCachingMinTtl": 300,
+                          "errorCode": 403,
+                          "responseCode": 200,
+                          "responsePagePath": "/index.html"
+                        }
+                      ],
+                      "defaultRootObject": "index.html",
+                      "httpVersion": "http2",
+                      "ipv6Enabled": true,
+                      "priceClass": "PriceClass_100"
+                    },
+                    "tags": [
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudfront.CfnDistribution",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudfront.Distribution",
+              "version": "2.120.0"
+            }
+          },
+          "Veraproof-Verification-Distribution-prod": {
+            "id": "Veraproof-Verification-Distribution-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Distribution-prod",
+            "children": {
+              "Origin1": {
+                "id": "Origin1",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Distribution-prod/Origin1",
+                "constructInfo": {
+                  "fqn": "constructs.Construct",
+                  "version": "10.5.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Distribution-prod/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudFront::Distribution",
+                  "aws:cdk:cloudformation:props": {
+                    "distributionConfig": {
+                      "enabled": true,
+                      "origins": [
+                        {
+                          "domainName": {
+                            "Fn::GetAtt": [
+                              "VeraproofVerificationBucketprod36F0BC48",
+                              "RegionalDomainName"
+                            ]
+                          },
+                          "id": "VeraproofFrontendStackprodVeraproofVerificationDistributionprodOrigin131E4F6B7",
+                          "s3OriginConfig": {
+                            "originAccessIdentity": {
+                              "Fn::Join": [
+                                "",
+                                [
+                                  "origin-access-identity/cloudfront/",
+                                  {
+                                    "Ref": "VeraproofVerificationOAIprod4FDCD5A0"
+                                  }
+                                ]
+                              ]
+                            }
+                          }
+                        }
+                      ],
+                      "defaultCacheBehavior": {
+                        "pathPattern": "*",
+                        "targetOriginId": "VeraproofFrontendStackprodVeraproofVerificationDistributionprodOrigin131E4F6B7",
+                        "allowedMethods": [
+                          "GET",
+                          "HEAD",
+                          "OPTIONS"
+                        ],
+                        "cachedMethods": [
+                          "GET",
+                          "HEAD",
+                          "OPTIONS"
+                        ],
+                        "cachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                        "compress": true,
+                        "viewerProtocolPolicy": "redirect-to-https"
+                      },
+                      "comment": "VeraProof Verification Interface Distribution - prod",
+                      "defaultRootObject": "index.html",
+                      "httpVersion": "http2",
+                      "ipv6Enabled": true,
+                      "priceClass": "PriceClass_100"
+                    },
+                    "tags": [
+                      {
+                        "key": "CostCenter",
+                        "value": "Engineering"
+                      },
+                      {
+                        "key": "ManagedBy",
+                        "value": "AWS-CDK"
+                      },
+                      {
+                        "key": "Project",
+                        "value": "VeraProof-AI"
+                      },
+                      {
+                        "key": "Stage",
+                        "value": "prod"
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudfront.CfnDistribution",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudfront.Distribution",
+              "version": "2.120.0"
+            }
+          },
+          "Dashboard-URL-prod": {
+            "id": "Dashboard-URL-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Dashboard-URL-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Verification-URL-prod": {
+            "id": "Verification-URL-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Verification-URL-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Dashboard-Bucket-Name-prod": {
+            "id": "Dashboard-Bucket-Name-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Dashboard-Bucket-Name-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Verification-Bucket-Name-prod": {
+            "id": "Verification-Bucket-Name-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Verification-Bucket-Name-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Dashboard-Distribution-ID-prod": {
+            "id": "Dashboard-Distribution-ID-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Dashboard-Distribution-ID-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "Verification-Distribution-ID-prod": {
+            "id": "Verification-Distribution-ID-prod",
+            "path": "Veraproof-Frontend-Stack-prod/Verification-Distribution-ID-prod",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.120.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "Veraproof-Frontend-Stack-prod/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "Veraproof-Frontend-Stack-prod/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.120.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.5.0"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "Veraproof-Frontend-Stack-prod/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.120.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "Veraproof-Frontend-Stack-prod/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.120.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.120.0"
+        }
+      },
+      "Tree": {
+        "id": "Tree",
+        "path": "Tree",
+        "constructInfo": {
+          "fqn": "constructs.Construct",
+          "version": "10.5.0"
+        }
+      }
+    },
+    "constructInfo": {
+      "fqn": "aws-cdk-lib.App",
+      "version": "2.120.0"
+    }
+  }
+}

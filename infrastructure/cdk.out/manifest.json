@@ -1,0 +1,620 @@
+{
+  "version": "36.0.0",
+  "artifacts": {
+    "Veraproof-Storage-Stack-prod.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "Veraproof-Storage-Stack-prod.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "Veraproof-Storage-Stack-prod": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://612850243659/ap-south-1",
+      "properties": {
+        "templateFile": "Veraproof-Storage-Stack-prod.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "CostCenter": "Engineering",
+          "ManagedBy": "AWS-CDK",
+          "Project": "VeraProof-AI",
+          "Stage": "prod"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-deploy-role-612850243659-ap-south-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-cfn-exec-role-612850243659-ap-south-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-612850243659-ap-south-1/952b09fb80856c6d4683a2734ac5c5f156caee28c7471ff80c69d19800031fe7.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "Veraproof-Storage-Stack-prod.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-lookup-role-612850243659-ap-south-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "Veraproof-Storage-Stack-prod.assets"
+      ],
+      "metadata": {
+        "/Veraproof-Storage-Stack-prod": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "CostCenter",
+                "Value": "Engineering"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "AWS-CDK"
+              },
+              {
+                "Key": "Project",
+                "Value": "VeraProof-AI"
+              },
+              {
+                "Key": "Stage",
+                "Value": "prod"
+              }
+            ]
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Veraproof-Artifacts-Bucket-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofArtifactsBucketprodEA52E173"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Veraproof-Branding-Bucket-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofBrandingBucketprod7F3191F1"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Artifacts-Bucket-Name-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ArtifactsBucketNameprod"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Artifacts-Bucket-ARN-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ArtifactsBucketARNprod"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Branding-Bucket-Name-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BrandingBucketNameprod"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Branding-Bucket-ARN-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BrandingBucketARNprod"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Exports/Output{\"Fn::GetAtt\":[\"VeraproofArtifactsBucketprodEA52E173\",\"Arn\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/Exports/Output{\"Fn::GetAtt\":[\"VeraproofBrandingBucketprod7F3191F1\",\"Arn\"]}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/Veraproof-Storage-Stack-prod/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "Veraproof-Storage-Stack-prod"
+    },
+    "Veraproof-Auth-Stack-prod.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "Veraproof-Auth-Stack-prod.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "Veraproof-Auth-Stack-prod": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://612850243659/ap-south-1",
+      "properties": {
+        "templateFile": "Veraproof-Auth-Stack-prod.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "CostCenter": "Engineering",
+          "ManagedBy": "AWS-CDK",
+          "Project": "VeraProof-AI",
+          "Stage": "prod"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-deploy-role-612850243659-ap-south-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-cfn-exec-role-612850243659-ap-south-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-612850243659-ap-south-1/d68005f768caecacd10963e63df624d055c269a91a272eddb84f18fbba1faae6.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "Veraproof-Auth-Stack-prod.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-lookup-role-612850243659-ap-south-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "Veraproof-Auth-Stack-prod.assets"
+      ],
+      "metadata": {
+        "/Veraproof-Auth-Stack-prod": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "CostCenter",
+                "Value": "Engineering"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "AWS-CDK"
+              },
+              {
+                "Key": "Project",
+                "Value": "VeraProof-AI"
+              },
+              {
+                "Key": "Stage",
+                "Value": "prod"
+              }
+            ]
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/smsRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofUserPoolprodsmsRole2ACD2C06"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofUserPoolprod3274BDB4"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Veraproof-Dashboard-Client-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofUserPoolprodVeraproofDashboardClientprodB1132D31"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/Veraproof-User-Pool-prod/Veraproof-Auth-Domain-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofUserPoolprodVeraproofAuthDomainprodF26B6615"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/User-Pool-ID-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "UserPoolIDprod"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/User-Pool-ARN-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "UserPoolARNprod"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/User-Pool-Client-ID-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "UserPoolClientIDprod"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/Auth-Domain-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AuthDomainprod"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/Veraproof-Auth-Stack-prod/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "Veraproof-Auth-Stack-prod"
+    },
+    "Veraproof-Lightsail-Stack-prod.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "Veraproof-Lightsail-Stack-prod.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "Veraproof-Lightsail-Stack-prod": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://612850243659/ap-south-1",
+      "properties": {
+        "templateFile": "Veraproof-Lightsail-Stack-prod.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "CostCenter": "Engineering",
+          "ManagedBy": "AWS-CDK",
+          "Project": "VeraProof-AI",
+          "Stage": "prod"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-deploy-role-612850243659-ap-south-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-cfn-exec-role-612850243659-ap-south-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-612850243659-ap-south-1/15a673bc3278b3f3223614c5c16165cc655f6e451f12fa780ce6a2e774127f67.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "Veraproof-Lightsail-Stack-prod.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-lookup-role-612850243659-ap-south-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "Veraproof-Storage-Stack-prod",
+        "Veraproof-Lightsail-Stack-prod.assets"
+      ],
+      "metadata": {
+        "/Veraproof-Lightsail-Stack-prod": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "CostCenter",
+                "Value": "Engineering"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "AWS-CDK"
+              },
+              {
+                "Key": "Project",
+                "Value": "VeraProof-AI"
+              },
+              {
+                "Key": "Stage",
+                "Value": "prod"
+              }
+            ]
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Database-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofLightsailDatabaseprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Container-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofLightsailContainerprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofLightsailRoleprodDF7E4F5C"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofLightsailRoleprodDefaultPolicy0BAA770B"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Veraproof-DB-Endpoint-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDBEndpointprodEA0E53A8"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Veraproof-DB-Port-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDBPortprodEFF783F8"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Lightsail-Container-Service-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LightsailContainerServiceprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Lightsail-Database-Name-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LightsailDatabaseNameprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Lightsail-API-URL-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LightsailAPIURLprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Lightsail-Database-Endpoint-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LightsailDatabaseEndpointprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Lightsail-Database-Port-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LightsailDatabasePortprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/Lightsail-IAM-Role-ARN-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "LightsailIAMRoleARNprod"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/Veraproof-Lightsail-Stack-prod/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "Veraproof-Lightsail-Stack-prod"
+    },
+    "Veraproof-Frontend-Stack-prod.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "Veraproof-Frontend-Stack-prod.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "Veraproof-Frontend-Stack-prod": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://612850243659/ap-south-1",
+      "properties": {
+        "templateFile": "Veraproof-Frontend-Stack-prod.template.json",
+        "terminationProtection": false,
+        "tags": {
+          "CostCenter": "Engineering",
+          "ManagedBy": "AWS-CDK",
+          "Project": "VeraProof-AI",
+          "Stage": "prod"
+        },
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-deploy-role-612850243659-ap-south-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-cfn-exec-role-612850243659-ap-south-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-612850243659-ap-south-1/facf99641130bef4978e609caccf6d6aa56ac43212806dce0c0075ce4e1aa00d.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "Veraproof-Frontend-Stack-prod.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-lookup-role-612850243659-ap-south-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "Veraproof-Frontend-Stack-prod.assets"
+      ],
+      "metadata": {
+        "/Veraproof-Frontend-Stack-prod": [
+          {
+            "type": "aws:cdk:stack-tags",
+            "data": [
+              {
+                "Key": "CostCenter",
+                "Value": "Engineering"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "AWS-CDK"
+              },
+              {
+                "Key": "Project",
+                "Value": "VeraProof-AI"
+              },
+              {
+                "Key": "Stage",
+                "Value": "prod"
+              }
+            ]
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDashboardBucketprodDFE3BE55"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Policy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDashboardBucketprodPolicy56BB955D"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/AutoDeleteObjectsCustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDashboardBucketprodAutoDeleteObjectsCustomResource8AB69B04"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofVerificationBucketprod36F0BC48"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Policy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofVerificationBucketprodPolicyA3807FCA"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/AutoDeleteObjectsCustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofVerificationBucketprodAutoDeleteObjectsCustomResource77054A27"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-OAI-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDashboardOAIprodDD84E604"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Verification-OAI-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofVerificationOAIprod4FDCD5A0"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Distribution-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofDashboardDistributionprod794CBE2B"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Veraproof-Verification-Distribution-prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VeraproofVerificationDistributionprod3CFD212A"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Dashboard-URL-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DashboardURLprod"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Verification-URL-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VerificationURLprod"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Dashboard-Bucket-Name-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DashboardBucketNameprod"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Verification-Bucket-Name-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VerificationBucketNameprod"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Dashboard-Distribution-ID-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DashboardDistributionIDprod"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/Verification-Distribution-ID-prod": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VerificationDistributionIDprod"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/Veraproof-Frontend-Stack-prod/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "Veraproof-Frontend-Stack-prod"
+    },
+    "Tree": {
+      "type": "cdk:tree",
+      "properties": {
+        "file": "tree.json"
+      }
+    }
+  }
+}

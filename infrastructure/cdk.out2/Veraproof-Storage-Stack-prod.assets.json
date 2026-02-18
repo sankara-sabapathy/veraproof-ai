@@ -1,0 +1,20 @@
+{
+  "version": "36.0.0",
+  "files": {
+    "952b09fb80856c6d4683a2734ac5c5f156caee28c7471ff80c69d19800031fe7": {
+      "source": {
+        "path": "Veraproof-Storage-Stack-prod.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "612850243659-ap-south-1": {
+          "bucketName": "cdk-hnb659fds-assets-612850243659-ap-south-1",
+          "objectKey": "952b09fb80856c6d4683a2734ac5c5f156caee28c7471ff80c69d19800031fe7.json",
+          "region": "ap-south-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::612850243659:role/cdk-hnb659fds-file-publishing-role-612850243659-ap-south-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

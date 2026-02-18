@@ -1,0 +1,329 @@
+{
+ "Description": "VeraProof AI Lightsail Infrastructure - PROD",
+ "Resources": {
+  "VeraproofLightsailDatabaseprod": {
+   "Type": "AWS::Lightsail::Database",
+   "Properties": {
+    "BackupRetention": true,
+    "MasterDatabaseName": "veraproof",
+    "MasterUsername": "veraproof_admin",
+    "PreferredBackupWindow": "03:00-04:00",
+    "PreferredMaintenanceWindow": "mon:04:00-mon:05:00",
+    "PubliclyAccessible": false,
+    "RelationalDatabaseBlueprintId": "postgres_16",
+    "RelationalDatabaseBundleId": "micro_2_0",
+    "RelationalDatabaseName": "veraproof-db-prod",
+    "RotateMasterUserPassword": true,
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Database-prod"
+   }
+  },
+  "VeraproofLightsailContainerprod": {
+   "Type": "AWS::Lightsail::Container",
+   "Properties": {
+    "IsDisabled": false,
+    "Power": "micro",
+    "Scale": 1,
+    "ServiceName": "veraproof-api-prod",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Container-prod"
+   }
+  },
+  "VeraproofLightsailRoleprodDF7E4F5C": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lightsail.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Description": "IAM role for Lightsail container service - prod",
+    "RoleName": "veraproof-lightsail-role-prod",
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/Resource"
+   }
+  },
+  "VeraproofLightsailRoleprodDefaultPolicy0BAA770B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:Abort*",
+        "s3:DeleteObject*",
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC"
+        },
+        {
+         "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2"
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC"
+           },
+           "/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::ImportValue": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2"
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:ssm:ap-south-1:612850243659:parameter/veraproof/prod/*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "VeraproofLightsailRoleprodDefaultPolicy0BAA770B",
+    "Roles": [
+     {
+      "Ref": "VeraproofLightsailRoleprodDF7E4F5C"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/Veraproof-Lightsail-Role-prod/DefaultPolicy/Resource"
+   }
+  },
+  "VeraproofDBEndpointprodEA0E53A8": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Description": "Lightsail database endpoint for prod",
+    "Name": "/veraproof/prod/database/endpoint",
+    "Tags": {
+     "CostCenter": "Engineering",
+     "ManagedBy": "AWS-CDK",
+     "Project": "VeraProof-AI",
+     "Stage": "prod"
+    },
+    "Tier": "Standard",
+    "Type": "String",
+    "Value": {
+     "Fn::GetAtt": [
+      "VeraproofLightsailDatabaseprod",
+      "DatabaseArn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/Veraproof-DB-Endpoint-prod/Resource"
+   }
+  },
+  "VeraproofDBPortprodEFF783F8": {
+   "Type": "AWS::SSM::Parameter",
+   "Properties": {
+    "Description": "Lightsail database port for prod",
+    "Name": "/veraproof/prod/database/port",
+    "Tags": {
+     "CostCenter": "Engineering",
+     "ManagedBy": "AWS-CDK",
+     "Project": "VeraProof-AI",
+     "Stage": "prod"
+    },
+    "Tier": "Standard",
+    "Type": "String",
+    "Value": "5432"
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/Veraproof-DB-Port-prod/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zWMUQ6CMBBEz8J/qYjeAP8leACz1AIrpTXdbQhpendD0a+ZeZO8Wp7rSlYFrFSq11wa7GV8MKhZwErPaHCcmACNjM1gb8DQA2nRDLZxlgGt9kkgLDJ2zmSes3UG1bbPoyVBtOxij3ZswcOiWfv8/0dKotPkgldZcw/8CZyFP5pEu/Hk7Okiz7W8Fm9CLH2wjIuW3ZFffQphMM8AAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Lightsail-Stack-prod/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "LightsailContainerServiceprod": {
+   "Description": "Lightsail container service name for prod",
+   "Value": "veraproof-api-prod",
+   "Export": {
+    "Name": "Veraproof-Lightsail-Container-prod"
+   }
+  },
+  "LightsailDatabaseNameprod": {
+   "Description": "Lightsail database name for prod",
+   "Value": "veraproof-db-prod",
+   "Export": {
+    "Name": "Veraproof-Lightsail-Database-prod"
+   }
+  },
+  "LightsailAPIURLprod": {
+   "Description": "Lightsail API URL for prod",
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofLightsailContainerprod",
+     "Url"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Lightsail-API-URL-prod"
+   }
+  },
+  "LightsailDatabaseEndpointprod": {
+   "Description": "Lightsail database ARN for prod",
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofLightsailDatabaseprod",
+     "DatabaseArn"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Lightsail-DB-ARN-prod"
+   }
+  },
+  "LightsailDatabasePortprod": {
+   "Description": "Lightsail database port for prod",
+   "Value": "5432",
+   "Export": {
+    "Name": "Veraproof-Lightsail-DB-Port-prod"
+   }
+  },
+  "LightsailIAMRoleARNprod": {
+   "Description": "IAM role ARN for Lightsail - prod",
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofLightsailRoleprodDF7E4F5C",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Lightsail-Role-ARN-prod"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,31 @@
+{
+  "containers": {
+    "app": {
+      "image": ":veraproof-api-prod.veraproof-api.1",
+      "ports": {
+        "8000": "HTTP"
+      },
+      "environment": {
+        "STAGE": "prod",
+        "AWS_REGION": "ap-south-1",
+        "DATABASE_URL": "postgresql://veraproof_admin:QY0MM56b%60_k%5b7%7d%3d_%3e3u(Rq%3c%7cPLira6P5@ls-8bad8362be3aa2f45ef73e8c4f56ef8b9b8b9f0e.c1mik0iyyfok.ap-south-1.rds.amazonaws.com:5432/veraproof",
+        "COGNITO_USER_POOL_ID": "ap-south-1_l4nlq0n8y",
+        "COGNITO_CLIENT_ID": "2b7tq4gj7426iamis9snrrh2fo",
+        "ARTIFACTS_BUCKET": "veraproof-artifacts-prod-612850243659",
+        "BRANDING_BUCKET": "veraproof-branding-prod-612850243659"
+      }
+    }
+  },
+  "publicEndpoint": {
+    "containerName": "app",
+    "containerPort": 8000,
+    "healthCheck": {
+      "path": "/health",
+      "intervalSeconds": 30,
+      "timeoutSeconds": 5,
+      "healthyThreshold": 2,
+      "unhealthyThreshold": 2,
+      "successCodes": "200"
+    }
+  }
+}

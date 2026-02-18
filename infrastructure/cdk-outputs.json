@@ -1,0 +1,32 @@
+{
+  "Veraproof-Storage-Stack-prod": {
+    "ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC": "arn:aws:s3:::veraproof-artifacts-prod-612850243659",
+    "ArtifactsBucketNameprod": "veraproof-artifacts-prod-612850243659",
+    "BrandingBucketARNprod": "arn:aws:s3:::veraproof-branding-prod-612850243659",
+    "BrandingBucketNameprod": "veraproof-branding-prod-612850243659",
+    "ArtifactsBucketARNprod": "arn:aws:s3:::veraproof-artifacts-prod-612850243659",
+    "ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2": "arn:aws:s3:::veraproof-branding-prod-612850243659"
+  },
+  "Veraproof-Auth-Stack-prod": {
+    "UserPoolClientIDprod": "2b7tq4gj7426iamis9snrrh2fo",
+    "AuthDomainprod": "veraproof-auth-prod",
+    "UserPoolARNprod": "arn:aws:cognito-idp:ap-south-1:612850243659:userpool/ap-south-1_l4nlq0n8y",
+    "UserPoolIDprod": "ap-south-1_l4nlq0n8y"
+  },
+  "Veraproof-Frontend-Stack-prod": {
+    "DashboardBucketNameprod": "veraproof-dashboard-prod-612850243659",
+    "VerificationDistributionIDprod": "E3A2H3IT5ET3I0",
+    "VerificationBucketNameprod": "veraproof-verification-prod-612850243659",
+    "VerificationURLprod": "https://dmieqia655oqd.cloudfront.net",
+    "DashboardURLprod": "https://d3gc0en9my7apv.cloudfront.net",
+    "DashboardDistributionIDprod": "E22HOO32XSEYNN"
+  },
+  "Veraproof-Lightsail-Stack-prod": {
+    "LightsailAPIURLprod": "https://veraproof-api-prod.hbcqqqvv5xfqj.ap-south-1.cs.amazonlightsail.com/",
+    "LightsailContainerServiceprod": "veraproof-api-prod",
+    "LightsailDatabaseNameprod": "veraproof-db-prod",
+    "LightsailDatabasePortprod": "5432",
+    "LightsailDatabaseEndpointprod": "arn:aws:lightsail:ap-south-1:612850243659:RelationalDatabase/ddf73465-c903-44e2-a949-8c3143c351db",
+    "LightsailIAMRoleARNprod": "arn:aws:iam::612850243659:role/veraproof-lightsail-role-prod"
+  }
+}

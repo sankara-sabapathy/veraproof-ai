@@ -1,0 +1,752 @@
+{
+ "Description": "VeraProof AI Frontend Infrastructure - PROD",
+ "Resources": {
+  "VeraproofDashboardBucketprodDFE3BE55": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "veraproof-dashboard-prod-612850243659",
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "aws-cdk:auto-delete-objects",
+      "Value": "true"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Resource"
+   }
+  },
+  "VeraproofDashboardBucketprodPolicy56BB955D": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "VeraproofDashboardBucketprodDFE3BE55"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:DeleteObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:PutBucketPolicy"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": {
+         "Fn::GetAtt": [
+          "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+          "Arn"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "VeraproofDashboardBucketprodDFE3BE55",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "VeraproofDashboardBucketprodDFE3BE55",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "CanonicalUser": {
+         "Fn::GetAtt": [
+          "VeraproofDashboardOAIprodDD84E604",
+          "S3CanonicalUserId"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "VeraproofDashboardBucketprodDFE3BE55",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "VeraproofDashboardBucketprodDFE3BE55",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "s3:GetObject",
+       "Effect": "Allow",
+       "Principal": {
+        "CanonicalUser": {
+         "Fn::GetAtt": [
+          "VeraproofDashboardOAIprodDD84E604",
+          "S3CanonicalUserId"
+         ]
+        }
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "VeraproofDashboardBucketprodDFE3BE55",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/Policy/Resource"
+   }
+  },
+  "VeraproofDashboardBucketprodAutoDeleteObjectsCustomResource8AB69B04": {
+   "Type": "Custom::S3AutoDeleteObjects",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "Arn"
+     ]
+    },
+    "BucketName": {
+     "Ref": "VeraproofDashboardBucketprodDFE3BE55"
+    }
+   },
+   "DependsOn": [
+    "VeraproofDashboardBucketprodPolicy56BB955D"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Bucket-prod/AutoDeleteObjectsCustomResource/Default"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-612850243659-ap-south-1",
+     "S3Key": "b7f33614a69548d6bafe224d751a7ef238cde19097415e553fe8b63a4c8fd8a6.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Description": {
+     "Fn::Join": [
+      "",
+      [
+       "Lambda function for auto-deleting objects in ",
+       {
+        "Ref": "VeraproofDashboardBucketprodDFE3BE55"
+       },
+       " S3 bucket."
+      ]
+     ]
+    }
+   },
+   "DependsOn": [
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.b7f33614a69548d6bafe224d751a7ef238cde19097415e553fe8b63a4c8fd8a6",
+    "aws:asset:property": "Code"
+   }
+  },
+  "VeraproofVerificationBucketprod36F0BC48": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "veraproof-verification-prod-612850243659",
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "aws-cdk:auto-delete-objects",
+      "Value": "true"
+     },
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Resource"
+   }
+  },
+  "VeraproofVerificationBucketprodPolicyA3807FCA": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "VeraproofVerificationBucketprod36F0BC48"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:DeleteObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:PutBucketPolicy"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": {
+         "Fn::GetAtt": [
+          "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+          "Arn"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "VeraproofVerificationBucketprod36F0BC48",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "VeraproofVerificationBucketprod36F0BC48",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "CanonicalUser": {
+         "Fn::GetAtt": [
+          "VeraproofVerificationOAIprod4FDCD5A0",
+          "S3CanonicalUserId"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "VeraproofVerificationBucketprod36F0BC48",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "VeraproofVerificationBucketprod36F0BC48",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "s3:GetObject",
+       "Effect": "Allow",
+       "Principal": {
+        "CanonicalUser": {
+         "Fn::GetAtt": [
+          "VeraproofVerificationOAIprod4FDCD5A0",
+          "S3CanonicalUserId"
+         ]
+        }
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "VeraproofVerificationBucketprod36F0BC48",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/Policy/Resource"
+   }
+  },
+  "VeraproofVerificationBucketprodAutoDeleteObjectsCustomResource77054A27": {
+   "Type": "Custom::S3AutoDeleteObjects",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "Arn"
+     ]
+    },
+    "BucketName": {
+     "Ref": "VeraproofVerificationBucketprod36F0BC48"
+    }
+   },
+   "DependsOn": [
+    "VeraproofVerificationBucketprodPolicyA3807FCA"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Bucket-prod/AutoDeleteObjectsCustomResource/Default"
+   }
+  },
+  "VeraproofDashboardOAIprodDD84E604": {
+   "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+   "Properties": {
+    "CloudFrontOriginAccessIdentityConfig": {
+     "Comment": "OAI for VeraProof Dashboard - prod"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-OAI-prod/Resource"
+   }
+  },
+  "VeraproofVerificationOAIprod4FDCD5A0": {
+   "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+   "Properties": {
+    "CloudFrontOriginAccessIdentityConfig": {
+     "Comment": "OAI for VeraProof Verification - prod"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-OAI-prod/Resource"
+   }
+  },
+  "VeraproofDashboardDistributionprod794CBE2B": {
+   "Type": "AWS::CloudFront::Distribution",
+   "Properties": {
+    "DistributionConfig": {
+     "Comment": "VeraProof Dashboard Distribution - prod",
+     "CustomErrorResponses": [
+      {
+       "ErrorCachingMinTTL": 300,
+       "ErrorCode": 404,
+       "ResponseCode": 200,
+       "ResponsePagePath": "/index.html"
+      },
+      {
+       "ErrorCachingMinTTL": 300,
+       "ErrorCode": 403,
+       "ResponseCode": 200,
+       "ResponsePagePath": "/index.html"
+      }
+     ],
+     "DefaultCacheBehavior": {
+      "AllowedMethods": [
+       "GET",
+       "HEAD",
+       "OPTIONS"
+      ],
+      "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+      "CachedMethods": [
+       "GET",
+       "HEAD",
+       "OPTIONS"
+      ],
+      "Compress": true,
+      "TargetOriginId": "VeraproofFrontendStackprodVeraproofDashboardDistributionprodOrigin1051A9CD5",
+      "ViewerProtocolPolicy": "redirect-to-https"
+     },
+     "DefaultRootObject": "index.html",
+     "Enabled": true,
+     "HttpVersion": "http2",
+     "IPV6Enabled": true,
+     "Origins": [
+      {
+       "DomainName": {
+        "Fn::GetAtt": [
+         "VeraproofDashboardBucketprodDFE3BE55",
+         "RegionalDomainName"
+        ]
+       },
+       "Id": "VeraproofFrontendStackprodVeraproofDashboardDistributionprodOrigin1051A9CD5",
+       "S3OriginConfig": {
+        "OriginAccessIdentity": {
+         "Fn::Join": [
+          "",
+          [
+           "origin-access-identity/cloudfront/",
+           {
+            "Ref": "VeraproofDashboardOAIprodDD84E604"
+           }
+          ]
+         ]
+        }
+       }
+      }
+     ],
+     "PriceClass": "PriceClass_100"
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Dashboard-Distribution-prod/Resource"
+   }
+  },
+  "VeraproofVerificationDistributionprod3CFD212A": {
+   "Type": "AWS::CloudFront::Distribution",
+   "Properties": {
+    "DistributionConfig": {
+     "Comment": "VeraProof Verification Interface Distribution - prod",
+     "DefaultCacheBehavior": {
+      "AllowedMethods": [
+       "GET",
+       "HEAD",
+       "OPTIONS"
+      ],
+      "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+      "CachedMethods": [
+       "GET",
+       "HEAD",
+       "OPTIONS"
+      ],
+      "Compress": true,
+      "TargetOriginId": "VeraproofFrontendStackprodVeraproofVerificationDistributionprodOrigin131E4F6B7",
+      "ViewerProtocolPolicy": "redirect-to-https"
+     },
+     "DefaultRootObject": "index.html",
+     "Enabled": true,
+     "HttpVersion": "http2",
+     "IPV6Enabled": true,
+     "Origins": [
+      {
+       "DomainName": {
+        "Fn::GetAtt": [
+         "VeraproofVerificationBucketprod36F0BC48",
+         "RegionalDomainName"
+        ]
+       },
+       "Id": "VeraproofFrontendStackprodVeraproofVerificationDistributionprodOrigin131E4F6B7",
+       "S3OriginConfig": {
+        "OriginAccessIdentity": {
+         "Fn::Join": [
+          "",
+          [
+           "origin-access-identity/cloudfront/",
+           {
+            "Ref": "VeraproofVerificationOAIprod4FDCD5A0"
+           }
+          ]
+         ]
+        }
+       }
+      }
+     ],
+     "PriceClass": "PriceClass_100"
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/Veraproof-Verification-Distribution-prod/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/22LTQ6CMBCFz+K+VEUvABgTVxI4gCllxBFoTWeqMYS7m4oJmrh6f9+L5TpeydVCPSjSdRt1WMmhZKVboR50Gmgjh9TrFlhkZ/Nxk+S2Q/2c6ymPQnfW12dnDcvh6LBBk2gNRIcaDCO/H1lg9oH5S+yQ2GHlGa0J+HceR5F5YtsXQNY7DQGY/c+UO3vHGlyqCERCBFyyatA04XP0fPM8ivzJF2uWG7mO5XZxJcTIecPYgywmfQHUgBsxJQEAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Frontend-Stack-prod/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "DashboardURLprod": {
+   "Description": "Dashboard URL for prod",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Fn::GetAtt": [
+        "VeraproofDashboardDistributionprod794CBE2B",
+        "DomainName"
+       ]
+      }
+     ]
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Dashboard-URL-prod"
+   }
+  },
+  "VerificationURLprod": {
+   "Description": "Verification Interface URL for prod",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Fn::GetAtt": [
+        "VeraproofVerificationDistributionprod3CFD212A",
+        "DomainName"
+       ]
+      }
+     ]
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Verification-URL-prod"
+   }
+  },
+  "DashboardBucketNameprod": {
+   "Description": "Dashboard bucket name for prod",
+   "Value": {
+    "Ref": "VeraproofDashboardBucketprodDFE3BE55"
+   },
+   "Export": {
+    "Name": "Veraproof-Dashboard-Bucket-prod"
+   }
+  },
+  "VerificationBucketNameprod": {
+   "Description": "Verification bucket name for prod",
+   "Value": {
+    "Ref": "VeraproofVerificationBucketprod36F0BC48"
+   },
+   "Export": {
+    "Name": "Veraproof-Verification-Bucket-prod"
+   }
+  },
+  "DashboardDistributionIDprod": {
+   "Description": "Dashboard CloudFront Distribution ID for prod",
+   "Value": {
+    "Ref": "VeraproofDashboardDistributionprod794CBE2B"
+   },
+   "Export": {
+    "Name": "Veraproof-Dashboard-Distribution-ID-prod"
+   }
+  },
+  "VerificationDistributionIDprod": {
+   "Description": "Verification CloudFront Distribution ID for prod",
+   "Value": {
+    "Ref": "VeraproofVerificationDistributionprod3CFD212A"
+   },
+   "Export": {
+    "Name": "Veraproof-Verification-Distribution-ID-prod"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

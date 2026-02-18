@@ -1,0 +1,257 @@
+{
+ "Description": "VeraProof AI Storage Infrastructure - PROD",
+ "Resources": {
+  "VeraproofArtifactsBucketprodEA52E173": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "veraproof-artifacts-prod-612850243659",
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "GET",
+        "PUT",
+        "POST"
+       ],
+       "AllowedOrigins": [
+        "*"
+       ],
+       "MaxAge": 3600
+      }
+     ]
+    },
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "ExpirationInDays": 90,
+       "Id": "Delete-After-90-Days",
+       "Status": "Enabled",
+       "Transitions": [
+        {
+         "StorageClass": "GLACIER",
+         "TransitionInDays": 30
+        }
+       ]
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": true
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Storage-Stack-prod/Veraproof-Artifacts-Bucket-prod/Resource"
+   }
+  },
+  "VeraproofBrandingBucketprod7F3191F1": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "veraproof-branding-prod-612850243659",
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "GET"
+       ],
+       "AllowedOrigins": [
+        "*"
+       ],
+       "MaxAge": 3600
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": true,
+     "BlockPublicPolicy": true,
+     "IgnorePublicAcls": true,
+     "RestrictPublicBuckets": false
+    },
+    "Tags": [
+     {
+      "Key": "CostCenter",
+      "Value": "Engineering"
+     },
+     {
+      "Key": "ManagedBy",
+      "Value": "AWS-CDK"
+     },
+     {
+      "Key": "Project",
+      "Value": "VeraProof-AI"
+     },
+     {
+      "Key": "Stage",
+      "Value": "prod"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Storage-Stack-prod/Veraproof-Branding-Bucket-prod/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzQy0DNQTCwv1k1OydbNyUzSqw4uSUzO1kksL44vNtardipNzk4t0XFOy4OwakFM/9KSglKwYFBqcX5pUXJqrU5AZUlGfp6+sZ6hkZ6JYlZxZqZuUWleSWZuql4QhAYALZC8H24AAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "Veraproof-Storage-Stack-prod/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "ArtifactsBucketNameprod": {
+   "Description": "Artifacts bucket name for prod",
+   "Value": {
+    "Ref": "VeraproofArtifactsBucketprodEA52E173"
+   },
+   "Export": {
+    "Name": "Veraproof-Artifacts-Bucket-prod"
+   }
+  },
+  "ArtifactsBucketARNprod": {
+   "Description": "Artifacts bucket ARN for prod",
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofArtifactsBucketprodEA52E173",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Artifacts-Bucket-ARN-prod"
+   }
+  },
+  "BrandingBucketNameprod": {
+   "Description": "Branding bucket name for prod",
+   "Value": {
+    "Ref": "VeraproofBrandingBucketprod7F3191F1"
+   },
+   "Export": {
+    "Name": "Veraproof-Branding-Bucket-prod"
+   }
+  },
+  "BrandingBucketARNprod": {
+   "Description": "Branding bucket ARN for prod",
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofBrandingBucketprod7F3191F1",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Branding-Bucket-ARN-prod"
+   }
+  },
+  "ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC": {
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofArtifactsBucketprodEA52E173",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofArtifactsBucketprodEA52E173Arn60E995AC"
+   }
+  },
+  "ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2": {
+   "Value": {
+    "Fn::GetAtt": [
+     "VeraproofBrandingBucketprod7F3191F1",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "Veraproof-Storage-Stack-prod:ExportsOutputFnGetAttVeraproofBrandingBucketprod7F3191F1ArnC8B61DE2"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}
