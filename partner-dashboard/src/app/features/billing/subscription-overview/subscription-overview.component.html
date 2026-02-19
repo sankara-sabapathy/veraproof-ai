@@ -1,0 +1,66 @@
+<div class="subscription-overview">
+  <mat-card *ngIf="subscription$ | async as subscription; else loading">
+    <mat-card-header>
+      <mat-card-title>Current Subscription</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="subscription-details">
+        <div class="detail-row">
+          <span class="label">Plan:</span>
+          <mat-chip [color]="'primary'" selected>{{ subscription.subscription_tier }}</mat-chip>
+        </div>
+        <div class="detail-row">
+          <span class="label">Monthly Quota:</span>
+          <span class="value">{{ subscription.monthly_quota | number }} verifications</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Current Usage:</span>
+          <span class="value">{{ subscription.current_usage | number }} / {{ subscription.monthly_quota | number }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Remaining:</span>
+          <span class="value">{{ subscription.remaining_quota | number }} verifications</span>
+        </div>
+        
+        <div class="quota-progress">
+          <mat-progress-bar 
+            mode="determinate" 
+            [value]="subscription.usage_percentage"
+            [color]="getUsageColor(subscription.usage_percentage)">
+          </mat-progress-bar>
+          <span class="progress-label">{{ subscription.usage_percentage | number:'1.0-1' }}% used</span>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="detail-row">
+          <span class="label">Billing Cycle:</span>
+          <span class="value">{{ subscription.billing_cycle_start | date }} - {{ subscription.billing_cycle_end | date }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Next Renewal:</span>
+          <span class="value">{{ subscription.next_renewal_date | date }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Estimated Cost:</span>
+          <span class="value">\${{ subscription.estimated_cost | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <div class="actions" *ngIf="subscription.usage_percentage >= 80">
+        <mat-card class="warning-card">
+          <mat-icon color="warn">warning</mat-icon>
+          <p>You've used {{ subscription.usage_percentage | number:'1.0-1' }}% of your monthly quota. Consider upgrading your plan or purchasing additional credits.</p>
+        </mat-card>
+      </div>
+    </mat-card-content>
+    <mat-card-actions>
+      <button mat-raised-button color="primary" routerLink="/billing/plans">View Plans</button>
+      <button mat-button routerLink="/billing/invoices">View Invoices</button>
+    </mat-card-actions>
+  </mat-card>
+
+  <ng-template #loading>
+    <app-loading-spinner message="Loading subscription details..."></app-loading-spinner>
+  </ng-template>
+</div>

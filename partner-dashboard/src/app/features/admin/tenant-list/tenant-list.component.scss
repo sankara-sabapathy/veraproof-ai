@@ -1,0 +1,62 @@
+.tenant-list {
+  padding: 24px;
+
+  h2 {
+    margin-bottom: 24px;
+  }
+}
+
+.filters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+
+  mat-form-field {
+    flex: 1;
+  }
+}
+
+.tenants-table {
+  width: 100%;
+}
+
+.usage-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+
+  mat-progress-bar {
+    height: 4px;
+  }
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+}
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: rgba(0, 0, 0, 0.4);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 18px;
+  }
+}

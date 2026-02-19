@@ -1,0 +1,59 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Edit' : 'Add' }} Webhook</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Webhook URL</mat-label>
+      <input matInput formControlName="url" placeholder="https://example.com/webhook">
+      <mat-error *ngIf="form.get('url')?.invalid">{{ getErrorMessage('url') }}</mat-error>
+      <mat-hint>The endpoint that will receive webhook notifications</mat-hint>
+    </mat-form-field>
+
+    <div class="form-field">
+      <label>Event Types</label>
+      <mat-selection-list formControlName="events">
+        <mat-list-option *ngFor="let event of eventTypes" [value]="event.value">
+          {{ event.label }}
+        </mat-list-option>
+      </mat-selection-list>
+      <mat-hint>Select at least one event type</mat-hint>
+    </div>
+
+    <mat-slide-toggle formControlName="enabled" color="primary">
+      Enable webhook
+    </mat-slide-toggle>
+
+    <mat-expansion-panel class="documentation">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>info</mat-icon>
+          Webhook Payload Documentation
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      
+      <div class="payload-example">
+        <h4>Example Payload</h4>
+        <pre><code>&#123;
+  "event_type": "session.completed",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "session_id": "sess_abc123",
+  "tenant_id": "tenant_xyz789",
+  "data": &#123;
+    "final_trust_score": 92.5,
+    "tier_1_score": 95.0,
+    "tier_2_score": 90.0,
+    "correlation_value": 0.89,
+    "state": "complete"
+  &#125;
+&#125;</code></pre>
+      </div>
+    </mat-expansion-panel>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="form.invalid">
+    {{ isEdit ? 'Update' : 'Create' }}
+  </button>
+</mat-dialog-actions>

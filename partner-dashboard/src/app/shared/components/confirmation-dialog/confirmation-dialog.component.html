@@ -1,0 +1,16 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+<mat-dialog-content>
+  <p>{{ data.message }}</p>
+  <mat-form-field *ngIf="data.requireConfirmation" class="confirmation-field">
+    <mat-label>Type 'confirm' to proceed</mat-label>
+    <input matInput [(ngModel)]="confirmationText" autocomplete="off">
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button [color]="data.confirmColor || 'warn'" 
+          (click)="onConfirm()" 
+          [disabled]="isConfirmDisabled">
+    {{ data.confirmText || 'Confirm' }}
+  </button>
+</mat-dialog-actions>

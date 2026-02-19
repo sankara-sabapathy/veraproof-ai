@@ -4,7 +4,8 @@ Write-Host "Generating Test Session URL..." -ForegroundColor Green
 
 # API endpoint
 $apiUrl = "http://localhost:8000/api/v1/sessions/create"
-$apiKey = "test-api-key-sandbox"
+# Replace with your actual API key from the dashboard
+$apiKey = "vp_sandbox_YOUR_API_KEY_HERE"
 
 # Request body
 $body = @{
@@ -15,7 +16,7 @@ $body = @{
     }
 } | ConvertTo-Json
 
-# Headers
+# Headers - API key authentication
 $headers = @{
     "Authorization" = "Bearer $apiKey"
     "Content-Type" = "application/json"
@@ -35,5 +36,8 @@ try {
 } catch {
     Write-Host "`n❌ Failed to create session" -ForegroundColor Red
     Write-Host "Error: $_" -ForegroundColor Red
-    Write-Host "`nMake sure the backend is running on http://localhost:8000" -ForegroundColor Yellow
+    Write-Host "`nMake sure:" -ForegroundColor Yellow
+    Write-Host "  1. The backend is running on http://localhost:8000" -ForegroundColor Yellow
+    Write-Host "  2. You've replaced YOUR_API_KEY_HERE with your actual API key" -ForegroundColor Yellow
+    Write-Host "  3. You've generated an API key from the Partner Dashboard" -ForegroundColor Yellow
 }

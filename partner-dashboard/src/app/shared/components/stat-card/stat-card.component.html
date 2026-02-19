@@ -1,0 +1,16 @@
+<mat-card class="stat-card">
+  <mat-card-header>
+    <mat-icon [color]="iconColor" class="stat-icon">{{ icon }}</mat-icon>
+    <mat-card-title class="stat-title">{{ title }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="stat-value">{{ value }}</div>
+    <div class="stat-subtitle" *ngIf="subtitle">{{ subtitle }}</div>
+    <div class="stat-trend" *ngIf="trend !== undefined">
+      <mat-icon [class.positive]="trend > 0" [class.negative]="trend < 0">
+        {{ trend > 0 ? 'trending_up' : 'trending_down' }}
+      </mat-icon>
+      <span>{{ trend > 0 ? '+' : '' }}{{ trend }}%</span>
+    </div>
+  </mat-card-content>
+</mat-card>

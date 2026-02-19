@@ -1,0 +1,172 @@
+<div class="dashboard-overview">
+  <div class="header">
+    <h2>Dashboard</h2>
+    <div class="quick-actions">
+      <button mat-raised-button color="primary" (click)="createSession()">
+        <mat-icon>add</mat-icon>
+        Create Session
+      </button>
+      <button mat-raised-button (click)="generateApiKey()">
+        <mat-icon>vpn_key</mat-icon>
+        Get API Key
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="dashboardData && !loading; else loading">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <app-stat-card
+        title="Sessions Today"
+        [value]="dashboardData.stats.sessions_today"
+        icon="today"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Sessions This Week"
+        [value]="dashboardData.stats.sessions_this_week"
+        icon="date_range"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Sessions This Month"
+        [value]="dashboardData.stats.sessions_this_month"
+        icon="calendar_month"
+        iconColor="accent">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Success Rate"
+        [value]="(dashboardData.stats.success_rate | number:'1.1-1') + '%'"
+        icon="check_circle"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Avg Trust Score"
+        [value]="dashboardData.stats.average_trust_score | number:'1.1-1'"
+        icon="stars"
+        iconColor="accent">
+      </app-stat-card>
+    </div>
+
+    <!-- Quota Usage -->
+    <mat-card class="quota-card">
+      <mat-card-header>
+        <mat-card-title>Monthly Quota Usage</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="quota-info">
+          <div class="quota-numbers">
+            <span class="current">{{ dashboardData.quota.current_usage | number }}</span>
+            <span class="separator">/</span>
+            <span class="total">{{ dashboardData.quota.monthly_quota | number }}</span>
+            <span class="label">verifications</span>
+          </div>
+          <div class="quota-percentage">
+            {{ dashboardData.quota.usage_percentage | number:'1.0-1' }}% used
+          </div>
+        </div>
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="dashboardData.quota.usage_percentage"
+          [color]="getUsageColor(dashboardData.quota.usage_percentage)">
+        </mat-progress-bar>
+        <div *ngIf="dashboardData.quota.usage_percentage >= 80" class="quota-warning">
+          <mat-icon>warning</mat-icon>
+          <span>You're approaching your monthly quota limit. Consider upgrading your plan.</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Usage Trend</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <app-usage-chart [data]="usageTrendData"></app-usage-chart>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>Outcome Distribution</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <app-outcome-chart [data]="outcomeDistribution"></app-outcome-chart>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Recent Sessions -->
+    <mat-card class="recent-sessions">
+      <mat-card-header>
+        <mat-card-title>Recent Sessions</mat-card-title>
+        <button mat-button routerLink="/sessions">View All</button>
+      </mat-card-header>
+      <mat-card-content>
+        <table mat-table [dataSource]="dashboardData.recentSessions" class="sessions-table">
+          <ng-container matColumnDef="session_id">
+            <th mat-header-cell *matHeaderCellDef>Session ID</th>
+            <td mat-cell *matCellDef="let session">
+              <span class="session-id">{{ session.session_id }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="created_at">
+            <th mat-header-cell *matHeaderCellDef>Created</th>
+            <td mat-cell *matCellDef="let session">{{ session.created_at | date:'short' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="state">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let session">
+              <mat-chip [color]="session.state === 'complete' ? 'primary' : 'accent'" selected>
+                {{ session.state | uppercase }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="trust_score">
+            <th mat-header-cell *matHeaderCellDef>Trust Score</th>
+            <td mat-cell *matCellDef="let session">
+              <span *ngIf="session.final_trust_score" 
+                    [style.color]="getTrustScoreColor(session.final_trust_score) === 'primary' ? '#4caf50' : getTrustScoreColor(session.final_trust_score) === 'accent' ? '#ff9800' : '#f44336'">
+                {{ session.final_trust_score | number:'1.1-1' }}
+              </span>
+              <span *ngIf="!session.final_trust_score">-</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let session">
+              <button mat-icon-button (click)="viewSession(session.session_id)" matTooltip="View Details">
+                <mat-icon>visibility</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['session_id', 'created_at', 'state', 'trust_score', 'actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['session_id', 'created_at', 'state', 'trust_score', 'actions'];" 
+              class="clickable-row" (click)="viewSession(row.session_id)"></tr>
+        </table>
+
+        <div *ngIf="dashboardData.recentSessions.length === 0" class="no-sessions">
+          <mat-icon>verified_user</mat-icon>
+          <p>No sessions yet</p>
+          <p class="help-text">Create a test session to get started</p>
+          <button mat-raised-button color="primary" (click)="createSession()">Create Your First Session</button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <ng-template #loading>
+    <app-loading-spinner message="Loading dashboard..."></app-loading-spinner>
+  </ng-template>
+</div>

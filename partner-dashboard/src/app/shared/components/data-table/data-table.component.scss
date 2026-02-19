@@ -1,0 +1,30 @@
+.table-container {
+  width: 100%;
+  
+  .search-field {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 16px;
+  }
+  
+  .table-wrapper {
+    overflow-x: auto;
+    
+    table {
+      width: 100%;
+      
+      .clickable-row {
+        cursor: pointer;
+        transition: background-color 0.2s;
+        
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.04);
+        }
+      }
+    }
+  }
+  
+  mat-paginator {
+    margin-top: 16px;
+  }
+}

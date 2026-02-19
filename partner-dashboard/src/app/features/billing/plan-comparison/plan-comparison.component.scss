@@ -1,0 +1,85 @@
+.plan-comparison {
+  padding: 24px;
+
+  h2 {
+    margin-bottom: 24px;
+  }
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+mat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  &.recommended {
+    border: 2px solid #ff4081;
+    box-shadow: 0 4px 12px rgba(255, 64, 129, 0.2);
+  }
+}
+
+.recommended-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.pricing {
+  display: flex;
+  align-items: baseline;
+  margin: 16px 0;
+
+  .price {
+    font-size: 36px;
+    font-weight: 700;
+    color: #3f51b5;
+  }
+
+  .period {
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+    margin-left: 4px;
+  }
+}
+
+.quota {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.per-verification {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 16px;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    mat-icon {
+      color: #4caf50;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+mat-card-actions {
+  margin-top: auto;
+  padding: 16px;
+}

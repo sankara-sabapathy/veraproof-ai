@@ -1,0 +1,148 @@
+.dashboard-overview {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0;
+  }
+
+  .quick-actions {
+    display: flex;
+    gap: 12px;
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.quota-card {
+  margin-bottom: 24px;
+}
+
+.quota-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.quota-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+
+  .current {
+    font-size: 32px;
+    font-weight: 700;
+    color: #3f51b5;
+  }
+
+  .separator {
+    font-size: 24px;
+    color: rgba(0, 0, 0, 0.4);
+  }
+
+  .total {
+    font-size: 24px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.6);
+  }
+
+  .label {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.quota-percentage {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.quota-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #fff3e0;
+  border-radius: 4px;
+  color: #f57c00;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  min-height: 300px;
+}
+
+.recent-sessions {
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.sessions-table {
+  width: 100%;
+}
+
+.session-id {
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+}
+
+.no-sessions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: rgba(0, 0, 0, 0.4);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+}

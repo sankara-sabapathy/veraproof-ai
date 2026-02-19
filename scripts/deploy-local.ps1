@@ -55,10 +55,14 @@ $DashboardBucket = $Outputs."Veraproof-Frontend-Stack-$Stage"."DashboardBucketNa
 $VerificationBucket = $Outputs."Veraproof-Frontend-Stack-$Stage"."VerificationBucketName${Stage}"
 $DashboardDist = $Outputs."Veraproof-Frontend-Stack-$Stage"."DashboardDistributionID${Stage}"
 $VerificationDist = $Outputs."Veraproof-Frontend-Stack-$Stage"."VerificationDistributionID${Stage}"
+$DashboardUrl = $Outputs."Veraproof-Frontend-Stack-$Stage"."DashboardURL${Stage}"
+$VerificationUrl = $Outputs."Veraproof-Frontend-Stack-$Stage"."VerificationURL${Stage}"
 
 Write-Host "Lightsail Service: $LightsailService" -ForegroundColor Green
 Write-Host "Dashboard Bucket: $DashboardBucket" -ForegroundColor Green
+Write-Host "Dashboard URL: $DashboardUrl" -ForegroundColor Green
 Write-Host "Verification Bucket: $VerificationBucket" -ForegroundColor Green
+Write-Host "Verification URL: $VerificationUrl" -ForegroundColor Green
 
 Set-Location ..
 
@@ -105,8 +109,20 @@ Write-Host "Image pushed: $ImageName" -ForegroundColor Green
 Write-Host "Encoding database password..." -ForegroundColor Yellow
 $EncodedPassword = [System.Web.HttpUtility]::UrlEncode($DbPassword)
 
-# Create deployment configuration
-Write-Host "Creating deployment configuration..." -ForegroundColor Yellow
+# Generate JWT secret if not provided
+$JwtSecret = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes([System.Guid]::NewGuid().ToString() + [System.Guid]::NewGuid().ToString()))
+
+# Get Lightsail API URL
+$ServiceInfo = aws lightsail get-container-services `
+    --service-name $LightsailService `
+    --region $Region `
+    --output json | ConvertFrom-Json
+$ApiUrl = $ServiceInfo.containerServices[0].url
+
+Write-Host "API URL: https://$ApiUrl" -ForegroundColor Green
+
+# Create deployment configuration with CORS
+Write-Host "Creating deployment configuration with CORS..." -ForegroundColor Yellow
 $DeploymentConfig = @{
     containers = @{
         app = @{
@@ -115,13 +131,50 @@ $DeploymentConfig = @{
                 "8000" = "HTTP"
             }
             environment = @{
+                # Stage and Region
                 STAGE = $Stage
+                ENVIRONMENT = "production"
                 AWS_REGION = $Region
+                
+                # Database
                 DATABASE_URL = "postgresql://veraproof_admin:${EncodedPassword}@${DbEndpoint}:5432/veraproof"
-                COGNITO_USER_POOL_ID = "ap-south-1_l4nlq0n8y"
-                COGNITO_CLIENT_ID = "2b7tq4gj7426iamis9snrrh2fo"
+                
+                # AWS Resources
                 ARTIFACTS_BUCKET = "veraproof-artifacts-$Stage-$AwsAccountId"
                 BRANDING_BUCKET = "veraproof-branding-$Stage-$AwsAccountId"
+                
+                # Cognito
+                COGNITO_USER_POOL_ID = "ap-south-1_l4nlq0n8y"
+                COGNITO_CLIENT_ID = "2b7tq4gj7426iamis9snrrh2fo"
+                
+                # JWT
+                JWT_SECRET = $JwtSecret
+                JWT_ALGORITHM = "HS256"
+                JWT_EXPIRATION_HOURS = "1"
+                REFRESH_TOKEN_EXPIRATION_DAYS = "30"
+                
+                # Application URLs
+                BACKEND_URL = "https://$ApiUrl"
+                FRONTEND_DASHBOARD_URL = $DashboardUrl
+                FRONTEND_VERIFICATION_URL = $VerificationUrl
+                
+                # CORS - Include production CloudFront URLs
+                CORS_ORIGINS = "$DashboardUrl,$VerificationUrl,http://localhost:4200,http://localhost:3000"
+                
+                # Rate Limiting & Sessions
+                MAX_CONCURRENT_SESSIONS = "10"
+                API_RATE_LIMIT_PER_MINUTE = "100"
+                SESSION_EXPIRATION_MINUTES = "15"
+                SESSION_EXTENSION_MINUTES = "10"
+                
+                # Storage
+                ARTIFACT_RETENTION_DAYS = "90"
+                SIGNED_URL_EXPIRATION_SECONDS = "3600"
+                
+                # Mock Services (for development)
+                USE_MOCK_SAGEMAKER = "true"
+                USE_MOCK_RAZORPAY = "true"
+                USE_LOCAL_AUTH = "true"
             }
         }
     }

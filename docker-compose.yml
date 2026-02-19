@@ -1,6 +1,7 @@
 version: '3.9'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: veraproof-postgres
@@ -21,6 +22,7 @@ services:
     networks:
       - veraproof-network
 
+  # LocalStack for AWS services (S3)
   localstack:
     image: localstack/localstack:latest
     container_name: veraproof-localstack
@@ -29,11 +31,67 @@ services:
       DEBUG: 0
     ports:
       - "4566:4566"
+    volumes:
+      - localstack_data:/tmp/localstack
     networks:
       - veraproof-network
 
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: veraproof-backend
+    environment:
+      DATABASE_URL: postgresql://veraproof:veraproof_dev_password@postgres:5432/veraproof
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      ARTIFACTS_BUCKET: veraproof-artifacts
+      BRANDING_BUCKET: veraproof-branding
+      JWT_SECRET: local-dev-secret-change-in-production
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_HOURS: 1
+      REFRESH_TOKEN_EXPIRATION_DAYS: 30
+      ENVIRONMENT: development
+      STAGE: local
+      BACKEND_URL: http://localhost:8000
+      FRONTEND_DASHBOARD_URL: http://localhost:4200
+      FRONTEND_VERIFICATION_URL: http://localhost:3000
+      CORS_ORIGINS: http://localhost:4200,http://localhost:3000,http://localhost:8000
+      MAX_CONCURRENT_SESSIONS: 10
+      API_RATE_LIMIT_PER_MINUTE: 100
+      SESSION_EXPIRATION_MINUTES: 15
+      SESSION_EXTENSION_MINUTES: 10
+      ARTIFACT_RETENTION_DAYS: 90
+      SIGNED_URL_EXPIRATION_SECONDS: 3600
+      USE_MOCK_SAGEMAKER: true
+      USE_MOCK_RAZORPAY: true
+      USE_LOCAL_AUTH: true
+      COGNITO_USER_POOL_ID: local
+      COGNITO_CLIENT_ID: local
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - veraproof-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   postgres_data:
+  localstack_data:
 
 networks:
   veraproof-network:

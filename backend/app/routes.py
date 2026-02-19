@@ -59,7 +59,7 @@ async def create_session(
     request: CreateSessionRequest,
     tenant_id: str = Depends(get_tenant_from_api_key)
 ):
-    """Create new verification session"""
+    """Create new verification session (API key authentication)"""
     # Check rate limits
     if not await rate_limiter.check_api_rate_limit(tenant_id):
         raise HTTPException(status_code=429, detail="API rate limit exceeded")
@@ -90,6 +90,30 @@ async def create_session(
         )
     except Exception as e:
         logger.warning(f"Could not ensure tenant exists: {e}")
+    
+    # Create session
+    session = await session_manager.create_session(
+        tenant_id=tenant_id,
+        metadata=request.metadata,
+        return_url=request.return_url
+    )
+    
+    return CreateSessionResponse(**session)
+
+
+@router.post("/sessions", response_model=CreateSessionResponse)
+async def create_session_dashboard(
+    request: CreateSessionRequest,
+    tenant_id: str = Depends(get_tenant_from_jwt)
+):
+    """Create new verification session from dashboard (JWT authentication)"""
+    # Check rate limits
+    if not await rate_limiter.check_api_rate_limit(tenant_id):
+        raise HTTPException(status_code=429, detail="API rate limit exceeded")
+    
+    # Check quota
+    if not await quota_manager.check_quota(tenant_id):
+        raise HTTPException(status_code=429, detail="Usage quota exceeded")
     
     # Create session
     session = await session_manager.create_session(
@@ -245,38 +269,68 @@ async def logout(refresh_token: str):
 
 
 # API Key Management
-@router.post("/api-keys/generate")
+@router.post("/api-keys")
 async def generate_api_key(
-    environment: str,
+    request: dict,
     tenant_id: str = Depends(get_tenant_from_jwt)
 ):
     """Generate new API key (requires JWT authentication)"""
+    environment = request.get("environment", "sandbox")
     key = await api_key_manager.generate_key(tenant_id, environment)
     return key
 
 
-@router.get("/api-keys/list")
-async def list_api_keys(tenant_id: str = Depends(get_tenant_from_api_key)):
-    """List API keys"""
-    # In production, this would query database
-    return {"keys": []}
+@router.get("/api-keys")
+async def list_api_keys(tenant_id: str = Depends(get_tenant_from_jwt)):
+    """List API keys for tenant"""
+    # Get all keys for this tenant from in-memory store
+    keys = []
+    for api_key, key_data in api_key_manager.api_keys.items():
+        if key_data["tenant_id"] == tenant_id:
+            keys.append({
+                "key_id": key_data["key_id"],
+                "api_key": api_key,
+                "environment": key_data["environment"],
+                "created_at": key_data["created_at"],
+                "last_used_at": None,  # TODO: Track usage
+                "total_calls": 0,  # TODO: Track usage
+                "revoked_at": key_data.get("revoked_at")
+            })
+    return keys
 
 
 @router.delete("/api-keys/{key_id}")
 async def revoke_api_key(
     key_id: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    tenant_id: str = Depends(get_tenant_from_jwt)
 ):
     """Revoke API key"""
     await api_key_manager.revoke_key(key_id)
     return {"message": "API key revoked"}
 
 
+@router.get("/api-keys/{key_id}/usage")
+async def get_key_usage(
+    key_id: str,
+    tenant_id: str = Depends(get_tenant_from_jwt)
+):
+    """Get API key usage statistics"""
+    # Return mock usage stats for now
+    return {
+        "key_id": key_id,
+        "total_requests": 0,
+        "requests_today": 0,
+        "requests_this_week": 0,
+        "requests_this_month": 0,
+        "last_used": None
+    }
+
+
 # Branding Endpoints
 @router.post("/branding/logo")
 async def upload_logo(
     file: UploadFile = File(...),
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    tenant_id: str = Depends(get_tenant_from_jwt)
 ):
     """Upload branding logo"""
     file_data = await file.read()
@@ -294,7 +348,7 @@ async def upload_logo(
 @router.put("/branding/colors")
 async def update_colors(
     config: ColorConfig,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    tenant_id: str = Depends(get_tenant_from_jwt)
 ):
     """Update branding colors"""
     await branding_manager.update_colors(
@@ -308,15 +362,14 @@ async def update_colors(
 
 
 @router.get("/branding")
-async def get_branding(tenant_id: str = Depends(get_tenant_from_api_key)):
+async def get_branding(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get branding configuration"""
     branding = await branding_manager.get_branding(tenant_id)
     return branding
 
-
 # Billing Endpoints
 @router.get("/billing/subscription")
-async def get_subscription(tenant_id: str = Depends(get_tenant_from_api_key)):
+async def get_subscription(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get current subscription"""
     stats = await quota_manager.get_usage_stats(tenant_id)
     return stats
@@ -325,7 +378,7 @@ async def get_subscription(tenant_id: str = Depends(get_tenant_from_api_key)):
 @router.post("/billing/upgrade")
 async def upgrade_subscription(
     plan: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    tenant_id: str = Depends(get_tenant_from_jwt)
 ):
     """Upgrade subscription plan"""
     order = await billing_manager.create_subscription(tenant_id, plan, "monthly")
@@ -335,7 +388,7 @@ async def upgrade_subscription(
 @router.post("/billing/purchase-credits")
 async def purchase_credits(
     amount: int,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    tenant_id: str = Depends(get_tenant_from_jwt)
 ):
     """Purchase credits"""
     order = await billing_manager.purchase_credits(tenant_id, amount)
@@ -343,7 +396,7 @@ async def purchase_credits(
 
 
 @router.get("/billing/invoices")
-async def get_invoices(tenant_id: str = Depends(get_tenant_from_api_key)):
+async def get_invoices(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get invoices"""
     # In production, query from database
     return {"invoices": []}
@@ -351,15 +404,85 @@ async def get_invoices(tenant_id: str = Depends(get_tenant_from_api_key)):
 
 # Analytics Endpoints
 @router.get("/analytics/stats")
-async def get_analytics_stats(tenant_id: str = Depends(get_tenant_from_api_key)):
+async def get_analytics_stats(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get analytics statistics"""
-    stats = await quota_manager.get_usage_stats(tenant_id)
-    return stats
+    # Get quota/subscription data
+    quota_stats = await quota_manager.get_usage_stats(tenant_id)
+    
+    # Get session analytics from database
+    # For now, return mock data for development when DB unavailable
+    analytics_data = {
+        "total_sessions": 0,
+        "sessions_today": 0,
+        "sessions_this_week": 0,
+        "sessions_this_month": 0,
+        "success_rate": 0.0,
+        "average_trust_score": 0.0,
+        # Include quota data
+        "current_usage": quota_stats["current_usage"],
+        "monthly_quota": quota_stats["monthly_quota"],
+        "usage_percentage": quota_stats["usage_percentage"]
+    }
+    
+    # Try to get real session data from database
+    try:
+        # Count total sessions
+        total_query = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = $1"
+        total_result = await db_manager.fetch_one(total_query, tenant_id)
+        if total_result:
+            analytics_data["total_sessions"] = total_result["count"]
+        
+        # Count sessions today
+        today_query = """
+            SELECT COUNT(*) as count FROM sessions 
+            WHERE tenant_id = $1 AND DATE(created_at) = CURRENT_DATE
+        """
+        today_result = await db_manager.fetch_one(today_query, tenant_id)
+        if today_result:
+            analytics_data["sessions_today"] = today_result["count"]
+        
+        # Count sessions this week
+        week_query = """
+            SELECT COUNT(*) as count FROM sessions 
+            WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('week', CURRENT_DATE)
+        """
+        week_result = await db_manager.fetch_one(week_query, tenant_id)
+        if week_result:
+            analytics_data["sessions_this_week"] = week_result["count"]
+        
+        # Count sessions this month
+        month_query = """
+            SELECT COUNT(*) as count FROM sessions 
+            WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
+        """
+        month_result = await db_manager.fetch_one(month_query, tenant_id)
+        if month_result:
+            analytics_data["sessions_this_month"] = month_result["count"]
+        
+        # Calculate success rate and average trust score
+        stats_query = """
+            SELECT 
+                COUNT(*) FILTER (WHERE final_trust_score >= 50) as success_count,
+                COUNT(*) as total_count,
+                AVG(final_trust_score) as avg_score
+            FROM sessions 
+            WHERE tenant_id = $1 AND final_trust_score IS NOT NULL
+        """
+        stats_result = await db_manager.fetch_one(stats_query, tenant_id)
+        if stats_result and stats_result["total_count"] > 0:
+            analytics_data["success_rate"] = round(
+                (stats_result["success_count"] / stats_result["total_count"]) * 100, 2
+            )
+            analytics_data["average_trust_score"] = round(stats_result["avg_score"] or 0, 2)
+    except Exception as e:
+        logger.warning(f"Could not fetch session analytics: {e}")
+    
+    return analytics_data
 
 
 @router.get("/analytics/sessions")
 async def get_analytics_sessions(
-    tenant_id: str = Depends(get_tenant_from_api_key),
+    tenant_id: str = Depends(get_tenant_from_jwt),
     limit: int = 100,
     offset: int = 0
 ):
@@ -369,10 +492,62 @@ async def get_analytics_sessions(
 
 
 @router.get("/analytics/usage")
-async def get_usage(tenant_id: str = Depends(get_tenant_from_api_key)):
+async def get_usage(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get usage statistics"""
     stats = await quota_manager.get_usage_stats(tenant_id)
     return stats
+
+
+@router.get("/analytics/usage-trend")
+async def get_usage_trend(
+    tenant_id: str = Depends(get_tenant_from_jwt),
+    period: str = "daily"
+):
+    """Get usage trend data"""
+    # Return mock data for now
+    from datetime import datetime, timedelta
+    
+    data = []
+    days = 7 if period == "daily" else 30
+    
+    for i in range(days):
+        date = datetime.utcnow() - timedelta(days=days-i-1)
+        data.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "session_count": 0,
+            "success_count": 0,
+            "failed_count": 0,
+            "average_trust_score": 0
+        })
+    
+    return data
+
+
+@router.get("/analytics/outcome-distribution")
+async def get_outcome_distribution(tenant_id: str = Depends(get_tenant_from_jwt)):
+    """Get outcome distribution"""
+    return {
+        "success": 0,
+        "failed": 0,
+        "timeout": 0,
+        "cancelled": 0
+    }
+
+
+@router.get("/sessions")
+async def list_sessions(
+    tenant_id: str = Depends(get_tenant_from_jwt),
+    limit: int = 10,
+    offset: int = 0
+):
+    """Get list of sessions for tenant"""
+    sessions = await session_manager.get_sessions_by_tenant(tenant_id, limit, offset)
+    return {
+        "sessions": sessions,
+        "total": len(sessions),
+        "limit": limit,
+        "offset": offset
+    }
 
 
 # WebSocket endpoint for verification

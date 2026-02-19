@@ -1,0 +1,29 @@
+<mat-card class="chart-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>show_chart</mat-icon>
+    <mat-card-title>{{ periodLabel }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="chart-container">
+      <canvas #chartCanvas></canvas>
+    </div>
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-color" style="background-color: #3f51b5;"></span>
+        <span class="legend-label">Total Sessions</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background-color: #4caf50;"></span>
+        <span class="legend-label">Success</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background-color: #f44336;"></span>
+        <span class="legend-label">Failed</span>
+      </div>
+    </div>
+    <div *ngIf="!data || data.length === 0" class="no-data">
+      <mat-icon>info</mat-icon>
+      <p>No usage data available for the selected period</p>
+    </div>
+  </mat-card-content>
+</mat-card>

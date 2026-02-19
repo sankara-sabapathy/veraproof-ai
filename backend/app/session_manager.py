@@ -199,6 +199,11 @@ class SessionManager:
             tenant_id=tenant_id
         )
         
+        # Return empty list if database unavailable (graceful degradation)
+        if sessions is None:
+            logger.warning(f"Database unavailable, returning empty sessions list for tenant: {tenant_id}")
+            return []
+        
         return sessions
 
 

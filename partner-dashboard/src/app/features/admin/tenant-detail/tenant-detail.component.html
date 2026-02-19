@@ -1,0 +1,99 @@
+<div class="tenant-detail" *ngIf="tenant$ | async as tenant; else loading">
+  <div class="header">
+    <button mat-icon-button (click)="back()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h2>{{ tenant.email }}</h2>
+  </div>
+
+  <div class="detail-grid">
+    <app-stat-card
+      title="Total Sessions"
+      [value]="tenant.total_sessions"
+      icon="verified_user"
+      iconColor="primary">
+    </app-stat-card>
+
+    <app-stat-card
+      title="Success Rate"
+      [value]="(tenant.success_rate | number:'1.1-1') + '%'"
+      icon="check_circle"
+      iconColor="primary">
+    </app-stat-card>
+
+    <app-stat-card
+      title="Avg Trust Score"
+      [value]="tenant.average_trust_score | number:'1.1-1'"
+      icon="stars"
+      iconColor="accent">
+    </app-stat-card>
+
+    <app-stat-card
+      title="API Keys"
+      [value]="tenant.api_keys_count"
+      icon="vpn_key"
+      iconColor="primary">
+    </app-stat-card>
+  </div>
+
+  <mat-card class="info-card">
+    <mat-card-header>
+      <mat-card-title>Subscription Details</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="label">Subscription Tier:</span>
+          <mat-chip color="primary" selected>{{ tenant.subscription_tier }}</mat-chip>
+        </div>
+        <div class="info-item">
+          <span class="label">Status:</span>
+          <mat-chip [color]="tenant.status === 'active' ? 'primary' : 'warn'" selected>
+            {{ tenant.status | uppercase }}
+          </mat-chip>
+        </div>
+        <div class="info-item">
+          <span class="label">Monthly Quota:</span>
+          <span class="value">{{ tenant.monthly_quota | number }} verifications</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Current Usage:</span>
+          <span class="value">{{ tenant.current_usage | number }} / {{ tenant.monthly_quota | number }}</span>
+        </div>
+        <div class="info-item full-width">
+          <mat-progress-bar 
+            mode="determinate" 
+            [value]="getUsagePercentage(tenant.current_usage, tenant.monthly_quota)"
+            [color]="getUsagePercentage(tenant.current_usage, tenant.monthly_quota) >= 80 ? 'warn' : 'primary'">
+          </mat-progress-bar>
+        </div>
+        <div class="info-item">
+          <span class="label">Billing Cycle:</span>
+          <span class="value">{{ tenant.billing_cycle_start | date }} - {{ tenant.billing_cycle_end | date }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Webhooks:</span>
+          <span class="value">{{ tenant.webhooks_count }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Created:</span>
+          <span class="value">{{ tenant.created_at | date }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Last Active:</span>
+          <span class="value">{{ tenant.last_active_at | date }}</span>
+        </div>
+      </div>
+    </mat-card-content>
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="viewSessions()">
+        <mat-icon>list</mat-icon>
+        View Sessions
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>
+
+<ng-template #loading>
+  <app-loading-spinner message="Loading tenant details..."></app-loading-spinner>
+</ng-template>

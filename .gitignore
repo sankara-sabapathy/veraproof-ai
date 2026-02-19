@@ -25,6 +25,11 @@ ENV/
 env/
 .venv
 
+# Deployment configurations with secrets
+backend/deployment-prod.json
+backend/deployment-*.json
+**/deployment-prod.json
+
 # Environment variables
 .env
 .env.local
@@ -67,6 +72,7 @@ htmlcov/
 .pytest_cache/
 .tox/
 coverage/
+.hypothesis/
 
 # Database
 *.db
@@ -82,6 +88,8 @@ docker-compose.override.yml
 *.bak
 *.swp
 *~
+temp_*.html
+temp_*.json
 
 # OS
 Thumbs.db

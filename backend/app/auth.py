@@ -192,16 +192,14 @@ class APIKeyManager:
         self.api_keys: Dict[str, Dict] = {}
     
     async def generate_key(self, tenant_id: str, environment: str) -> Dict:
-        """Generate new API key"""
+        """Generate new API key (simplified - no secret needed)"""
         key_id = str(uuid.uuid4())
         api_key = f"vp_{environment}_{uuid.uuid4().hex}"
-        api_secret = uuid.uuid4().hex
         
         key_data = {
             "key_id": key_id,
             "tenant_id": tenant_id,
             "api_key": api_key,
-            "api_secret": api_secret,
             "environment": environment,
             "created_at": datetime.utcnow().isoformat(),
             "revoked_at": None
@@ -213,7 +211,6 @@ class APIKeyManager:
         return {
             "key_id": key_id,
             "api_key": api_key,
-            "api_secret": api_secret,
             "environment": environment
         }
     

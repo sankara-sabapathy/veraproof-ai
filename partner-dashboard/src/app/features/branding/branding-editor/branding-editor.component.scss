@@ -1,0 +1,92 @@
+.branding-editor {
+  padding: 24px;
+
+  h2 {
+    margin-bottom: 24px;
+  }
+}
+
+.editor-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-card {
+  height: fit-content;
+}
+
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.logo-preview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  min-height: 150px;
+
+  img {
+    max-width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+  }
+}
+
+.logo-upload {
+  display: flex;
+  gap: 12px;
+}
+
+.color-field {
+  margin-bottom: 24px;
+
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
+.color-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  input[type="color"] {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  mat-form-field {
+    flex: 1;
+  }
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ff9800;
+  font-size: 13px;
+  margin-top: 4px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}

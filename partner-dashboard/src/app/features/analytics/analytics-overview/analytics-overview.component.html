@@ -1,0 +1,117 @@
+<div class="analytics-container">
+  <div class="header">
+    <h1>Analytics</h1>
+    <div class="actions">
+      <button mat-raised-button color="primary" (click)="exportCSV()" [disabled]="loading">
+        <mat-icon>download</mat-icon>
+        Export CSV
+      </button>
+      <button mat-icon-button (click)="refresh()" [disabled]="loading">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <app-loading-spinner message="Loading analytics..."></app-loading-spinner>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-card>
+      <mat-card-content>
+        <p class="error-message">{{ error }}</p>
+        <button mat-raised-button color="primary" (click)="refresh()">Retry</button>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div *ngIf="!loading && !error && stats" class="content">
+    <!-- Key Metrics -->
+    <div class="stats-grid">
+      <app-stat-card
+        title="Total Sessions"
+        [value]="stats.total_sessions"
+        icon="verified_user"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Success Rate"
+        [value]="(stats.success_rate | number:'1.1-1') + '%'"
+        icon="check_circle"
+        iconColor="accent">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Average Trust Score"
+        [value]="stats.average_trust_score | number:'1.1-1'"
+        icon="analytics"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Sessions Today"
+        [value]="stats.sessions_today"
+        icon="today"
+        iconColor="accent">
+      </app-stat-card>
+    </div>
+
+    <!-- Quota Usage -->
+    <mat-card class="quota-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>data_usage</mat-icon>
+        <mat-card-title>Quota Usage</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="quota-info">
+          <div class="quota-numbers">
+            <span class="current">{{ stats.current_usage | number }}</span>
+            <span class="separator">/</span>
+            <span class="total">{{ stats.monthly_quota | number }}</span>
+            <span class="label">sessions</span>
+          </div>
+          <div class="quota-percentage">{{ usagePercentage | number:'1.0-0' }}%</div>
+        </div>
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="usagePercentage"
+          [color]="quotaWarningColor">
+        </mat-progress-bar>
+        <div *ngIf="showQuotaWarning" class="quota-warning">
+          <mat-icon [color]="quotaWarningColor">warning</mat-icon>
+          <span *ngIf="usagePercentage < 100">
+            You have used {{ usagePercentage | number:'1.0-0' }}% of your monthly quota
+          </span>
+          <span *ngIf="usagePercentage >= 100">
+            You have exceeded your monthly quota
+          </span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Period Selector -->
+    <div class="period-selector">
+      <mat-form-field appearance="outline">
+        <mat-label>Time Period</mat-label>
+        <mat-select [(value)]="selectedPeriod" (selectionChange)="onPeriodChange($event.value)">
+          <mat-option value="daily">Daily</mat-option>
+          <mat-option value="weekly">Weekly</mat-option>
+          <mat-option value="monthly">Monthly</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <app-usage-chart 
+        [data]="usageTrend" 
+        [period]="selectedPeriod">
+      </app-usage-chart>
+
+      <app-outcome-chart 
+        [data]="outcomeDistribution">
+      </app-outcome-chart>
+    </div>
+  </div>
+</div>

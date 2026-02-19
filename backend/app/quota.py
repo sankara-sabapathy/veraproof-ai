@@ -79,7 +79,18 @@ class UsageQuotaManager:
         result = await db_manager.fetch_one(query, tenant_id)
         
         if not result:
-            raise ValueError(f"Tenant not found: {tenant_id}")
+            # Return default values for development when tenant not in DB
+            logger.warning(f"Tenant not found in database: {tenant_id} - returning default values for development")
+            return {
+                "tenant_id": tenant_id,
+                "subscription_tier": "Sandbox",
+                "monthly_quota": 100,
+                "current_usage": 0,
+                "remaining_quota": 100,
+                "billing_cycle_start": datetime.utcnow().date().isoformat(),
+                "billing_cycle_end": (datetime.utcnow() + timedelta(days=30)).date().isoformat(),
+                "usage_percentage": 0.0
+            }
         
         remaining_quota = result['monthly_quota'] - result['current_usage']
         usage_percentage = (result['current_usage'] / result['monthly_quota']) * 100

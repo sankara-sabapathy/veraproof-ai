@@ -1,0 +1,123 @@
+.chart-card {
+  height: 100%;
+
+  mat-card-header {
+    margin-bottom: 16px;
+  }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    margin-bottom: 24px;
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+
+      &.total {
+        border-bottom: none;
+        border-top: 2px solid #e0e0e0;
+        padding-top: 12px;
+        font-weight: 500;
+      }
+
+      .stat-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .stat-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 2px;
+        }
+
+        .stat-label {
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.87);
+        }
+      }
+
+      .stat-values {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+
+        .stat-count {
+          font-size: 16px;
+          font-weight: 500;
+          color: rgba(0, 0, 0, 0.87);
+        }
+
+        .stat-percentage {
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.54);
+        }
+      }
+    }
+  }
+
+  .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: rgba(0, 0, 0, 0.54);
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-card {
+    .chart-container {
+      height: 250px;
+    }
+
+    .stats-list {
+      .stat-item {
+        .stat-header {
+          .stat-label {
+            font-size: 13px;
+          }
+        }
+
+        .stat-values {
+          .stat-count {
+            font-size: 14px;
+          }
+
+          .stat-percentage {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+  }
+}

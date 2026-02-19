@@ -1,0 +1,31 @@
+.invoice-list {
+  padding: 24px;
+
+  h2 {
+    margin-bottom: 24px;
+  }
+}
+
+.invoices-table {
+  width: 100%;
+}
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: rgba(0, 0, 0, 0.4);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 18px;
+  }
+}

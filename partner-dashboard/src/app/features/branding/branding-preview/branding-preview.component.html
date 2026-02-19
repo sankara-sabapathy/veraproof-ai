@@ -1,0 +1,30 @@
+<mat-card class="preview-card">
+  <mat-card-header>
+    <mat-card-title>Preview</mat-card-title>
+    <mat-card-subtitle>How your verification interface will look</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="verification-preview" *ngIf="config">
+      <div class="preview-header">
+        <img *ngIf="config && config.logo_url" [src]="config.logo_url" alt="Logo" class="preview-logo">
+        <div *ngIf="!config || !config.logo_url" class="preview-logo-placeholder">Your Logo</div>
+      </div>
+      
+      <div class="preview-content">
+        <h3>Verification in Progress</h3>
+        <p>Please follow the on-screen instructions</p>
+        
+        <div class="preview-progress">
+          <div class="progress-bar"></div>
+        </div>
+        
+        <div class="preview-instruction">
+          <mat-icon>phone_iphone</mat-icon>
+          <span>Tilt phone right</span>
+        </div>
+        
+        <button class="preview-button">Continue</button>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -144,6 +144,8 @@ jobs:
       verification-bucket: ${{ steps.outputs.outputs.verification-bucket }}
       dashboard-distribution: ${{ steps.outputs.outputs.dashboard-distribution }}
       verification-distribution: ${{ steps.outputs.outputs.verification-distribution }}
+      dashboard-url: ${{ steps.outputs.outputs.dashboard-url }}
+      verification-url: ${{ steps.outputs.outputs.verification-url }}
     
     steps:
       - name: Checkout code
@@ -202,12 +204,16 @@ jobs:
           VERIFICATION_BUCKET=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationBucketName${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           DASHBOARD_DIST=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["DashboardDistributionID${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           VERIFICATION_DIST=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationDistributionID${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
+          DASHBOARD_URL=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["DashboardURL${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
+          VERIFICATION_URL=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationURL${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           
           echo "lightsail-service=$LIGHTSAIL_SERVICE" >> $GITHUB_OUTPUT
           echo "dashboard-bucket=$DASHBOARD_BUCKET" >> $GITHUB_OUTPUT
           echo "verification-bucket=$VERIFICATION_BUCKET" >> $GITHUB_OUTPUT
           echo "dashboard-distribution=$DASHBOARD_DIST" >> $GITHUB_OUTPUT
           echo "verification-distribution=$VERIFICATION_DIST" >> $GITHUB_OUTPUT
+          echo "dashboard-url=$DASHBOARD_URL" >> $GITHUB_OUTPUT
+          echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
   
   # Build and Deploy Backend to Lightsail
   deploy-backend:
@@ -291,6 +297,16 @@ jobs:
       
       - name: Create deployment configuration
         run: |
+          # Generate JWT secret
+          JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
+          
+          # Get API URL
+          API_URL=$(aws lightsail get-container-services \
+            --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'containerServices[0].url' \
+            --output text)
+          
           cat > deployment.json <<EOF
           {
             "containers": {
@@ -301,12 +317,30 @@ jobs:
                 },
                 "environment": {
                   "STAGE": "${{ steps.stage.outputs.stage }}",
+                  "ENVIRONMENT": "production",
                   "AWS_REGION": "${{ env.AWS_REGION }}",
                   "DATABASE_URL": "postgresql://veraproof_admin:${{ steps.db-creds.outputs.password }}@${{ steps.db-creds.outputs.endpoint }}:5432/veraproof",
                   "COGNITO_USER_POOL_ID": "ap-south-1_l4nlq0n8y",
                   "COGNITO_CLIENT_ID": "2b7tq4gj7426iamis9snrrh2fo",
                   "ARTIFACTS_BUCKET": "veraproof-artifacts-${{ steps.stage.outputs.stage }}-${{ secrets.AWS_ACCOUNT_ID }}",
-                  "BRANDING_BUCKET": "veraproof-branding-${{ steps.stage.outputs.stage }}-${{ secrets.AWS_ACCOUNT_ID }}"
+                  "BRANDING_BUCKET": "veraproof-branding-${{ steps.stage.outputs.stage }}-${{ secrets.AWS_ACCOUNT_ID }}",
+                  "JWT_SECRET": "$JWT_SECRET",
+                  "JWT_ALGORITHM": "HS256",
+                  "JWT_EXPIRATION_HOURS": "1",
+                  "REFRESH_TOKEN_EXPIRATION_DAYS": "30",
+                  "BACKEND_URL": "https://$API_URL",
+                  "FRONTEND_DASHBOARD_URL": "${{ needs.deploy-infrastructure.outputs.dashboard-url }}",
+                  "FRONTEND_VERIFICATION_URL": "${{ needs.deploy-infrastructure.outputs.verification-url }}",
+                  "CORS_ORIGINS": "${{ needs.deploy-infrastructure.outputs.dashboard-url }},${{ needs.deploy-infrastructure.outputs.verification-url }},http://localhost:4200,http://localhost:3000",
+                  "MAX_CONCURRENT_SESSIONS": "10",
+                  "API_RATE_LIMIT_PER_MINUTE": "100",
+                  "SESSION_EXPIRATION_MINUTES": "15",
+                  "SESSION_EXTENSION_MINUTES": "10",
+                  "ARTIFACT_RETENTION_DAYS": "90",
+                  "SIGNED_URL_EXPIRATION_SECONDS": "3600",
+                  "USE_MOCK_SAGEMAKER": "true",
+                  "USE_MOCK_RAZORPAY": "true",
+                  "USE_LOCAL_AUTH": "true"
                 }
               }
             },

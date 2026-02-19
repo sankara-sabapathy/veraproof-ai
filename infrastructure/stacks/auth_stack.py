@@ -5,9 +5,11 @@ Cognito User Pool for partner authentication
 from aws_cdk import (
     Stack,
     aws_cognito as cognito,
+    aws_ssm as ssm,
     CfnOutput,
     RemovalPolicy,
-    Duration
+    Duration,
+    Fn
 )
 from constructs import Construct
 
@@ -15,8 +17,24 @@ from constructs import Construct
 class VeraproofAuthStack(Stack):
     """Authentication infrastructure stack"""
     
-    def __init__(self, scope: Construct, construct_id: str, stage: str, **kwargs) -> None:
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        stage: str,
+        dashboard_url: str = None,
+        verification_url: str = None,
+        **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        
+        # Build callback URLs based on provided frontend URLs or defaults
+        callback_urls = ["http://localhost:4200/callback"]
+        logout_urls = ["http://localhost:4200/logout"]
+        
+        if dashboard_url:
+            callback_urls.insert(0, f"{dashboard_url}/callback")
+            logout_urls.insert(0, f"{dashboard_url}/logout")
         
         # Cognito User Pool
         self.user_pool = cognito.UserPool(
@@ -86,14 +104,8 @@ class VeraproofAuthStack(Stack):
                     cognito.OAuthScope.OPENID,
                     cognito.OAuthScope.PROFILE
                 ],
-                callback_urls=[
-                    f"https://dashboard-{stage}.veraproof.ai/callback",
-                    "http://localhost:4200/callback"  # For local development
-                ],
-                logout_urls=[
-                    f"https://dashboard-{stage}.veraproof.ai/logout",
-                    "http://localhost:4200/logout"
-                ]
+                callback_urls=callback_urls,
+                logout_urls=logout_urls
             ),
             prevent_user_existence_errors=True,
             access_token_validity=Duration.hours(1),
@@ -105,8 +117,27 @@ class VeraproofAuthStack(Stack):
         self.user_pool_domain = self.user_pool.add_domain(
             f"Veraproof-Auth-Domain-{stage}",
             cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"veraproof-auth-{stage}"
+                domain_prefix=f"veraproof-auth-{stage}-{self.account}"
             )
+        )
+        
+        # Store Cognito configuration in SSM for easy access
+        ssm.StringParameter(
+            self,
+            f"Cognito-UserPool-ID-Param-{stage}",
+            parameter_name=f"/veraproof/{stage}/cognito/user_pool_id",
+            string_value=self.user_pool.user_pool_id,
+            description=f"Cognito User Pool ID for {stage}",
+            tier=ssm.ParameterTier.STANDARD
+        )
+        
+        ssm.StringParameter(
+            self,
+            f"Cognito-Client-ID-Param-{stage}",
+            parameter_name=f"/veraproof/{stage}/cognito/client_id",
+            string_value=self.user_pool_client.user_pool_client_id,
+            description=f"Cognito Client ID for {stage}",
+            tier=ssm.ParameterTier.STANDARD
         )
         
         # Outputs
@@ -140,4 +171,11 @@ class VeraproofAuthStack(Stack):
             value=self.user_pool_domain.domain_name,
             description=f"Cognito Auth Domain for {stage}",
             export_name=f"Veraproof-Auth-Domain-{stage}"
+        )
+        
+        CfnOutput(
+            self,
+            f"Callback-URLs-{stage}",
+            value=",".join(callback_urls),
+            description=f"Configured callback URLs for {stage}"
         )

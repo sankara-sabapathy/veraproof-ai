@@ -33,7 +33,9 @@ tags = {
 
 print(f">> Deploying VeraProof AI - Stage: {stage}")
 print(f"   Region: {region}")
-print(f"   Stacks: Storage + Auth + Lightsail + Frontend")
+print(f"   Deployment Strategy: Two-Phase with SSM Parameter Store")
+print(f"   Phase 1: Storage -> Frontend -> Lightsail")
+print(f"   Phase 2: Auth (with Frontend URLs from SSM)")
 
 # Storage Stack (S3 buckets)
 storage_stack = VeraproofStorageStack(
@@ -44,38 +46,47 @@ storage_stack = VeraproofStorageStack(
     description=f"VeraProof AI Storage Infrastructure - {stage.upper()}"
 )
 
-# Auth Stack (Cognito)
-auth_stack = VeraproofAuthStack(
+# Frontend Stack (S3 + CloudFront) - Deploy FIRST to get URLs
+frontend_stack = VeraproofFrontendStack(
     app,
-    f"Veraproof-Auth-Stack-{stage}",
+    f"Veraproof-Frontend-Stack-{stage}",
     stage=stage,
+    user_pool=None,  # Will be updated in Phase 2
+    user_pool_client=None,  # Will be updated in Phase 2
     env=env,
-    description=f"VeraProof AI Authentication Infrastructure - {stage.upper()}"
+    description=f"VeraProof AI Frontend Infrastructure - {stage.upper()}"
 )
 
-# Lightsail Stack (Container + Database)
+# Lightsail Stack (Container + Database) - Deploy AFTER Frontend to use CORS URLs
 lightsail_stack = VeraproofLightsailStack(
     app,
     f"Veraproof-Lightsail-Stack-{stage}",
     stage=stage,
     artifacts_bucket=storage_stack.artifacts_bucket,
     branding_bucket=storage_stack.branding_bucket,
-    user_pool=auth_stack.user_pool,
+    user_pool=None,  # Will be updated in Phase 2
+    dashboard_url=frontend_stack.dashboard_url,
+    verification_url=frontend_stack.verification_url,
     env=env,
     description=f"VeraProof AI Lightsail Infrastructure - {stage.upper()}"
 )
 
-# Frontend Stack (S3 + CloudFront)
-frontend_stack = VeraproofFrontendStack(
+# Auth Stack (Cognito) - Deploy LAST with Frontend URLs for callbacks
+auth_stack = VeraproofAuthStack(
     app,
-    f"Veraproof-Frontend-Stack-{stage}",
+    f"Veraproof-Auth-Stack-{stage}",
     stage=stage,
-    api_url=lightsail_stack.api_url,
-    user_pool=auth_stack.user_pool,
-    user_pool_client=auth_stack.user_pool_client,
+    dashboard_url=frontend_stack.dashboard_url,
+    verification_url=frontend_stack.verification_url,
     env=env,
-    description=f"VeraProof AI Frontend Infrastructure - {stage.upper()}"
+    description=f"VeraProof AI Authentication Infrastructure - {stage.upper()}"
 )
+
+# Add dependencies to ensure correct deployment order
+frontend_stack.add_dependency(storage_stack)
+lightsail_stack.add_dependency(frontend_stack)
+lightsail_stack.add_dependency(storage_stack)
+auth_stack.add_dependency(frontend_stack)
 
 # Apply tags to all stacks
 for stack in [storage_stack, auth_stack, lightsail_stack, frontend_stack]:

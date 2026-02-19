@@ -1,0 +1,58 @@
+.subscription-overview {
+  padding: 24px;
+}
+
+.subscription-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.value {
+  font-weight: 600;
+}
+
+.quota-progress {
+  margin: 16px 0;
+}
+
+.progress-label {
+  display: block;
+  text-align: right;
+  margin-top: 8px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.warning-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background-color: #fff3e0;
+  margin-top: 16px;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+mat-divider {
+  margin: 16px 0;
+}

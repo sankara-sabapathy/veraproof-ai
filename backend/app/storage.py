@@ -13,18 +13,36 @@ class ArtifactStorageManager:
     """Manages artifact storage in S3 (LocalStack for dev)"""
     
     def __init__(self):
-        self.s3_client = boto3.client(
-            's3',
-            endpoint_url=settings.aws_endpoint_url,
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key,
-            region_name=settings.aws_region
-        )
+        self.s3_client = None
         self.bucket_name = settings.s3_bucket_name
-        self._ensure_bucket_exists()
+        self._initialized = False
+    
+    def _lazy_init(self):
+        """Lazy initialization of S3 client"""
+        if self._initialized:
+            return
+        
+        try:
+            self.s3_client = boto3.client(
+                's3',
+                endpoint_url=settings.aws_endpoint_url,
+                aws_access_key_id=settings.aws_access_key_id,
+                aws_secret_access_key=settings.aws_secret_access_key,
+                region_name=settings.aws_region
+            )
+            self._ensure_bucket_exists()
+            self._initialized = True
+            logger.info("S3 storage manager initialized")
+        except Exception as e:
+            logger.warning(f"S3 storage not available: {e}")
+            if settings.environment != "development":
+                raise
     
     def _ensure_bucket_exists(self):
         """Create bucket if it doesn't exist"""
+        if not self.s3_client:
+            return
+            
         try:
             self.s3_client.head_bucket(Bucket=self.bucket_name)
             logger.info(f"S3 bucket exists: {self.bucket_name}")
@@ -44,6 +62,12 @@ class ArtifactStorageManager:
         video_data: bytes
     ) -> str:
         """Store video in S3, return S3 key"""
+        self._lazy_init()
+        
+        if not self.s3_client:
+            logger.warning("S3 not available - skipping video storage")
+            return f"mock://{tenant_id}/sessions/{session_id}/video.webm"
+        
         s3_key = f"{tenant_id}/sessions/{session_id}/video.webm"
         
         try:
@@ -66,6 +90,12 @@ class ArtifactStorageManager:
         imu_data: list
     ) -> str:
         """Store IMU data as JSON in S3"""
+        self._lazy_init()
+        
+        if not self.s3_client:
+            logger.warning("S3 not available - skipping IMU data storage")
+            return f"mock://{tenant_id}/sessions/{session_id}/imu_data.json"
+        
         s3_key = f"{tenant_id}/sessions/{session_id}/imu_data.json"
         
         try:
@@ -89,6 +119,12 @@ class ArtifactStorageManager:
         flow_data: list
     ) -> str:
         """Store optical flow data in S3"""
+        self._lazy_init()
+        
+        if not self.s3_client:
+            logger.warning("S3 not available - skipping optical flow storage")
+            return f"mock://{tenant_id}/sessions/{session_id}/optical_flow.json"
+        
         s3_key = f"{tenant_id}/sessions/{session_id}/optical_flow.json"
         
         try:

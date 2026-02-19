@@ -1,0 +1,98 @@
+<div class="platform-stats">
+  <h2>Platform Analytics</h2>
+
+  <div *ngIf="stats$ | async as stats; else loading">
+    <div class="stats-grid">
+      <app-stat-card
+        title="Total Tenants"
+        [value]="stats.total_tenants"
+        icon="business"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Active Tenants"
+        [value]="stats.active_tenants"
+        icon="check_circle"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Total Sessions"
+        [value]="stats.total_sessions | number"
+        icon="verified_user"
+        iconColor="accent">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Sessions Today"
+        [value]="stats.sessions_today | number"
+        icon="today"
+        iconColor="accent">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Total Revenue"
+        [value]="'$' + (stats.total_revenue | number:'1.2-2')"
+        icon="attach_money"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Revenue This Month"
+        [value]="'$' + (stats.revenue_this_month | number:'1.2-2')"
+        icon="trending_up"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Avg Sessions/Tenant"
+        [value]="stats.average_sessions_per_tenant | number:'1.1-1'"
+        icon="analytics"
+        iconColor="accent">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Platform Success Rate"
+        [value]="(stats.platform_success_rate | number:'1.1-1') + '%'"
+        icon="stars"
+        iconColor="primary">
+      </app-stat-card>
+    </div>
+  </div>
+
+  <h2>System Health</h2>
+
+  <mat-card *ngIf="health$ | async as health">
+    <mat-card-content>
+      <div class="health-grid">
+        <div class="health-item">
+          <span class="label">API Status:</span>
+          <mat-chip [color]="getHealthColor(health.api_status)" selected>
+            {{ health.api_status | uppercase }}
+          </mat-chip>
+        </div>
+        <div class="health-item">
+          <span class="label">Avg Response Time:</span>
+          <span class="value">{{ health.average_response_time_ms }}ms</span>
+        </div>
+        <div class="health-item">
+          <span class="label">Error Rate:</span>
+          <span class="value">{{ health.error_rate | number:'1.2-2' }}%</span>
+        </div>
+        <div class="health-item">
+          <span class="label">Uptime:</span>
+          <span class="value">{{ health.uptime_percentage | number:'1.2-2' }}%</span>
+        </div>
+        <div class="health-item full-width" *ngIf="health.last_incident">
+          <span class="label">Last Incident:</span>
+          <span class="value">{{ health.last_incident | date:'medium' }}</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <ng-template #loading>
+    <app-loading-spinner message="Loading platform statistics..."></app-loading-spinner>
+  </ng-template>
+</div>

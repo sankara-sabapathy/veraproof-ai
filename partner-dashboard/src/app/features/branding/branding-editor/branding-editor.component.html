@@ -1,0 +1,100 @@
+<div class="branding-editor">
+  <h2>Custom Branding</h2>
+
+  <div class="editor-container">
+    <mat-card class="editor-card">
+      <mat-card-header>
+        <mat-card-title>Logo</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="logo-section">
+          <div class="logo-preview" *ngIf="logoPreview">
+            <img [src]="logoPreview" alt="Logo preview">
+          </div>
+          <div class="logo-upload">
+            <input type="file" #fileInput (change)="onFileSelected($event)" 
+                   accept="image/png,image/jpeg,image/svg+xml" hidden>
+            <button mat-raised-button (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon>
+              Choose Logo
+            </button>
+            <button mat-raised-button color="primary" (click)="uploadLogo()" 
+                    [disabled]="!logoFile || (loading$ | async)">
+              <mat-icon>cloud_upload</mat-icon>
+              Upload
+            </button>
+          </div>
+          <mat-hint>PNG, JPG, or SVG. Max 2MB</mat-hint>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="editor-card">
+      <mat-card-header>
+        <mat-card-title>Colors</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="form">
+          <div class="color-field">
+            <label>Primary Color</label>
+            <div class="color-input">
+              <input type="color" [value]="form.get('primary_color')?.value"
+                     (input)="form.patchValue({ primary_color: $any($event.target).value })">
+              <mat-form-field appearance="outline">
+                <input matInput formControlName="primary_color" placeholder="#3f51b5">
+                <mat-error *ngIf="form.get('primary_color')?.invalid">
+                  {{ getErrorMessage('primary_color') }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+            <mat-hint *ngIf="contrastWarnings['primary_color']" class="warning">
+              <mat-icon>warning</mat-icon>
+              {{ contrastWarnings['primary_color'] }}
+            </mat-hint>
+          </div>
+
+          <div class="color-field">
+            <label>Secondary Color</label>
+            <div class="color-input">
+              <input type="color" [value]="form.get('secondary_color')?.value"
+                     (input)="form.patchValue({ secondary_color: $any($event.target).value })">
+              <mat-form-field appearance="outline">
+                <input matInput formControlName="secondary_color" placeholder="#ff4081">
+                <mat-error *ngIf="form.get('secondary_color')?.invalid">
+                  {{ getErrorMessage('secondary_color') }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="color-field">
+            <label>Button Color</label>
+            <div class="color-input">
+              <input type="color" [value]="form.get('button_color')?.value"
+                     (input)="form.patchValue({ button_color: $any($event.target).value })">
+              <mat-form-field appearance="outline">
+                <input matInput formControlName="button_color" placeholder="#3f51b5">
+                <mat-error *ngIf="form.get('button_color')?.invalid">
+                  {{ getErrorMessage('button_color') }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+            <mat-hint *ngIf="contrastWarnings['button_color']" class="warning">
+              <mat-icon>warning</mat-icon>
+              {{ contrastWarnings['button_color'] }}
+            </mat-hint>
+          </div>
+        </form>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="saveColors()" 
+                [disabled]="form.invalid || (loading$ | async)">
+          Save Colors
+        </button>
+        <button mat-button (click)="resetBranding()">Reset to Default</button>
+      </mat-card-actions>
+    </mat-card>
+
+    <app-branding-preview [config]="config$ | async"></app-branding-preview>
+  </div>
+</div>

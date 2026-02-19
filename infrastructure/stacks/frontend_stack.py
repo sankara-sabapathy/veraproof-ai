@@ -12,6 +12,7 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_route53_targets as targets,
     aws_cognito as cognito,
+    aws_ssm as ssm,
     CfnOutput,
     RemovalPolicy,
     Duration
@@ -27,9 +28,8 @@ class VeraproofFrontendStack(Stack):
         scope: Construct,
         construct_id: str,
         stage: str,
-        api_url: str,
-        user_pool: cognito.UserPool,
-        user_pool_client: cognito.UserPoolClient,
+        user_pool: cognito.UserPool = None,
+        user_pool_client: cognito.UserPoolClient = None,
         **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -129,11 +129,34 @@ class VeraproofFrontendStack(Stack):
             comment=f"VeraProof Verification Interface Distribution - {stage}"
         )
         
+        # Store URLs as properties for cross-stack reference
+        self.dashboard_url = f"https://{self.dashboard_distribution.distribution_domain_name}"
+        self.verification_url = f"https://{self.verification_distribution.distribution_domain_name}"
+        
+        # Store Frontend URLs in SSM for easy access
+        ssm.StringParameter(
+            self,
+            f"Dashboard-URL-Param-{stage}",
+            parameter_name=f"/veraproof/{stage}/frontend/dashboard_url",
+            string_value=self.dashboard_url,
+            description=f"Dashboard CloudFront URL for {stage}",
+            tier=ssm.ParameterTier.STANDARD
+        )
+        
+        ssm.StringParameter(
+            self,
+            f"Verification-URL-Param-{stage}",
+            parameter_name=f"/veraproof/{stage}/frontend/verification_url",
+            string_value=self.verification_url,
+            description=f"Verification CloudFront URL for {stage}",
+            tier=ssm.ParameterTier.STANDARD
+        )
+        
         # Outputs
         CfnOutput(
             self,
             f"Dashboard-URL-{stage}",
-            value=f"https://{self.dashboard_distribution.distribution_domain_name}",
+            value=self.dashboard_url,
             description=f"Dashboard URL for {stage}",
             export_name=f"Veraproof-Dashboard-URL-{stage}"
         )
@@ -141,7 +164,7 @@ class VeraproofFrontendStack(Stack):
         CfnOutput(
             self,
             f"Verification-URL-{stage}",
-            value=f"https://{self.verification_distribution.distribution_domain_name}",
+            value=self.verification_url,
             description=f"Verification Interface URL for {stage}",
             export_name=f"Veraproof-Verification-URL-{stage}"
         )

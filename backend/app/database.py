@@ -3,6 +3,7 @@ from typing import Optional, Any, Dict, List
 from contextlib import asynccontextmanager
 from app.config import settings
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +16,40 @@ class TenantDatabaseManager:
     
     async def connect(self):
         """Initialize database connection pool"""
-        self.pool = await asyncpg.create_pool(
-            settings.database_url,
-            min_size=5,
-            max_size=20,
-            command_timeout=60
-        )
-        logger.info("Database connection pool created")
+        try:
+            # Add timeout to prevent hanging
+            self.pool = await asyncio.wait_for(
+                asyncpg.create_pool(
+                    settings.database_url,
+                    min_size=5,
+                    max_size=20,
+                    command_timeout=60
+                ),
+                timeout=5.0  # 5 second timeout
+            )
+            logger.info("Database connection pool created")
+        except asyncio.TimeoutError:
+            logger.error("Database connection timed out")
+            if settings.environment == "development":
+                logger.warning("Running in development mode without database - some features will use mock data")
+                self.pool = None
+            else:
+                raise
+        except Exception as e:
+            logger.error(f"Failed to connect to database: {e}")
+            if settings.environment == "development":
+                logger.warning("Running in development mode without database - some features will use mock data")
+                self.pool = None
+            else:
+                raise
     
     async def disconnect(self):
         """Close database connection pool"""
         if self.pool:
             await self.pool.close()
             logger.info("Database connection pool closed")
+        else:
+            logger.info("No database pool to close")
     
     @asynccontextmanager
     async def get_connection(self, tenant_id: Optional[str] = None):
@@ -51,6 +73,9 @@ class TenantDatabaseManager:
         tenant_id: Optional[str] = None
     ) -> str:
         """Execute a query with automatic tenant filtering"""
+        if not self.pool:
+            logger.warning("Database not available - skipping query execution")
+            return "SKIPPED"
         async with self.get_connection(tenant_id) as conn:
             return await conn.execute(query, *args)
     
@@ -61,6 +86,9 @@ class TenantDatabaseManager:
         tenant_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Fetch one row with automatic tenant filtering"""
+        if not self.pool:
+            logger.warning("Database not available - returning None")
+            return None
         async with self.get_connection(tenant_id) as conn:
             row = await conn.fetchrow(query, *args)
             return dict(row) if row else None
@@ -72,6 +100,9 @@ class TenantDatabaseManager:
         tenant_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Fetch all rows with automatic tenant filtering"""
+        if not self.pool:
+            logger.warning("Database not available - returning empty list")
+            return []
         async with self.get_connection(tenant_id) as conn:
             rows = await conn.fetch(query, *args)
             return [dict(row) for row in rows]

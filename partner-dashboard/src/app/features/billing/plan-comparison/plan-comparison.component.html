@@ -1,0 +1,52 @@
+<div class="plan-comparison">
+  <h2>Subscription Plans</h2>
+  
+  <div class="plans-grid" *ngIf="plans$ | async as plans; else loading">
+    <mat-card *ngFor="let plan of plans" [class.recommended]="plan.recommended">
+      <mat-chip *ngIf="plan.recommended" color="accent" selected class="recommended-badge">Recommended</mat-chip>
+      
+      <mat-card-header>
+        <mat-card-title>{{ plan.name }}</mat-card-title>
+        <mat-card-subtitle>{{ plan.tier }}</mat-card-subtitle>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div class="pricing">
+          <span class="price">\${{ plan.price_per_month }}</span>
+          <span class="period">/month</span>
+        </div>
+        
+        <div class="quota">
+          <strong>{{ plan.monthly_quota | number }}</strong> verifications/month
+        </div>
+        
+        <div class="per-verification">
+          \${{ plan.price_per_verification }} per additional verification
+        </div>
+        
+        <mat-divider></mat-divider>
+        
+        <ul class="features">
+          <li *ngFor="let feature of plan.features">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ feature }}</span>
+          </li>
+        </ul>
+      </mat-card-content>
+      
+      <mat-card-actions>
+        <button 
+          mat-raised-button 
+          color="primary" 
+          (click)="upgradePlan(plan)"
+          [disabled]="loading$ | async">
+          Upgrade to {{ plan.name }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <ng-template #loading>
+    <app-loading-spinner message="Loading plans..."></app-loading-spinner>
+  </ng-template>
+</div>

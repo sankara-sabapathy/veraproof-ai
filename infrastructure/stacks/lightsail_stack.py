@@ -27,10 +27,16 @@ class VeraproofLightsailStack(Stack):
         stage: str,
         artifacts_bucket: s3.Bucket,
         branding_bucket: s3.Bucket,
-        user_pool: cognito.UserPool,
+        user_pool: cognito.UserPool = None,
+        dashboard_url: str = None,
+        verification_url: str = None,
         **kwargs
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        
+        # Store frontend URLs for CORS configuration
+        self.dashboard_url = dashboard_url
+        self.verification_url = verification_url
         
         # Lightsail Container Service size based on stage
         # FREE TIER: Micro (0.25 vCPU, 1GB) - 1 node - FREE for 3 months, then $10/month
@@ -151,6 +157,16 @@ class VeraproofLightsailStack(Stack):
         # API URL (Lightsail provides a default URL via attr_url)
         self.api_url = self.container_service.attr_url
         
+        # Store API URL in SSM for frontend to use
+        ssm.StringParameter(
+            self,
+            f"Veraproof-API-URL-Param-{stage}",
+            parameter_name=f"/veraproof/{stage}/api/url",
+            string_value=f"https://{self.api_url}",
+            description=f"Lightsail API URL for {stage}",
+            tier=ssm.ParameterTier.STANDARD
+        )
+        
         # Outputs
         CfnOutput(
             self,
@@ -199,3 +215,22 @@ class VeraproofLightsailStack(Stack):
             description=f"IAM role ARN for Lightsail - {stage}",
             export_name=f"Veraproof-Lightsail-Role-ARN-{stage}"
         )
+        
+        # CORS URLs for backend configuration
+        if self.dashboard_url:
+            CfnOutput(
+                self,
+                f"CORS-Dashboard-URL-{stage}",
+                value=self.dashboard_url,
+                description=f"Dashboard URL for CORS configuration - {stage}",
+                export_name=f"Veraproof-CORS-Dashboard-{stage}"
+            )
+        
+        if self.verification_url:
+            CfnOutput(
+                self,
+                f"CORS-Verification-URL-{stage}",
+                value=self.verification_url,
+                description=f"Verification URL for CORS configuration - {stage}",
+                export_name=f"Veraproof-CORS-Verification-{stage}"
+            )

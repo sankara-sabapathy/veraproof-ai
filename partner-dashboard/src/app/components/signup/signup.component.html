@@ -1,0 +1,85 @@
+<div class="signup-container">
+  <div class="signup-card">
+    <div class="signup-header">
+      <h1>VeraProof AI</h1>
+      <p class="subtitle">Create Your Partner Account</p>
+    </div>
+
+    <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
+      <!-- Email Field -->
+      <div class="form-group">
+        <label for="email" class="form-label">Email</label>
+        <input
+          id="email"
+          type="email"
+          class="form-input"
+          formControlName="email"
+          placeholder="your@email.com"
+          [class.error]="email?.invalid && email?.touched"
+          autocomplete="email"
+        />
+        <div class="error-message" *ngIf="getEmailError()">
+          {{ getEmailError() }}
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input
+          id="password"
+          type="password"
+          class="form-input"
+          formControlName="password"
+          placeholder="Create a strong password"
+          [class.error]="password?.invalid && password?.touched"
+          autocomplete="new-password"
+        />
+        <div class="error-message" *ngIf="getPasswordError()">
+          {{ getPasswordError() }}
+        </div>
+      </div>
+
+      <!-- Confirm Password Field -->
+      <div class="form-group">
+        <label for="confirmPassword" class="form-label">Confirm Password</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          class="form-input"
+          formControlName="confirmPassword"
+          placeholder="Re-enter your password"
+          [class.error]="(confirmPassword?.invalid || signupForm.hasError('passwordMismatch')) && confirmPassword?.touched"
+          autocomplete="new-password"
+        />
+        <div class="error-message" *ngIf="getConfirmPasswordError()">
+          {{ getConfirmPasswordError() }}
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div class="alert alert-error" *ngIf="errorMessage">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="btn btn-primary btn-block"
+        [disabled]="loading"
+      >
+        <span *ngIf="loading" class="spinner"></span>
+        <span>{{ loading ? 'Creating account...' : 'Create Account' }}</span>
+      </button>
+    </form>
+
+    <div class="signup-footer">
+      <p>Already have an account? <a routerLink="/auth/login">Login</a></p>
+    </div>
+  </div>
+</div>

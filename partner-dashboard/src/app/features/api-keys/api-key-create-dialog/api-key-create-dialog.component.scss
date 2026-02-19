@@ -1,0 +1,228 @@
+.dialog-container {
+  min-width: 500px;
+  max-width: 600px;
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 500;
+  }
+
+  mat-dialog-content {
+    padding: 24px;
+    min-height: 200px;
+
+    .description {
+      margin: 0 0 24px 0;
+      color: rgba(0, 0, 0, 0.7);
+      line-height: 1.5;
+    }
+
+    .selection-step {
+      .full-width {
+        width: 100%;
+      }
+
+      .environment-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 0;
+
+        mat-icon {
+          color: rgba(0, 0, 0, 0.54);
+        }
+
+        .option-title {
+          font-weight: 500;
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.87);
+        }
+
+        .option-description {
+          font-size: 12px;
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+    }
+
+    .generated-step {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+
+      .warning-card {
+        background-color: #fff3e0;
+        border-left: 4px solid #ff9800;
+
+        &.danger {
+          background-color: #ffebee;
+          border-left-color: #f44336;
+        }
+
+        mat-card-content {
+          padding: 16px;
+
+          .warning-content {
+            display: flex;
+            gap: 12px;
+
+            mat-icon {
+              flex-shrink: 0;
+            }
+
+            strong {
+              display: block;
+              margin-bottom: 8px;
+              color: rgba(0, 0, 0, 0.87);
+            }
+
+            p {
+              margin: 0;
+              font-size: 14px;
+              color: rgba(0, 0, 0, 0.7);
+              line-height: 1.5;
+            }
+          }
+        }
+      }
+
+      .credential-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .credential-label {
+          font-size: 14px;
+          font-weight: 500;
+          color: rgba(0, 0, 0, 0.87);
+        }
+
+        .credential-display {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px;
+          background-color: #f5f5f5;
+          border: 1px solid #e0e0e0;
+          border-radius: 4px;
+
+          .credential-value {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #424242;
+            word-break: break-all;
+            line-height: 1.5;
+          }
+
+          button {
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+
+            &.copied {
+              mat-icon {
+                color: #4caf50;
+              }
+            }
+
+            mat-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+          }
+        }
+
+        .credential-hint {
+          font-size: 12px;
+          color: rgba(0, 0, 0, 0.6);
+          font-style: italic;
+        }
+      }
+
+      .environment-badge {
+        display: flex;
+        justify-content: center;
+        padding-top: 8px;
+
+        mat-chip-set {
+          mat-chip {
+            font-size: 14px;
+            font-weight: 500;
+            padding: 8px 16px;
+
+            mat-icon {
+              margin-right: 8px;
+            }
+
+            &.sandbox {
+              background-color: #e3f2fd;
+              color: #1976d2;
+            }
+
+            &.production {
+              background-color: #e8f5e9;
+              color: #388e3c;
+            }
+          }
+        }
+      }
+    }
+
+    .close-warning {
+      margin-top: 16px;
+    }
+  }
+
+  mat-dialog-actions {
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+
+    button {
+      margin-left: 8px;
+
+      .button-spinner {
+        display: inline-block;
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+// Responsive styles
+@media (max-width: 600px) {
+  .dialog-container {
+    min-width: unset;
+    max-width: 100%;
+
+    mat-dialog-content {
+      padding: 16px;
+
+      .generated-step {
+        gap: 16px;
+
+        .credential-section {
+          .credential-display {
+            flex-direction: column;
+            align-items: stretch;
+
+            button {
+              align-self: flex-end;
+            }
+          }
+        }
+      }
+    }
+
+    mat-dialog-actions {
+      flex-direction: column;
+      align-items: stretch;
+
+      button {
+        margin: 4px 0;
+        width: 100%;
+      }
+    }
+  }
+}

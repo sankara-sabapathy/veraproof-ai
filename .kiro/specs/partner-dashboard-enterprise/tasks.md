@@ -1,0 +1,1648 @@
+# Implementation Plan: Partner Dashboard Enterprise
+
+## Overview
+
+This implementation plan breaks down the Partner Dashboard into incremental, testable steps. The approach follows Angular best practices with a modular architecture, starting with core infrastructure, then building feature modules, and finally integrating everything together. Each task builds on previous work to ensure continuous progress and early validation.
+
+The implementation prioritizes the "Must Have - Phase 1" features: API Key Management, Billing & Subscription Management, Webhook Configuration, Session History & Details, Custom Branding, Team Management, and Analytics Dashboard.
+
+## Tasks
+
+- [-] 1. Project setup and core infrastructure
+  - [x] 1.1 Initialize Angular 17+ project with Angular Material
+    - Create new Angular workspace with standalone components
+    - Install Angular Material, Angular CDK, and Angular Flex Layout
+    - Configure Material theme with VeraProof branding colors
+    - Set up TypeScript strict mode and linting (ESLint)
+    - Configure environment files for development and production
+    - _Requirements: 13.2, 13.5_
+
+  - [x] 1.2 Set up testing infrastructure
+    - Configure Jasmine and Karma for unit tests
+    - Install and configure fast-check for property-based testing
+    - Install and configure Cypress for E2E tests
+    - Create test utilities and helper functions
+    - Set up test coverage reporting
+    - _Requirements: All (testing foundation)_
+
+  - [x] 1.3 Create core module with authentication service
+    - Implement AuthService with login, signup, logout, token refresh
+    - Implement token storage using secure browser storage (httpOnly cookies or encrypted localStorage)
+    - Create User and AuthResponse interfaces
+    - Add JWT token decoding and validation
+    - **Input Validation:**
+      - Email: RFC 5322 compliant format, max 254 characters
+      - Password: Min 8 characters, max 128 characters, must contain uppercase, lowercase, number, special character
+      - Tokens: Validate JWT structure and signature before storage
+    - **Error Handling:**
+      - 401: Invalid credentials → "Invalid email or password"
+      - 429: Rate limit → "Too many login attempts. Please try again in X minutes"
+      - Network errors: Retry with exponential backoff (1s, 2s, 4s)
+    - _Requirements: 1.1, 1.2, 1.4, 12.1_
+
+  - [ ]* 1.4 Write property tests for authentication service
+    - **Property 1: Authentication lifecycle integrity**
+    - **Validates: Requirements 1.1, 1.4**
+    - **Generators:** fc.record({ email: fc.emailAddress(), password: fc.string({ minLength: 8, maxLength: 128 }) })
+    - **Assertions:** 
+      - After login with valid credentials, tokens should be stored
+      - After logout, all tokens and session data should be cleared
+      - getCurrentUser() should return null after logout
+    - **Iterations:** 100
+    - **Property 2: Automatic token refresh**
+    - **Validates: Requirements 1.2**
+    - **Generators:** fc.record({ accessToken: fc.string(), refreshToken: fc.string() })
+    - **Assertions:**
+      - When access token expires, refresh should be called automatically
+      - After refresh, new access token should be stored
+      - User should remain authenticated without re-login
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Empty email/password
+      - Malformed email addresses
+      - Passwords with only whitespace
+      - SQL injection attempts in credentials
+      - XSS attempts in credentials
+
+  - [x] 1.5 Create HTTP interceptors
+    - Implement AuthInterceptor for token injection and refresh
+    - Implement ErrorInterceptor for error handling and notifications
+    - Add retry logic with exponential backoff
+    - _Requirements: 1.2, 11.4, 12.3_
+
+  - [ ]* 1.6 Write property tests for HTTP interceptors
+    - **Property 43: Retry logic**
+    - **Validates: Requirements 11.4**
+    - **Generators:** fc.record({ endpoint: fc.webUrl(), method: fc.constantFrom('GET', 'POST', 'PUT', 'DELETE') })
+    - **Assertions:**
+      - Network errors should trigger 3 retries with exponential backoff (1s, 2s, 4s)
+      - 5xx errors should trigger 2 retries with exponential backoff (2s, 4s)
+      - 4xx errors should NOT trigger retries
+      - After max retries, error should be thrown
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Timeout errors
+      - DNS resolution failures
+      - Connection refused
+      - Partial response received
+
+  - [x] 1.7 Create route guards
+    - Implement AuthGuard for protected routes
+    - Implement AdminGuard for master admin routes
+    - Add redirect logic with return URL preservation
+    - _Requirements: 1.5, 9.1_
+
+  - [ ]* 1.8 Write property tests for route guards
+    - **Property 3: Authentication failure handling**
+    - **Validates: Requirements 1.3**
+    - **Generators:** fc.record({ email: fc.string(), password: fc.string() })
+    - **Assertions:**
+      - Invalid credentials should prevent access to all protected routes
+      - Error message should be clear and not expose system details
+      - User should remain on login page
+    - **Iterations:** 100
+    - **Property 4: Route protection**
+    - **Validates: Requirements 1.5**
+    - **Generators:** fc.record({ targetRoute: fc.constantFrom('/dashboard', '/api-keys', '/sessions', '/billing', '/admin') })
+    - **Assertions:**
+      - Unauthenticated access should redirect to /auth/login
+      - returnUrl query param should preserve intended destination
+      - After successful login, user should be redirected to original destination
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Expired tokens
+      - Malformed tokens
+      - Tokens for different tenant
+      - Admin routes accessed by non-admin users
+
+  - [x] 1.9 Create shared services
+    - Implement ApiService for generic HTTP operations
+    - Implement NotificationService using Material Snackbar
+    - Create base StateService class for reactive state management
+    - _Requirements: 11.1, 11.2, 11.3_
+
+  - [ ]* 1.10 Write property tests for shared services
+    - **Property 42: Consistent user feedback**
+    - **Validates: Requirements 11.1, 11.2, 11.3**
+    - **Generators:** fc.record({ action: fc.constantFrom('create', 'update', 'delete'), result: fc.constantFrom('success', 'error') })
+    - **Assertions:**
+      - Every user action should show loading indicator during execution
+      - Success actions should show success notification
+      - Error actions should show error notification with actionable message
+      - Notifications should auto-dismiss after appropriate duration
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Multiple simultaneous actions
+      - Action cancelled mid-execution
+      - Network disconnection during action
+
+- [ ] 2. Checkpoint - Core infrastructure complete
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 3. Shared components and layout
+  - [x] 3.1 Create shared component library
+    - Implement StatCardComponent for displaying metrics
+    - Implement DataTableComponent with sorting, filtering, pagination
+    - Implement ConfirmationDialogComponent for destructive actions
+    - Implement LoadingSpinnerComponent for async operations
+    - Create shared pipes (date formatting, trust score colors)
+    - Create copy-to-clipboard directive
+    - _Requirements: 4.1, 4.2, 5.1, 11.2_
+
+  - [ ]* 3.2 Write unit tests for shared components
+    - **Test: StatCardComponent rendering with various inputs**
+      - Test with string value
+      - Test with number value
+      - Test with large numbers (format with commas)
+      - Test with subtitle present/absent
+      - Test with trend positive/negative/zero
+      - Test with different icon colors
+    - **Test: DataTableComponent sorting, filtering, pagination**
+      - Test sorting ascending/descending
+      - Test sorting by different columns
+      - Test filtering with search term
+      - Test filtering with no results
+      - Test pagination forward/backward
+      - Test page size changes
+      - Test row click event
+    - **Test: ConfirmationDialogComponent dialog flow**
+      - Test dialog opens with correct title/message
+      - Test cancel button closes dialog with false
+      - Test confirm button closes dialog with true
+      - Test confirmation text requirement
+      - Test confirm button disabled until text entered
+    - **Test: LoadingSpinnerComponent display**
+      - Test spinner renders with default diameter
+      - Test spinner renders with custom diameter
+      - Test message displays when provided
+      - Test message hidden when not provided
+    - **Test: Pipes with edge cases (null, undefined, empty)**
+      - Test date format pipe with null returns empty string
+      - Test date format pipe with invalid date returns "Invalid Date"
+      - Test trust score color pipe: green (>80), yellow (50-80), red (<50)
+      - Test trust score color pipe with null returns default color
+    - **Edge Cases:**
+      - StatCard with very long title (should truncate)
+      - DataTable with zero rows
+      - DataTable with single row
+      - ConfirmationDialog with very long message
+      - Pipes with undefined vs null
+
+  - [x] 3.3 Create main layout structure
+    - Implement MainLayoutComponent with sidebar and toolbar
+    - Create responsive navigation menu (collapsible on mobile)
+    - Add user profile menu with logout option
+    - Implement breadcrumb navigation
+    - Add Material theming and custom styles
+    - _Requirements: 10.1, 10.2_
+
+  - [ ]* 3.4 Write property tests for responsive layout
+    - **Property 39: Responsive rendering**
+    - **Validates: Requirements 10.1**
+    - **Generators:** fc.integer({ min: 320, max: 2560 })
+    - **Assertions:**
+      - At any viewport width, no horizontal scrolling should occur
+      - Layout should not break or overlap
+      - All content should be accessible
+      - Navigation should adapt appropriately (sidebar vs drawer)
+    - **Iterations:** 100
+    - **Property 40: Responsive table adaptation**
+    - **Validates: Requirements 10.3**
+    - **Generators:** fc.record({ viewport_width: fc.integer({ min: 320, max: 2560 }), row_count: fc.integer({ min: 0, max: 100 }) })
+    - **Assertions:**
+      - At width < 768px, tables should switch to card layout
+      - At width >= 768px, tables should use standard table layout
+      - All data should be visible in both layouts
+      - Sorting and filtering should work in both layouts
+    - **Iterations:** 100
+    - **Property 41: Touch target sizing**
+    - **Validates: Requirements 10.4**
+    - **Generators:** fc.constantFrom('button', 'link', 'checkbox', 'toggle', 'icon-button')
+    - **Assertions:**
+      - All interactive elements should be >= 44px in both dimensions
+      - Touch targets should not overlap
+      - Adequate spacing between adjacent targets (min 8px)
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Very narrow viewport (320px)
+      - Very wide viewport (2560px)
+      - Orientation change (portrait to landscape)
+      - Zoom levels (100%, 150%, 200%)
+      - Tables with many columns
+
+- [ ] 4. Authentication feature module
+  - [x] 4.1 Create login and signup components
+    - Implement LoginComponent with email/password form
+    - Implement SignupComponent with validation
+    - Add form validation and error display
+    - Add loading states during authentication
+    - Implement "Remember me" functionality
+    - **Form Validation Rules:**
+      - Email: Required, RFC 5322 format, max 254 chars, trim whitespace
+      - Password: Required, min 8 chars, max 128 chars, pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/
+      - Confirm Password (signup): Must match password field
+      - Real-time validation on blur, show errors inline below fields
+    - **Input Sanitization:**
+      - Strip HTML tags from all inputs
+      - Encode special characters to prevent XSS
+      - Trim leading/trailing whitespace
+    - **Error Messages:**
+      - "Email is required"
+      - "Please enter a valid email address"
+      - "Password must be at least 8 characters"
+      - "Password must contain uppercase, lowercase, number, and special character"
+      - "Passwords do not match"
+    - **Loading States:**
+      - Disable form during submission
+      - Show spinner on submit button
+      - Display "Logging in..." or "Creating account..." text
+    - _Requirements: 1.1, 1.3, 11.1, 11.2_
+
+  - [ ]* 4.2 Write E2E tests for authentication flow
+    - **Test: Successful login and redirect**
+      - Navigate to /auth/login
+      - Enter valid credentials
+      - Click login button
+      - Assert redirect to /dashboard
+      - Assert user menu shows email
+    - **Test: Login with invalid credentials**
+      - Enter invalid email/password combinations
+      - Assert error message displayed
+      - Assert form remains on login page
+      - Assert password field is cleared
+    - **Test: Signup flow**
+      - Navigate to /auth/signup
+      - Enter valid email, password, confirm password
+      - Click signup button
+      - Assert redirect to /dashboard
+      - Assert welcome notification shown
+    - **Test: Logout and session cleanup**
+      - Login successfully
+      - Click logout button
+      - Assert redirect to /auth/login
+      - Assert tokens cleared from storage
+      - Assert protected routes redirect to login
+    - **Test: Token refresh on expired token**
+      - Login successfully
+      - Manually expire access token
+      - Make API call
+      - Assert token refresh triggered
+      - Assert API call succeeds with new token
+    - **Edge Cases:**
+      - SQL injection in email field
+      - XSS attempts in password field
+      - Very long email (>254 chars)
+      - Password with only special characters
+      - Rapid repeated login attempts (rate limiting)
+
+- [ ] 5. API Keys feature module
+  - [x] 5.1 Create API keys service and state management
+    - Implement ApiKeysService with CRUD operations
+    - Create ApiKeysStateService for reactive state
+    - Define ApiKey, ApiKeyResponse, KeyUsageStats interfaces
+    - _Requirements: 2.1, 2.2, 2.3, 2.6_
+
+  - [x] 5.2 Create API keys list component
+    - Display API keys in data table with environment badges
+    - Show key value (masked), creation date, usage stats
+    - Add revoke button with confirmation dialog
+    - Implement search and filtering
+    - _Requirements: 2.2, 2.3, 2.4, 2.6_
+
+  - [ ]* 5.3 Write property tests for API key service
+    - **Property 5: API key generation**
+    - **Validates: Requirements 2.1**
+    - **Generators:** fc.constantFrom('sandbox', 'production')
+    - **Assertions:**
+      - Generated API key should be unique (UUID format)
+      - API secret should be cryptographically secure (min 32 chars)
+      - Environment should match requested environment
+      - Key should be immediately usable for API calls
+    - **Iterations:** 100
+    - **Property 6: API key information display**
+    - **Validates: Requirements 2.2, 2.6**
+    - **Generators:** fc.record({ keyId: fc.uuid(), environment: fc.constantFrom('sandbox', 'production') })
+    - **Assertions:**
+      - Display should show: key value (masked), environment badge, creation date, usage stats
+      - Key value should be masked (show only last 4 chars)
+      - Usage stats should include: total calls, calls today/week/month, last used timestamp
+    - **Iterations:** 100
+    - **Property 7: API key revocation**
+    - **Validates: Requirements 2.3**
+    - **Generators:** fc.uuid()
+    - **Assertions:**
+      - Revoked key should have revoked_at timestamp set
+      - Revoked key should fail authentication on API calls
+      - Revocation should be immediate (no delay)
+      - Revoked keys should still appear in list with "Revoked" badge
+    - **Iterations:** 100
+    - **Property 8: API key usage tracking**
+    - **Validates: Requirements 2.6**
+    - **Generators:** fc.record({ keyId: fc.uuid(), callCount: fc.integer({ min: 0, max: 10000 }) })
+    - **Assertions:**
+      - Each API call should increment total_calls counter
+      - last_used_at should update to current timestamp
+      - Daily/weekly/monthly counters should reset at appropriate intervals
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Generating multiple keys simultaneously
+      - Revoking already revoked key
+      - Using revoked key for API calls
+      - Key usage with zero calls
+
+  - [x] 5.4 Create API key creation dialog
+    - Implement dialog with environment selection (sandbox/production)
+    - Display generated key and secret once with copy buttons
+    - Show security warning about secret storage
+    - **Input Validation:**
+      - Environment: Required, must be 'sandbox' or 'production'
+    - **Display Requirements:**
+      - Show API key in monospace font, full value visible
+      - Show API secret in monospace font, full value visible
+      - Add "Copy" button next to each value with clipboard icon
+      - Display warning: "Store your API secret securely. You won't be able to see it again."
+      - Highlight warning in yellow/orange color
+    - **User Interaction:**
+      - Dialog should not close until user clicks "Done" or "Close"
+      - Copy buttons should show "Copied!" feedback for 2 seconds
+      - Prevent accidental closure (confirm if user tries to close without copying)
+    - **Error Handling:**
+      - If generation fails, show error message and allow retry
+      - Network errors: "Unable to generate API key. Please try again."
+    - _Requirements: 2.1, 2.5_
+
+  - [ ]* 5.5 Write E2E tests for API key management
+    - **Test: Creating sandbox and production keys**
+      - Click "Generate API Key" button
+      - Select "Sandbox" environment
+      - Click "Generate"
+      - Assert key and secret displayed
+      - Copy both values
+      - Assert keys appear in list with "Sandbox" badge
+      - Repeat for "Production" environment
+    - **Test: Copying key secret to clipboard**
+      - Generate new key
+      - Click "Copy" button for secret
+      - Assert "Copied!" notification shown
+      - Paste into text field and verify value matches
+    - **Test: Revoking keys with confirmation**
+      - Click "Revoke" button on existing key
+      - Assert confirmation dialog appears
+      - Type "confirm" in confirmation field
+      - Click "Revoke" button
+      - Assert key shows "Revoked" badge
+      - Assert key no longer usable for API calls
+    - **Test: Viewing key usage statistics**
+      - Click on API key row
+      - Assert usage stats displayed: total calls, calls today/week/month
+      - Assert last used timestamp shown
+      - Assert usage chart rendered
+    - **Edge Cases:**
+      - Attempting to revoke already revoked key
+      - Generating key with network disconnection
+      - Copying to clipboard in browsers without clipboard API
+      - Viewing usage for key with zero calls
+
+- [ ] 6. Sessions feature module
+  - [x] 6.1 Create sessions service and state management
+    - Implement SessionsService with session operations
+    - Create SessionsStateService for reactive state
+    - Define Session, CreateSessionRequest, VerificationResult interfaces
+    - Add WebSocket support for real-time updates
+    - _Requirements: 3.2, 4.1, 4.2, 4.7_
+
+  - [ ]* 6.2 Write property tests for sessions service
+    - **Property 9: Session creation**
+    - **Validates: Requirements 3.2**
+    - **Generators:** fc.record({ return_url: fc.webUrl(), metadata: fc.dictionary(fc.string({ maxLength: 50 }), fc.string({ maxLength: 500 }), { maxKeys: 10 }) })
+    - **Assertions:**
+      - Session ID should be unique UUID format
+      - Session URL should contain session ID
+      - Expiration time should be 15 minutes from creation
+      - Return URL should match input
+      - Metadata should match input
+    - **Iterations:** 100
+    - **Property 10: QR code generation**
+    - **Validates: Requirements 3.6**
+    - **Generators:** fc.webUrl()
+    - **Assertions:**
+      - QR code should be valid PNG/SVG format
+      - Scanning QR code should return original URL
+      - QR code should be 256x256px
+    - **Iterations:** 100
+    - **Property 11: Environment-specific session creation**
+    - **Validates: Requirements 3.7**
+    - **Generators:** fc.record({ environment: fc.constantFrom('sandbox', 'production'), return_url: fc.webUrl() })
+    - **Assertions:**
+      - Sessions created with sandbox key should be marked as sandbox
+      - Sessions created with production key should be marked as production
+      - Environment should be immutable after creation
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Return URL with query parameters
+      - Return URL with fragments
+      - Metadata with special characters
+      - Metadata with nested objects
+      - Creating session with expired API key
+
+  - [ ] 6.3 Create session creation dialog
+    - Implement form with return URL and metadata inputs
+    - Add URL validation
+    - Display created session URL with copy button
+    - Generate and display QR code for session URL
+    - Show expiration time with countdown timer
+    - **Input Validation:**
+      - Return URL: Required, must be valid HTTP/HTTPS URL, max 2048 chars
+      - URL pattern: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
+      - Metadata: Optional, JSON object, max 10 keys, each key max 50 chars, each value max 500 chars
+      - Metadata keys: alphanumeric + underscore only, no special characters
+    - **Display Requirements:**
+      - Show session URL in monospace font with copy button
+      - Generate QR code using qrcode library, size 256x256px
+      - Show expiration countdown: "Expires in 14:59" (MM:SS format)
+      - Update countdown every second
+      - Show warning when < 5 minutes remaining
+    - **Error Handling:**
+      - Invalid URL: "Please enter a valid HTTP or HTTPS URL"
+      - URL too long: "URL must be less than 2048 characters"
+      - Invalid metadata: "Metadata keys must be alphanumeric"
+      - Session creation failed: "Unable to create session. Please try again."
+    - **User Interaction:**
+      - Disable submit button while creating session
+      - Show loading spinner during creation
+      - After creation, show success message and session details
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+  - [ ]* 6.4 Write unit tests for session creation dialog
+    - **Test: Form validation (URL format, required fields)**
+      - Test empty return URL shows "Return URL is required"
+      - Test invalid URL format shows "Please enter a valid URL"
+      - Test URL without protocol shows validation error
+      - Test URL with spaces shows validation error
+      - Test valid URL passes validation
+    - **Test: QR code generation**
+      - Test QR code renders after session creation
+      - Test QR code is 256x256px
+      - Test QR code updates when session URL changes
+    - **Test: Copy to clipboard functionality**
+      - Test clicking copy button copies session URL
+      - Test "Copied!" notification appears for 2 seconds
+      - Test copy button disabled during copy operation
+    - **Test: Countdown timer updates**
+      - Test timer starts at 15:00
+      - Test timer decrements every second
+      - Test warning appears when < 5 minutes
+      - Test timer shows 00:00 when expired
+    - **Edge Cases:**
+      - Very long URLs (near 2048 char limit)
+      - URLs with unicode characters
+      - Metadata with empty values
+      - Rapid repeated session creation
+      - Session creation with network timeout
+
+  - [ ] 6.5 Create sessions list component
+    - Display sessions in paginated data table
+    - Show session ID, timestamp, status, trust score, metadata
+    - Add filtering by date range, status, trust score
+    - Add search by session ID or metadata
+    - Implement click to navigate to detail view
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
+
+  - [ ]* 6.6 Write property tests for session list
+    - **Property 12: Session list pagination**
+    - **Validates: Requirements 4.1**
+    - **Generators:** fc.record({ limit: fc.integer({ min: 10, max: 100 }), offset: fc.integer({ min: 0, max: 1000 }) })
+    - **Assertions:**
+      - Returned sessions count should equal limit (or remaining sessions if less)
+      - Offset should skip correct number of sessions
+      - Total count should remain consistent across pages
+      - Page navigation should not duplicate or skip sessions
+    - **Iterations:** 100
+    - **Property 13: Session information display**
+    - **Validates: Requirements 4.2, 4.6**
+    - **Generators:** fc.record({ session_id: fc.uuid(), state: fc.constantFrom('idle', 'baseline', 'pan', 'return', 'analyzing', 'complete'), trust_score: fc.float({ min: 0, max: 100 }) })
+    - **Assertions:**
+      - Display should show: session ID, timestamp, status badge, trust score, metadata preview
+      - Trust score should be color-coded: green (>80), yellow (50-80), red (<50)
+      - Status badge should match session state
+      - Artifact download links should appear only for completed sessions
+    - **Iterations:** 100
+    - **Property 14: Session filtering**
+    - **Validates: Requirements 4.4**
+    - **Generators:** fc.record({ status: fc.constantFrom('success', 'failed', 'timeout', 'cancelled'), date_from: fc.date(), date_to: fc.date(), min_score: fc.float({ min: 0, max: 100 }) })
+    - **Assertions:**
+      - Filtered results should only include sessions matching ALL criteria
+      - Date range should be inclusive of start and end dates
+      - Status filter should match session outcome
+      - Score filter should include sessions >= min_score
+    - **Iterations:** 100
+    - **Property 15: Session search**
+    - **Validates: Requirements 4.5**
+    - **Generators:** fc.string({ minLength: 3, maxLength: 50 })
+    - **Assertions:**
+      - Search should match session ID (partial or full)
+      - Search should match metadata values (case-insensitive)
+      - Search should return results in relevance order
+      - Empty search should return all sessions
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Pagination with zero sessions
+      - Filtering with no matching sessions
+      - Search with special characters
+      - Date range with inverted dates (end before start)
+      - Very large page sizes (>1000)
+
+  - [ ] 6.7 Create session detail component
+    - Display complete verification results
+    - Show Tier 1 score, Tier 2 score, final trust score
+    - Display correlation value and reasoning
+    - Show session timeline and state transitions
+    - Add download buttons for artifacts (video, IMU data, optical flow)
+    - Implement real-time updates via WebSocket
+    - _Requirements: 4.3, 4.6, 4.7_
+
+  - [ ]* 6.8 Write property tests for session detail
+    - **Property 16: Artifact download links**
+    - **Validates: Requirements 4.6**
+    - **Generators:** fc.record({ session_id: fc.uuid(), has_video: fc.boolean(), has_imu: fc.boolean(), has_optical_flow: fc.boolean() })
+    - **Assertions:**
+      - Download links should be generated only for available artifacts
+      - Links should be signed S3 URLs with expiration
+      - Links should be valid and downloadable
+      - Missing artifacts should show "Not available" message
+    - **Iterations:** 100
+    - **Property 17: Real-time session updates**
+    - **Validates: Requirements 4.7**
+    - **Generators:** fc.record({ session_id: fc.uuid(), state: fc.constantFrom('idle', 'baseline', 'pan', 'return', 'analyzing', 'complete') })
+    - **Assertions:**
+      - WebSocket connection should be established on component init
+      - State changes should update UI within 2 seconds
+      - Score updates should reflect immediately
+      - Connection loss should trigger reconnection attempt
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Session with no artifacts
+      - Session with partial artifacts (only video, no IMU)
+      - WebSocket disconnection during session
+      - Multiple rapid state changes
+      - Session detail for non-existent session ID
+
+- [ ] 7. Checkpoint - Session management complete
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 8. Analytics feature module
+  - [x] 8.1 Create analytics service and state management
+    - Implement AnalyticsService with stats and trends
+    - Create AnalyticsStateService for reactive state
+    - Define AnalyticsStats, UsageTrendData, OutcomeDistribution interfaces
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+
+  - [ ]* 8.2 Write property tests for analytics service
+    - **Property 18: Analytics calculation accuracy**
+    - **Validates: Requirements 5.1**
+    - **Generators:** fc.array(fc.record({ session_id: fc.uuid(), status: fc.constantFrom('success', 'failed', 'timeout', 'cancelled'), trust_score: fc.float({ min: 0, max: 100 }) }), { minLength: 10, maxLength: 1000 })
+    - **Assertions:**
+      - Total sessions should equal array length
+      - Success rate should equal (success count / total) * 100
+      - Average trust score should equal sum of scores / count
+      - Calculations should be accurate to 2 decimal places
+    - **Iterations:** 100
+    - **Property 19: Outcome distribution accuracy**
+    - **Validates: Requirements 5.3**
+    - **Generators:** fc.array(fc.record({ status: fc.constantFrom('success', 'failed', 'timeout', 'cancelled') }), { minLength: 10, maxLength: 1000 })
+    - **Assertions:**
+      - Sum of all outcome counts should equal total sessions
+      - Each outcome count should match filter count
+      - Percentages should sum to 100%
+    - **Iterations:** 100
+    - **Property 20: Quota tracking accuracy**
+    - **Validates: Requirements 5.4**
+    - **Generators:** fc.record({ monthly_quota: fc.integer({ min: 100, max: 100000 }), current_usage: fc.integer({ min: 0, max: 100000 }) })
+    - **Assertions:**
+      - Remaining quota = monthly_quota - current_usage
+      - Usage percentage = (current_usage / monthly_quota) * 100
+      - Warning should appear when usage_percentage >= 80
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Zero sessions
+      - All sessions same status
+      - Usage exceeding quota
+      - Quota exactly at limit
+      - Negative trust scores (should be rejected)
+
+  - [ ] 8.3 Create analytics overview component
+    - Display key metrics in stat cards (total sessions, success rate, avg trust score)
+    - Show current quota usage with progress bar
+    - Display quota warning when usage exceeds 80%
+    - Add date range selector for analytics period
+    - _Requirements: 5.1, 5.4, 5.5_
+
+  - [ ]* 8.4 Write unit tests for analytics overview
+    - **Test: Stat card rendering with various metrics**
+      - Test rendering with zero sessions
+      - Test rendering with large numbers (>1M)
+      - Test rendering with decimal values
+      - Test rendering with null/undefined values
+      - Test rendering with negative values (should show 0)
+    - **Test: Quota warning display at 80%+ usage**
+      - Test warning not shown at 79% usage
+      - Test warning shown at 80% usage
+      - Test warning shown at 100% usage
+      - Test warning shown at >100% usage (overage)
+      - Test warning color: yellow at 80-99%, red at 100%+
+    - **Test: Date range filtering**
+      - Test default date range (last 30 days)
+      - Test custom date range selection
+      - Test invalid date range (end before start)
+      - Test date range with no data
+      - Test date range exceeding 1 year (should show error)
+    - **Edge Cases:**
+      - All metrics at zero
+      - Usage exactly at quota limit
+      - Very large quota (>1M)
+      - Date range with single day
+      - Rapid date range changes
+
+  - [ ] 8.5 Create usage chart component
+    - Implement line chart for usage trends (daily/weekly/monthly)
+    - Use Chart.js or ng2-charts for visualization
+    - Add responsive chart sizing for mobile
+    - Show sessions, success rate, average trust score over time
+    - _Requirements: 5.2_
+
+  - [ ] 8.6 Create outcome distribution chart component
+    - Implement pie chart for outcome distribution
+    - Show success, failed, timeout, cancelled counts
+    - Add legend with percentages
+    - Make chart responsive for mobile
+    - _Requirements: 5.3_
+
+  - [ ] 8.7 Implement CSV export functionality
+    - Add export button to analytics view
+    - Generate CSV with session data and analytics
+    - Trigger browser download with proper filename
+    - _Requirements: 5.6_
+
+  - [ ]* 8.8 Write property tests for CSV export
+    - **Property 21: CSV export completeness**
+    - **Validates: Requirements 5.6**
+    - **Generators:** fc.record({ date_from: fc.date(), date_to: fc.date(), include_sessions: fc.boolean(), include_analytics: fc.boolean() })
+    - **Assertions:**
+      - CSV should have header row with all column names
+      - Each session should be one row
+      - All requested fields should be present
+      - CSV should be valid RFC 4180 format
+      - Special characters should be properly escaped
+      - File should download with correct filename: analytics_YYYY-MM-DD.csv
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Export with zero sessions
+      - Export with special characters in metadata
+      - Export with very large date range (>1 year)
+      - Export with unicode characters
+      - Export with commas in field values
+
+- [ ] 9. Billing feature module
+  - [x] 9.1 Create billing service and state management
+    - Implement BillingService with subscription operations
+    - Create BillingStateService for reactive state
+    - Define Subscription, SubscriptionPlan, Invoice interfaces
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
+
+  - [ ]* 9.2 Write property tests for billing service
+    - **Property 22: Billing information accuracy**
+    - **Validates: Requirements 6.1**
+    - **Generators:** fc.record({ subscription_tier: fc.constantFrom('Sandbox', 'Starter', 'Professional', 'Enterprise'), monthly_quota: fc.integer({ min: 100, max: 100000 }), current_usage: fc.integer({ min: 0, max: 100000 }) })
+    - **Assertions:**
+      - Displayed tier should match backend data
+      - Monthly quota should match tier limits
+      - Billing cycle dates should be valid date range
+      - Next renewal should be after current date
+    - **Iterations:** 100
+    - **Property 23: Subscription upgrade**
+    - **Validates: Requirements 6.3**
+    - **Generators:** fc.record({ current_tier: fc.constantFrom('Sandbox', 'Starter', 'Professional'), target_tier: fc.constantFrom('Starter', 'Professional', 'Enterprise') })
+    - **Assertions:**
+      - After upgrade, quota should immediately reflect new tier
+      - Upgrade should only allow higher tiers
+      - Effective date should be immediate or next billing cycle
+      - Order ID should be generated
+    - **Iterations:** 100
+    - **Property 24: Invoice display completeness**
+    - **Validates: Requirements 6.4**
+    - **Generators:** fc.array(fc.record({ invoice_id: fc.uuid(), date: fc.date(), amount: fc.float({ min: 0, max: 10000 }), status: fc.constantFrom('paid', 'pending', 'overdue') }), { minLength: 0, maxLength: 100 })
+    - **Assertions:**
+      - All invoices should be displayed in reverse chronological order
+      - Each invoice should show: number, date, amount, status, download link
+      - Status should be color-coded: green (paid), yellow (pending), red (overdue)
+    - **Iterations:** 100
+    - **Property 25: Credit purchase**
+    - **Validates: Requirements 6.5**
+    - **Generators:** fc.integer({ min: 100, max: 10000 })
+    - **Assertions:**
+      - After purchase, current_quota should increase by purchased amount
+      - Order ID should be generated
+      - Total cost should match credits * price_per_credit
+    - **Iterations:** 100
+    - **Property 26: Renewal calculation**
+    - **Validates: Requirements 6.6**
+    - **Generators:** fc.record({ monthly_quota: fc.integer({ min: 100, max: 100000 }), current_usage: fc.integer({ min: 0, max: 100000 }), price_per_verification: fc.float({ min: 0.01, max: 1.0 }) })
+    - **Assertions:**
+      - Estimated cost = base_price + (overage * price_per_verification)
+      - Overage = max(0, current_usage - monthly_quota)
+      - Calculation should be accurate to 2 decimal places
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Downgrade attempt (should be rejected)
+      - Purchase with zero credits
+      - Invoice with $0 amount
+      - Usage exactly at quota (no overage)
+      - Very large credit purchases (>100k)
+
+  - [ ] 9.3 Create subscription overview component
+    - Display current subscription tier and quota
+    - Show billing cycle dates and next renewal
+    - Display estimated cost based on usage
+    - Add upgrade/downgrade buttons
+    - _Requirements: 6.1, 6.6_
+
+  - [ ] 9.4 Create plan comparison component
+    - Display all subscription tiers in comparison table
+    - Show features, pricing, and quotas for each plan
+    - Highlight current plan and recommended plan
+    - Add "Upgrade" buttons for higher tiers
+    - _Requirements: 6.2_
+
+  - [ ] 9.5 Create invoice list component
+    - Display billing history in data table
+    - Show invoice number, date, amount, status
+    - Add download button for each invoice
+    - Implement filtering by date range and status
+    - _Requirements: 6.4_
+
+  - [ ] 9.6 Implement credit purchase dialog
+    - Create dialog with credit amount input
+    - Show cost calculation
+    - Display confirmation with new quota
+    - _Requirements: 6.5_
+
+  - [ ]* 9.7 Write E2E tests for billing flow
+    - **Test: Viewing subscription details**
+      - Navigate to /billing
+      - Assert current tier displayed
+      - Assert quota usage shown with progress bar
+      - Assert billing cycle dates displayed
+      - Assert next renewal date shown
+    - **Test: Plan comparison and upgrade flow**
+      - Click "View Plans" button
+      - Assert all tiers displayed in comparison table
+      - Click "Upgrade" on higher tier
+      - Assert confirmation dialog appears
+      - Confirm upgrade
+      - Assert success notification
+      - Assert quota updated immediately
+    - **Test: Invoice download**
+      - Navigate to invoice history
+      - Click download button on invoice
+      - Assert PDF file downloads
+      - Assert filename format: invoice_INV-XXXXX.pdf
+    - **Test: Credit purchase**
+      - Click "Purchase Credits" button
+      - Enter credit amount (e.g., 1000)
+      - Assert cost calculation displayed
+      - Confirm purchase
+      - Assert quota increased by purchased amount
+      - Assert success notification
+    - **Edge Cases:**
+      - Attempting to downgrade (should show error)
+      - Purchasing credits with invalid amount (negative, zero)
+      - Downloading invoice that doesn't exist
+      - Viewing billing with no invoices
+      - Upgrade during active billing cycle
+
+- [ ] 10. Webhooks feature module
+  - [x] 10.1 Create webhooks service and state management
+    - Implement WebhooksService with CRUD operations
+    - Create WebhooksStateService for reactive state
+    - Define Webhook, WebhookConfig, WebhookLog interfaces
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+  - [ ]* 10.2 Write property tests for webhooks service
+    - **Property 27: Webhook URL validation**
+    - **Validates: Requirements 7.1**
+    - **Generators:** fc.oneof(fc.webUrl(), fc.string())
+    - **Assertions:**
+      - Valid HTTP/HTTPS URLs should pass validation
+      - Non-URL strings should fail validation
+      - URLs without protocol should fail validation
+      - localhost URLs should be allowed in development
+      - IP addresses should be allowed
+    - **Iterations:** 100
+    - **Property 28: Webhook state management**
+    - **Validates: Requirements 7.2**
+    - **Generators:** fc.record({ webhook_id: fc.uuid(), enabled: fc.boolean() })
+    - **Assertions:**
+      - Toggling enabled should update state immediately
+      - Disabled webhooks should not receive deliveries
+      - Enabled webhooks should receive deliveries
+      - State should persist across page refreshes
+    - **Iterations:** 100
+    - **Property 29: Webhook testing**
+    - **Validates: Requirements 7.3**
+    - **Generators:** fc.record({ webhook_id: fc.uuid(), url: fc.webUrl() })
+    - **Assertions:**
+      - Test should send sample payload to webhook URL
+      - Response should include: success status, status code, response time
+      - Failed tests should include error message
+      - Test should timeout after 10 seconds
+    - **Iterations:** 100
+    - **Property 30: Webhook log completeness**
+    - **Validates: Requirements 7.4, 7.5**
+    - **Generators:** fc.record({ webhook_id: fc.uuid(), event_type: fc.constantFrom('session.completed', 'session.failed', 'session.timeout'), status_code: fc.integer({ min: 200, max: 599 }), response_time_ms: fc.integer({ min: 10, max: 5000 }) })
+    - **Assertions:**
+      - Each delivery should create log entry
+      - Log should include: timestamp, event type, status code, response time, success status
+      - Failed deliveries should include error message
+      - Logs should be ordered by timestamp (newest first)
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Webhook URL with authentication
+      - Webhook URL that times out
+      - Webhook URL that returns 5xx errors
+      - Webhook with no event types selected
+      - Testing webhook that doesn't exist
+
+  - [ ] 10.3 Create webhook list component
+    - Display webhooks in data table
+    - Show URL, enabled status, events, success/failure counts
+    - Add enable/disable toggle for each webhook
+    - Add edit and delete buttons
+    - Add "Test Webhook" button
+    - _Requirements: 7.2, 7.3_
+
+  - [ ] 10.4 Create webhook form component
+    - Implement form with URL input and validation
+    - Add event type checkboxes (session.completed, session.failed, etc.)
+    - Add enabled toggle
+    - Show webhook payload documentation
+    - **Input Validation:**
+      - URL: Required, must be valid HTTP/HTTPS URL, max 2048 chars
+      - URL pattern: /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/
+      - Events: At least one event type must be selected
+      - Enabled: Boolean toggle, defaults to true
+    - **Event Types:**
+      - session.completed: Triggered when verification completes successfully
+      - session.failed: Triggered when verification fails
+      - session.timeout: Triggered when session expires
+      - session.cancelled: Triggered when user cancels
+    - **Payload Documentation:**
+      - Show example JSON payload for each event type
+      - Include all fields: session_id, tenant_id, event_type, timestamp, data
+      - Highlight required vs optional fields
+    - **Error Handling:**
+      - Invalid URL: "Please enter a valid HTTP or HTTPS URL"
+      - No events selected: "Please select at least one event type"
+      - URL too long: "URL must be less than 2048 characters"
+      - Save failed: "Unable to save webhook. Please try again."
+    - **User Interaction:**
+      - Real-time URL validation on blur
+      - Show character count for URL field
+      - Disable save button until form is valid
+    - _Requirements: 7.1, 7.6_
+
+  - [ ] 10.5 Create webhook logs component
+    - Display delivery logs in data table
+    - Show timestamp, event type, status code, response time
+    - Display error messages for failed deliveries
+    - Show retry count and next retry time
+    - Add filtering by date range and status
+    - _Requirements: 7.4, 7.5_
+
+  - [ ]* 10.6 Write E2E tests for webhook management
+    - **Test: Creating webhook with URL validation**
+      - Click "Add Webhook" button
+      - Enter invalid URL (no protocol)
+      - Assert validation error shown
+      - Enter valid URL
+      - Select event types
+      - Click "Save"
+      - Assert webhook appears in list
+    - **Test: Enabling/disabling webhooks**
+      - Toggle webhook enabled switch
+      - Assert state updates immediately
+      - Assert disabled webhook shows "Disabled" badge
+      - Create test session
+      - Assert disabled webhook does not receive delivery
+    - **Test: Webhook testing functionality**
+      - Click "Test" button on webhook
+      - Assert loading indicator shown
+      - Assert test result displayed: status code, response time
+      - Assert success/failure message shown
+    - **Test: Viewing webhook logs**
+      - Click on webhook to view details
+      - Assert logs displayed in table
+      - Assert each log shows: timestamp, event, status, response time
+      - Filter logs by date range
+      - Assert filtered results correct
+    - **Edge Cases:**
+      - Creating webhook with URL that times out
+      - Testing webhook that returns 500 error
+      - Viewing logs for webhook with no deliveries
+      - Deleting webhook with active deliveries
+      - Creating duplicate webhook URL
+
+- [ ] 11. Checkpoint - Core features complete
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 12. Branding feature module
+  - [x] 12.1 Create branding service and state management
+    - Implement BrandingService with upload and update operations
+    - Create BrandingStateService for reactive state
+    - Define BrandingConfig and ColorConfig interfaces
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
+
+  - [ ]* 12.2 Write property tests for branding service
+    - **Property 31: Logo upload validation**
+    - **Validates: Requirements 8.1**
+    - **Generators:** fc.record({ filename: fc.string(), size: fc.integer({ min: 0, max: 5000000 }), type: fc.constantFrom('image/png', 'image/jpeg', 'image/svg+xml', 'image/gif', 'application/pdf') })
+    - **Assertions:**
+      - PNG, JPG, SVG files should pass validation
+      - Files > 2MB should fail validation
+      - Non-image files should fail validation
+      - Valid files should upload successfully
+    - **Iterations:** 100
+    - **Property 32: Color contrast validation**
+    - **Validates: Requirements 8.4**
+    - **Generators:** fc.record({ primary: fc.hexaString({ minLength: 6, maxLength: 6 }), secondary: fc.hexaString({ minLength: 6, maxLength: 6 }), button: fc.hexaString({ minLength: 6, maxLength: 6 }) })
+    - **Assertions:**
+      - Contrast ratio between primary and white should be >= 4.5:1 (WCAG AA)
+      - Contrast ratio between button and white should be >= 4.5:1
+      - Invalid contrast should show warning message
+      - Valid contrast should pass validation
+    - **Iterations:** 100
+    - **Property 33: Branding application**
+    - **Validates: Requirements 8.3, 8.5**
+    - **Generators:** fc.record({ logo_url: fc.webUrl(), primary_color: fc.hexaString({ minLength: 6, maxLength: 6 }), secondary_color: fc.hexaString({ minLength: 6, maxLength: 6 }), button_color: fc.hexaString({ minLength: 6, maxLength: 6 }) })
+    - **Assertions:**
+      - After saving, preview should update immediately
+      - New sessions should use updated branding
+      - Existing sessions should retain original branding
+      - Branding should persist across page refreshes
+    - **Iterations:** 100
+    - **Property 34: Branding reset**
+    - **Validates: Requirements 8.6**
+    - **Generators:** fc.record({ logo_url: fc.option(fc.webUrl()), primary_color: fc.hexaString({ minLength: 6, maxLength: 6 }), secondary_color: fc.hexaString({ minLength: 6, maxLength: 6 }), button_color: fc.hexaString({ minLength: 6, maxLength: 6 }) })
+    - **Assertions:**
+      - After reset, all colors should return to defaults
+      - Logo should be removed
+      - Preview should show default branding
+      - Reset should be immediate (no delay)
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Uploading file with incorrect extension
+      - Uploading corrupted image file
+      - Color values with invalid hex format
+      - Very dark colors (near black)
+      - Very light colors (near white)
+      - Resetting when already at defaults
+
+  - [ ] 12.3 Create branding editor component
+    - Implement logo upload with drag-and-drop
+    - Add file type and size validation
+    - Create color pickers for primary, secondary, button colors
+    - Add hex value input fields
+    - Implement color contrast validation
+    - Add "Reset to Default" button
+    - **Input Validation:**
+      - Logo file: PNG, JPG, SVG only, max 2MB
+      - File type validation: Check MIME type and file extension
+      - Primary color: Required, hex format #RRGGBB, contrast ratio >= 4.5:1 with white
+      - Secondary color: Required, hex format #RRGGBB
+      - Button color: Required, hex format #RRGGBB, contrast ratio >= 4.5:1 with white
+      - Hex pattern: /^#[0-9A-Fa-f]{6}$/
+    - **Color Contrast Validation:**
+      - Calculate WCAG contrast ratio using formula: (L1 + 0.05) / (L2 + 0.05)
+      - L = relative luminance = 0.2126 * R + 0.7152 * G + 0.0722 * B
+      - Show warning if ratio < 4.5:1 (WCAG AA standard)
+      - Show error if ratio < 3:1 (minimum acceptable)
+    - **File Upload:**
+      - Support drag-and-drop and click-to-browse
+      - Show upload progress bar
+      - Preview image before upload
+      - Validate file size client-side before upload
+    - **Error Messages:**
+      - "Only PNG, JPG, and SVG files are allowed"
+      - "File size must be less than 2MB"
+      - "Please enter a valid hex color (e.g., #FF5733)"
+      - "Low contrast. This color may not meet accessibility standards (WCAG AA)"
+      - "Contrast ratio too low. Please choose a darker/lighter color"
+    - _Requirements: 8.1, 8.2, 8.4, 8.6_
+
+  - [ ] 12.4 Create branding preview component
+    - Display live preview of verification interface
+    - Show logo and colors applied to mock interface
+    - Update preview in real-time as colors change
+    - _Requirements: 8.3_
+
+  - [ ]* 12.5 Write E2E tests for branding customization
+    - **Test: Logo upload with valid and invalid files**
+      - Click "Upload Logo" button
+      - Select PNG file < 2MB
+      - Assert upload progress shown
+      - Assert logo preview displayed
+      - Assert success notification
+      - Attempt to upload 5MB file
+      - Assert error: "File size must be less than 2MB"
+      - Attempt to upload PDF file
+      - Assert error: "Only PNG, JPG, and SVG files are allowed"
+    - **Test: Color picker and hex input**
+      - Click primary color picker
+      - Select color from palette
+      - Assert hex input updates
+      - Enter hex value directly: #FF5733
+      - Assert color picker updates
+      - Assert preview updates with new color
+    - **Test: Color contrast validation**
+      - Enter very light color (e.g., #FFFFFF)
+      - Assert warning: "Low contrast. May not meet accessibility standards"
+      - Enter high contrast color (e.g., #000000)
+      - Assert no warning shown
+    - **Test: Live preview updates**
+      - Change primary color
+      - Assert preview updates immediately
+      - Change logo
+      - Assert preview shows new logo
+      - Change button color
+      - Assert preview button updates
+    - **Test: Saving and resetting branding**
+      - Make multiple branding changes
+      - Click "Save"
+      - Assert success notification
+      - Refresh page
+      - Assert changes persisted
+      - Click "Reset to Default"
+      - Assert confirmation dialog
+      - Confirm reset
+      - Assert all branding reverted to defaults
+    - **Edge Cases:**
+      - Uploading image with unicode filename
+      - Entering invalid hex color (e.g., #GGG)
+      - Rapid color changes
+      - Saving without making changes
+      - Network error during logo upload
+
+- [ ] 13. Admin feature module (Master Admin only)
+  - [x] 13.1 Create admin service and state management
+    - Implement AdminService with tenant operations
+    - Create AdminStateService for reactive state
+    - Define TenantSummary, TenantDetail, PlatformStats interfaces
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
+
+  - [ ]* 13.2 Write property tests for admin service
+    - **Property 35: Tenant metrics accuracy**
+    - **Validates: Requirements 9.2**
+    - **Generators:** fc.record({ tenant_id: fc.uuid(), total_sessions: fc.integer({ min: 0, max: 100000 }), current_usage: fc.integer({ min: 0, max: 100000 }), subscription_tier: fc.constantFrom('Sandbox', 'Starter', 'Professional', 'Enterprise') })
+    - **Assertions:**
+      - Displayed metrics should match actual tenant data
+      - Total sessions should equal sum of all session statuses
+      - Current usage should be within billing cycle
+      - Subscription tier should match tenant's plan
+    - **Iterations:** 100
+    - **Property 36: Platform analytics accuracy**
+    - **Validates: Requirements 9.4**
+    - **Generators:** fc.array(fc.record({ tenant_id: fc.uuid(), total_sessions: fc.integer({ min: 0, max: 10000 }), revenue: fc.float({ min: 0, max: 100000 }) }), { minLength: 10, maxLength: 100 })
+    - **Assertions:**
+      - Total tenants should equal array length
+      - Total sessions should equal sum of all tenant sessions
+      - Total revenue should equal sum of all tenant revenue
+      - Average sessions per tenant should equal total sessions / total tenants
+    - **Iterations:** 100
+    - **Property 37: Admin read-only access**
+    - **Validates: Requirements 9.5**
+    - **Generators:** fc.record({ tenant_id: fc.uuid(), action: fc.constantFrom('view', 'edit', 'delete') })
+    - **Assertions:**
+      - View actions should succeed
+      - Edit actions should be rejected with 403 error
+      - Delete actions should be rejected with 403 error
+      - Admin should see all tenant data without modification ability
+    - **Iterations:** 100
+    - **Property 38: System health metrics**
+    - **Validates: Requirements 9.6**
+    - **Generators:** fc.record({ response_times: fc.array(fc.integer({ min: 10, max: 5000 }), { minLength: 100, maxLength: 1000 }), error_count: fc.integer({ min: 0, max: 100 }), total_requests: fc.integer({ min: 100, max: 10000 }) })
+    - **Assertions:**
+      - Average response time should equal sum / count
+      - Error rate should equal (error_count / total_requests) * 100
+      - Uptime percentage should be calculated from successful requests
+      - API status should be 'healthy' if error_rate < 1%, 'degraded' if < 5%, 'down' if >= 5%
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Tenant with zero sessions
+      - Platform with single tenant
+      - All tenants suspended
+      - System with 100% error rate
+      - Admin viewing own tenant data
+
+  - [ ] 13.3 Create tenant list component
+    - Display all tenants in data table
+    - Show tenant email, subscription tier, usage, status
+    - Add search and filtering capabilities
+    - Implement click to view tenant detail
+    - _Requirements: 9.1, 9.2_
+
+  - [ ] 13.4 Create tenant detail component
+    - Display detailed tenant information
+    - Show usage history and analytics
+    - Display API keys count, webhooks count
+    - Show success rate and average trust score
+    - Add "View Sessions" button to see tenant's sessions
+    - _Requirements: 9.3, 9.5_
+
+  - [ ] 13.5 Create platform analytics component
+    - Display platform-wide metrics in stat cards
+    - Show total tenants, active tenants, total sessions
+    - Display revenue metrics (total, this month)
+    - Show average sessions per tenant
+    - Display platform success rate
+    - _Requirements: 9.4_
+
+  - [ ] 13.6 Create system health component
+    - Display API status indicator (healthy/degraded/down)
+    - Show average response time and error rate
+    - Display uptime percentage
+    - Show last incident information
+    - _Requirements: 9.6_
+
+  - [ ]* 13.7 Write E2E tests for admin dashboard
+    - **Test: Tenant list search and filtering**
+      - Login as Master_Admin
+      - Navigate to /admin/tenants
+      - Assert tenant list displayed
+      - Enter search term in search box
+      - Assert filtered results match search
+      - Select subscription tier filter
+      - Assert only matching tiers shown
+      - Select status filter
+      - Assert only matching statuses shown
+    - **Test: Viewing tenant details**
+      - Click on tenant row
+      - Assert tenant detail page loads
+      - Assert all metrics displayed: sessions, usage, tier, status
+      - Assert API keys count shown
+      - Assert webhooks count shown
+      - Assert success rate and trust score displayed
+    - **Test: Viewing tenant sessions (read-only)**
+      - From tenant detail, click "View Sessions"
+      - Assert tenant's sessions displayed
+      - Attempt to create session (should be disabled)
+      - Attempt to delete session (should be disabled)
+      - Assert can view session details
+      - Assert cannot modify session data
+    - **Test: Platform analytics display**
+      - Navigate to /admin/analytics
+      - Assert total tenants count displayed
+      - Assert active tenants count displayed
+      - Assert total sessions count displayed
+      - Assert revenue metrics displayed
+      - Assert charts render correctly
+    - **Test: System health monitoring**
+      - Navigate to /admin/health
+      - Assert API status indicator shown
+      - Assert average response time displayed
+      - Assert error rate displayed
+      - Assert uptime percentage shown
+      - Assert last incident information (if any)
+    - **Edge Cases:**
+      - Admin accessing non-admin routes
+      - Non-admin accessing admin routes (should redirect)
+      - Viewing tenant with no sessions
+      - Platform with zero revenue
+      - System health with no incidents
+
+- [ ] 14. Dashboard overview module
+  - [x] 14.1 Create main dashboard component
+    - Display key metrics in stat cards (sessions today, this week, this month)
+    - Show current quota usage with progress bar
+    - Display recent sessions list (last 10)
+    - Show quick actions (Create Session, Generate API Key)
+    - Add usage trend chart
+    - Add outcome distribution chart
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+
+  - [ ]* 14.2 Write E2E tests for dashboard overview
+    - **Test: Dashboard loads with correct metrics**
+      - Login successfully
+      - Navigate to /dashboard
+      - Assert stat cards display: sessions today, this week, this month
+      - Assert quota usage progress bar shown
+      - Assert usage percentage displayed
+      - Assert all metrics are numbers (not NaN or undefined)
+    - **Test: Quick actions navigation**
+      - Click "Create Session" button
+      - Assert session creation dialog opens
+      - Close dialog
+      - Click "Generate API Key" button
+      - Assert API key creation dialog opens
+    - **Test: Recent sessions display**
+      - Assert recent sessions list shows last 10 sessions
+      - Assert each session shows: ID, timestamp, status, trust score
+      - Click on session
+      - Assert navigates to session detail page
+    - **Test: Charts render correctly**
+      - Assert usage trend chart renders
+      - Assert chart has data points
+      - Assert chart axes labeled
+      - Assert outcome distribution chart renders
+      - Assert chart legend displayed
+    - **Edge Cases:**
+      - Dashboard with zero sessions
+      - Dashboard with quota exceeded
+      - Dashboard with all failed sessions
+      - Charts with single data point
+      - Dashboard loading with network delay
+
+- [ ] 15. Security and performance optimizations
+  - [x] 15.1 Implement security features
+    - Add CSRF token handling for state-changing operations
+    - Implement input sanitization for XSS prevention
+    - Add automatic logout after 30 minutes of inactivity
+    - Ensure HTTPS enforcement for all API calls
+    - **CSRF Protection:**
+      - Generate CSRF token on login
+      - Include token in all POST, PUT, DELETE, PATCH requests
+      - Validate token on backend
+      - Rotate token on sensitive operations
+    - **Input Sanitization:**
+      - Strip HTML tags using DOMPurify library
+      - Encode special characters: < > & " ' / 
+      - Sanitize before rendering in DOM
+      - Sanitize before sending to backend
+      - Whitelist allowed HTML tags if rich text needed
+    - **Automatic Logout:**
+      - Track user activity (mouse, keyboard, touch events)
+      - Reset inactivity timer on any activity
+      - Show warning dialog at 28 minutes: "You will be logged out in 2 minutes due to inactivity"
+      - Logout and clear tokens at 30 minutes
+      - Redirect to login page with message
+    - **HTTPS Enforcement:**
+      - Configure Angular to use HTTPS in production
+      - Reject HTTP requests in production
+      - Set Strict-Transport-Security header
+      - Upgrade insecure requests via CSP
+    - **Additional Security Measures:**
+      - Set httpOnly and secure flags on cookies
+      - Implement Content Security Policy (CSP)
+      - Add X-Frame-Options: DENY header
+      - Add X-Content-Type-Options: nosniff header
+      - Validate all JWT tokens before use
+    - _Requirements: 12.3, 12.4, 12.5, 12.6_
+
+  - [ ]* 15.2 Write property tests for security features
+    - **Property 45: Secure token storage**
+    - **Validates: Requirements 12.1**
+    - **Generators:** fc.record({ access_token: fc.string({ minLength: 100, maxLength: 500 }), refresh_token: fc.string({ minLength: 100, maxLength: 500 }) })
+    - **Assertions:**
+      - Tokens should be stored in httpOnly cookies or encrypted localStorage
+      - Tokens should not be accessible via JavaScript (if using httpOnly)
+      - Tokens should not appear in console logs
+      - Tokens should be cleared on logout
+    - **Iterations:** 100
+    - **Property 46: Sensitive data protection**
+    - **Validates: Requirements 12.2**
+    - **Generators:** fc.record({ password: fc.string(), api_secret: fc.string(), token: fc.string() })
+    - **Assertions:**
+      - Passwords should never appear in plain text in UI
+      - API secrets should be masked (show only last 4 chars)
+      - Tokens should not appear in error messages
+      - Sensitive data should not be logged to console
+    - **Iterations:** 100
+    - **Property 47: HTTPS enforcement**
+    - **Validates: Requirements 12.3**
+    - **Generators:** fc.webUrl()
+    - **Assertions:**
+      - All API requests should use HTTPS protocol
+      - HTTP requests should be rejected or upgraded to HTTPS
+      - Mixed content warnings should not occur
+    - **Iterations:** 100
+    - **Property 48: CSRF protection**
+    - **Validates: Requirements 12.4**
+    - **Generators:** fc.constantFrom('POST', 'PUT', 'DELETE', 'PATCH')
+    - **Assertions:**
+      - State-changing requests should include CSRF token
+      - Requests without CSRF token should be rejected
+      - CSRF token should be validated on backend
+      - GET requests should not require CSRF token
+    - **Iterations:** 100
+    - **Property 49: Input sanitization**
+    - **Validates: Requirements 12.6**
+    - **Generators:** fc.string()
+    - **Assertions:**
+      - HTML tags should be stripped or encoded
+      - Script tags should be removed
+      - Special characters should be encoded
+      - SQL injection attempts should be neutralized
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - XSS attempts: <script>alert('xss')</script>
+      - SQL injection: ' OR '1'='1
+      - Path traversal: ../../etc/passwd
+      - Command injection: ; rm -rf /
+      - Unicode exploits
+
+  - [ ] 15.3 Implement performance optimizations
+    - Configure lazy loading for all feature modules
+    - Implement response caching with configurable TTL
+    - Add virtual scrolling for large lists (sessions, invoices)
+    - Optimize images and use WebP format where supported
+    - Implement service worker for offline support
+    - _Requirements: 13.2, 13.3, 13.4, 13.5_
+
+  - [ ]* 15.4 Write property tests for performance features
+    - **Property 50: Lazy loading**
+    - **Validates: Requirements 13.2**
+    - **Generators:** fc.constantFrom('/dashboard', '/api-keys', '/sessions', '/analytics', '/billing', '/webhooks', '/branding', '/admin')
+    - **Assertions:**
+      - Feature modules should not be loaded on initial app load
+      - Modules should be loaded only when route is accessed
+      - Subsequent navigation to same route should use cached module
+      - Initial bundle size should be < 500KB
+    - **Iterations:** 100
+    - **Property 51: Response caching**
+    - **Validates: Requirements 13.3**
+    - **Generators:** fc.record({ endpoint: fc.webUrl(), ttl: fc.integer({ min: 60, max: 3600 }) })
+    - **Assertions:**
+      - Identical requests within TTL should return cached data
+      - Requests after TTL should make new API call
+      - Cache should be invalidated on state-changing operations
+      - Cache key should include query parameters
+    - **Iterations:** 100
+    - **Property 52: Asset optimization**
+    - **Validates: Requirements 13.5**
+    - **Generators:** fc.constantFrom('logo.png', 'banner.jpg', 'icon.svg')
+    - **Assertions:**
+      - Images should be served in WebP format where supported
+      - Fallback to original format for unsupported browsers
+      - Images should be compressed (quality 80-90)
+      - Lazy loading should be applied to below-fold images
+    - **Iterations:** 100
+    - **Edge Cases to Test:**
+      - Navigating to route before module loaded
+      - Cache with expired TTL
+      - Cache invalidation on logout
+      - Asset loading with slow network
+      - WebP not supported in browser
+
+- [ ] 16. Backend API endpoints documentation and implementation
+  - [x] 16.1 Document required backend API endpoints
+    - Document authentication endpoints (/auth/login, /auth/signup, /auth/refresh)
+    - Document API key endpoints (/api-keys/*, /api-keys/{id}/usage)
+    - Document session endpoints (/sessions/*, /sessions/{id}/results, /sessions/{id}/artifacts)
+    - Document analytics endpoints (/analytics/stats, /analytics/trends, /analytics/export)
+    - Document billing endpoints (/billing/subscription, /billing/plans, /billing/invoices)
+    - Document webhook endpoints (/webhooks/*, /webhooks/{id}/test, /webhooks/{id}/logs)
+    - Document branding endpoints (/branding/*, /branding/logo)
+    - Document admin endpoints (/admin/tenants/*, /admin/platform-stats, /admin/system-health)
+    - **API Endpoint Specifications:**
+      - **POST /api/v1/auth/login**
+        - Request: { email: string, password: string }
+        - Response: { access_token: string, refresh_token: string, token_type: string, user: User }
+        - Validation: Email RFC 5322, password min 8 chars
+        - Errors: 401 (invalid credentials), 429 (rate limit)
+      - **POST /api/v1/auth/signup**
+        - Request: { email: string, password: string }
+        - Response: { access_token: string, refresh_token: string, token_type: string, user: User }
+        - Validation: Email RFC 5322, password min 8 chars with complexity requirements
+        - Errors: 400 (validation), 409 (email exists)
+      - **POST /api/v1/auth/refresh**
+        - Request: { refresh_token: string }
+        - Response: { access_token: string, refresh_token: string, token_type: string }
+        - Errors: 401 (invalid token)
+      - **POST /api/v1/api-keys**
+        - Request: { environment: 'sandbox' | 'production' }
+        - Response: { key_id: string, api_key: string, api_secret: string, environment: string }
+        - Validation: Environment must be 'sandbox' or 'production'
+        - Errors: 400 (validation), 403 (quota exceeded)
+      - **GET /api/v1/api-keys**
+        - Response: ApiKey[]
+        - Errors: 401 (unauthorized)
+      - **DELETE /api/v1/api-keys/{id}**
+        - Response: 204 No Content
+        - Errors: 404 (not found), 403 (not owner)
+      - **GET /api/v1/api-keys/{id}/usage**
+        - Response: KeyUsageStats
+        - Errors: 404 (not found)
+      - **POST /api/v1/sessions**
+        - Request: { return_url: string, metadata?: object }
+        - Response: { session_id: string, session_url: string, expires_at: string }
+        - Validation: return_url must be valid HTTP/HTTPS URL, max 2048 chars
+        - Errors: 400 (validation), 403 (quota exceeded)
+      - **GET /api/v1/sessions**
+        - Query: limit, offset, status, date_from, date_to, search
+        - Response: { sessions: Session[], total: number, limit: number, offset: number }
+        - Validation: limit max 100, offset >= 0
+      - **GET /api/v1/sessions/{id}**
+        - Response: Session
+        - Errors: 404 (not found), 403 (not owner)
+      - **GET /api/v1/sessions/{id}/results**
+        - Response: VerificationResult
+        - Errors: 404 (not found), 403 (not owner)
+      - **GET /api/v1/sessions/{id}/artifacts/{type}**
+        - Path params: type = 'video' | 'imu' | 'optical_flow'
+        - Response: { url: string } (signed S3 URL)
+        - Errors: 404 (not found), 403 (not owner)
+      - **GET /api/v1/analytics/stats**
+        - Response: AnalyticsStats
+      - **GET /api/v1/analytics/trends**
+        - Query: period = 'daily' | 'weekly' | 'monthly'
+        - Response: UsageTrendData[]
+      - **GET /api/v1/analytics/export**
+        - Query: date_from, date_to, format = 'csv' | 'json'
+        - Response: Blob (CSV or JSON file)
+        - Validation: date_from <= date_to, max 1 year range
+      - **GET /api/v1/billing/subscription**
+        - Response: Subscription
+      - **GET /api/v1/billing/plans**
+        - Response: SubscriptionPlan[]
+      - **POST /api/v1/billing/upgrade**
+        - Request: { plan_id: string }
+        - Response: UpgradeResponse
+        - Validation: plan_id must exist, must be higher tier
+        - Errors: 400 (invalid plan), 403 (downgrade not allowed)
+      - **POST /api/v1/billing/credits**
+        - Request: { amount: number }
+        - Response: PurchaseResponse
+        - Validation: amount > 0, amount <= 100000
+        - Errors: 400 (validation), 402 (payment failed)
+      - **GET /api/v1/billing/invoices**
+        - Response: Invoice[]
+      - **GET /api/v1/billing/invoices/{id}/download**
+        - Response: Blob (PDF file)
+        - Errors: 404 (not found)
+      - **GET /api/v1/webhooks**
+        - Response: Webhook[]
+      - **POST /api/v1/webhooks**
+        - Request: { url: string, enabled: boolean, events: string[] }
+        - Response: Webhook
+        - Validation: url must be valid HTTP/HTTPS, events must be non-empty
+        - Errors: 400 (validation), 409 (duplicate URL)
+      - **PUT /api/v1/webhooks/{id}**
+        - Request: { url: string, enabled: boolean, events: string[] }
+        - Response: Webhook
+        - Errors: 404 (not found), 400 (validation)
+      - **DELETE /api/v1/webhooks/{id}**
+        - Response: 204 No Content
+        - Errors: 404 (not found)
+      - **POST /api/v1/webhooks/{id}/test**
+        - Response: WebhookTestResult
+        - Errors: 404 (not found)
+      - **GET /api/v1/webhooks/{id}/logs**
+        - Query: limit, offset, date_from, date_to
+        - Response: WebhookLog[]
+      - **GET /api/v1/branding**
+        - Response: BrandingConfig
+      - **POST /api/v1/branding/logo**
+        - Request: multipart/form-data with file
+        - Response: { logo_url: string }
+        - Validation: file type PNG/JPG/SVG, max 2MB
+        - Errors: 400 (validation), 413 (file too large)
+      - **PUT /api/v1/branding/colors**
+        - Request: { primary_color: string, secondary_color: string, button_color: string }
+        - Response: 204 No Content
+        - Validation: colors must be valid hex format (#RRGGBB)
+        - Errors: 400 (validation)
+      - **POST /api/v1/branding/reset**
+        - Response: 204 No Content
+      - **GET /api/v1/admin/tenants** (Master_Admin only)
+        - Query: limit, offset, search, subscription_tier, status
+        - Response: TenantListResponse
+      - **GET /api/v1/admin/tenants/{id}** (Master_Admin only)
+        - Response: TenantDetail
+        - Errors: 404 (not found), 403 (not admin)
+      - **GET /api/v1/admin/tenants/{id}/sessions** (Master_Admin only)
+        - Query: limit, offset
+        - Response: SessionListResponse
+      - **GET /api/v1/admin/platform-stats** (Master_Admin only)
+        - Response: PlatformStats
+      - **GET /api/v1/admin/system-health** (Master_Admin only)
+        - Response: SystemHealth
+    - _Requirements: All (backend integration)_
+
+  - [ ] 16.2 Create API endpoint integration tests
+    - Test authentication flow with backend
+    - Test multi-tenant data isolation
+    - Test WebSocket connections for real-time updates
+    - Test file uploads (logo)
+    - Test CSV export downloads
+    - **Integration Test Specifications:**
+      - **Authentication Flow:**
+        - Test login with valid credentials returns tokens
+        - Test login with invalid credentials returns 401
+        - Test token refresh with valid refresh token
+        - Test token refresh with expired refresh token returns 401
+        - Test accessing protected endpoint with valid token succeeds
+        - Test accessing protected endpoint without token returns 401
+      - **Multi-Tenant Data Isolation:**
+        - Create sessions for Tenant A and Tenant B
+        - Login as Tenant A, assert only Tenant A sessions visible
+        - Login as Tenant B, assert only Tenant B sessions visible
+        - Attempt to access Tenant A session as Tenant B, assert 403
+        - Test API keys are tenant-isolated
+        - Test webhooks are tenant-isolated
+        - Test branding is tenant-isolated
+      - **WebSocket Connections:**
+        - Establish WebSocket connection with valid token
+        - Subscribe to session updates
+        - Create session via API
+        - Assert WebSocket receives session.created event
+        - Update session state via API
+        - Assert WebSocket receives session.updated event
+        - Test WebSocket reconnection on disconnect
+        - Test WebSocket authentication failure
+      - **File Uploads:**
+        - Upload valid PNG logo (< 2MB)
+        - Assert file stored in S3
+        - Assert logo_url returned
+        - Assert logo accessible via URL
+        - Upload invalid file type, assert 400 error
+        - Upload oversized file (> 2MB), assert 413 error
+      - **CSV Export:**
+        - Request CSV export with date range
+        - Assert CSV file downloads
+        - Assert CSV contains correct headers
+        - Assert CSV contains all sessions in date range
+        - Assert CSV properly escapes special characters
+        - Test export with no data returns empty CSV with headers
+    - _Requirements: All (backend integration)_
+
+- [ ] 17. Final integration and testing
+  - [ ] 17.1 Integration testing
+    - Test complete user workflows end-to-end
+    - Test navigation between all features
+    - Test state persistence across page refreshes
+    - Test error handling and recovery
+    - Test responsive design on multiple devices
+    - _Requirements: All_
+
+  - [ ]* 17.2 Run comprehensive test suite
+    - Run all unit tests (target 80%+ coverage)
+    - Run all property tests (100+ iterations each)
+    - Run all E2E tests
+    - Generate coverage reports
+    - Fix any failing tests
+    - **Test Execution Commands:**
+      - Unit tests: `ng test --code-coverage --watch=false`
+      - Property tests: `ng test --include='**/*.property.spec.ts' --watch=false`
+      - E2E tests: `npx cypress run`
+      - Coverage report: `ng test --code-coverage --watch=false && open coverage/index.html`
+    - **Coverage Targets:**
+      - Overall line coverage: >= 80%
+      - Overall branch coverage: >= 75%
+      - Critical paths (auth, billing, security): 100%
+      - Services: >= 90%
+      - Components: >= 80%
+      - Guards and interceptors: 100%
+    - **Property Test Configuration:**
+      - Each property test must run 100+ iterations
+      - Use fast-check generators for all inputs
+      - Tag each test with property number and description
+      - Ensure all 52 correctness properties have corresponding tests
+    - **Test Failure Handling:**
+      - Document all failing tests
+      - Categorize failures: bug, flaky test, environment issue
+      - Fix bugs immediately
+      - Refactor flaky tests for reliability
+      - Skip environment-dependent tests in CI with clear comments
+    - **Test Report Generation:**
+      - Generate HTML coverage report
+      - Generate JUnit XML for CI integration
+      - Generate property test execution report
+      - Document any skipped tests with justification
+
+  - [ ] 17.3 Performance testing and optimization
+    - Run Lighthouse audit (target 90+ score)
+    - Optimize bundle sizes
+    - Test on 3G network conditions
+    - Optimize initial load time
+    - _Requirements: 13.1, 13.6_
+
+  - [ ] 17.4 Accessibility audit
+    - Run axe accessibility scanner
+    - Test keyboard navigation
+    - Test screen reader compatibility
+    - Ensure color contrast meets WCAG standards
+    - Fix accessibility issues
+    - _Requirements: 8.4, 10.4_
+
+- [ ] 18. Final checkpoint - Production readiness
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Each task references specific requirements for traceability
+- Checkpoints ensure incremental validation
+- Property tests validate universal correctness properties (100+ iterations each)
+- Unit tests validate specific examples and edge cases
+- E2E tests validate complete user workflows
+- Backend API endpoints must be implemented in parallel with frontend features
+- Multi-tenant data isolation must be tested thoroughly
+- Security features (CSRF, XSS prevention, token security) are critical and must not be skipped
