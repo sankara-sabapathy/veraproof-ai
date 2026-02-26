@@ -313,39 +313,64 @@ jobs:
       
       - name: Install Lightsail Control Plugin
         run: |
-          # Install lightsailctl plugin for pushing images
-          curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/usr/local/bin/lightsailctl"
+          # Install lightsailctl plugin for pushing images (no sudo needed for download)
+          curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/tmp/lightsailctl"
+          sudo mv /tmp/lightsailctl /usr/local/bin/lightsailctl
           sudo chmod +x /usr/local/bin/lightsailctl
+          
+          # Verify installation
+          /usr/local/bin/lightsailctl --version || echo "lightsailctl installed"
       
       - name: Push to Lightsail
         id: push-image
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
-          echo "Service name: ${{ needs.deploy-infrastructure.outputs.lightsail-service }}"
+          SERVICE_NAME="${{ needs.deploy-infrastructure.outputs.lightsail-service }}"
+          echo "Service name: $SERVICE_NAME"
+          echo "Region: $AWS_DEFAULT_REGION"
           
-          # Use lightsailctl to push the image (it handles the push and returns the image name)
-          sudo /usr/local/bin/lightsailctl push-container-image \
-            --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
+          # Push the image using lightsailctl (run without sudo to preserve env vars)
+          /usr/local/bin/lightsailctl push-container-image \
+            --service-name "$SERVICE_NAME" \
             --label veraproof-api \
             --image veraproof-api:${{ github.sha }} \
-            --region ${{ env.AWS_REGION }} \
-            > push-output.txt 2>&1
+            --region $AWS_DEFAULT_REGION 2>&1 | tee push-output.txt
           
-          echo "Push output:"
-          cat push-output.txt
+          # Check if push was successful
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "Error: lightsailctl push failed"
+            cat push-output.txt
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== Extracting image name ==="
           
           # Extract the image reference from the output
           # The output contains a line like: "Refer to this image as ":service-name.label.X" in deployments."
-          IMAGE_NAME=$(grep -oE ':[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+\.[0-9]+' push-output.txt | head -n1)
+          IMAGE_NAME=$(grep -oE ':[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[0-9]+' push-output.txt | head -n1)
           
           if [ -z "$IMAGE_NAME" ]; then
             echo "Error: Could not extract image name from output"
             echo "Full output was:"
             cat push-output.txt
-            exit 1
+            echo ""
+            echo "Trying alternative extraction methods..."
+            
+            # Try alternative pattern with quotes
+            IMAGE_NAME=$(grep "Refer to this image" push-output.txt | grep -oE '":[^"]+"' | tr -d '"' | head -n1)
+            
+            if [ -z "$IMAGE_NAME" ]; then
+              echo "Alternative extraction also failed"
+              exit 1
+            fi
           fi
           
           echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          echo "Pushed image: $IMAGE_NAME"
+          echo "Successfully extracted image: $IMAGE_NAME"
       
       - name: Create deployment configuration
         run: |
