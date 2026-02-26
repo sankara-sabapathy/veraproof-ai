@@ -28,18 +28,27 @@ describe('AuthService', () => {
   beforeEach(() => {
     const routerSpyObj = jasmine.createSpyObj('Router', ['navigate']);
     
-    // Mock localStorage
+    // Mock localStorage - check if already spied to avoid double-spy error
     localStorageMock = {};
-    spyOn(localStorage, 'getItem').and.callFake((key: string) => localStorageMock[key] || null);
-    spyOn(localStorage, 'setItem').and.callFake((key: string, value: string) => {
-      localStorageMock[key] = value;
-    });
-    spyOn(localStorage, 'removeItem').and.callFake((key: string) => {
-      delete localStorageMock[key];
-    });
-    spyOn(localStorage, 'clear').and.callFake(() => {
-      localStorageMock = {};
-    });
+    
+    if (!(localStorage.getItem as any).and) {
+      spyOn(localStorage, 'getItem').and.callFake((key: string) => localStorageMock[key] || null);
+    }
+    if (!(localStorage.setItem as any).and) {
+      spyOn(localStorage, 'setItem').and.callFake((key: string, value: string) => {
+        localStorageMock[key] = value;
+      });
+    }
+    if (!(localStorage.removeItem as any).and) {
+      spyOn(localStorage, 'removeItem').and.callFake((key: string) => {
+        delete localStorageMock[key];
+      });
+    }
+    if (!(localStorage.clear as any).and) {
+      spyOn(localStorage, 'clear').and.callFake(() => {
+        localStorageMock = {};
+      });
+    }
     
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
