@@ -9,6 +9,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let httpMock: HttpTestingController;
   let routerSpy: jasmine.SpyObj<Router>;
+  let localStorageMock: { [key: string]: string };
 
   const mockUser: User = {
     user_id: 'test-user-id',
@@ -26,6 +27,19 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     const routerSpyObj = jasmine.createSpyObj('Router', ['navigate']);
+    
+    // Mock localStorage
+    localStorageMock = {};
+    spyOn(localStorage, 'getItem').and.callFake((key: string) => localStorageMock[key] || null);
+    spyOn(localStorage, 'setItem').and.callFake((key: string, value: string) => {
+      localStorageMock[key] = value;
+    });
+    spyOn(localStorage, 'removeItem').and.callFake((key: string) => {
+      delete localStorageMock[key];
+    });
+    spyOn(localStorage, 'clear').and.callFake(() => {
+      localStorageMock = {};
+    });
     
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
