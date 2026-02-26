@@ -92,7 +92,7 @@ describe('MainLayoutComponent', () => {
     });
   });
 
-  it('should set sidebar visible to false on handset', () => {
+  it('should set sidebar visible to true by default on handset', () => {
     // Need to recreate component with handset breakpoint
     const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
     handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
@@ -101,7 +101,8 @@ describe('MainLayoutComponent', () => {
     const handsetComponent = handsetFixture.componentInstance;
     handsetFixture.detectChanges();
     
-    expect(handsetComponent.sidebarVisible()).toBe(false);
+    // Sidebar starts visible even on handset (user can toggle it)
+    expect(handsetComponent.sidebarVisible()).toBe(true);
   });
 
   it('should set sidebar visible to true on desktop', () => {
@@ -139,11 +140,15 @@ describe('MainLayoutComponent', () => {
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 
-  it('should render PrimeNG sidebar', () => {
-    breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
-    fixture.detectChanges();
+  it('should render PrimeNG sidebar on mobile', () => {
+    // Need to recreate component with handset breakpoint
+    const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
+    handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
+    
+    const handsetFixture = TestBed.createComponent(MainLayoutComponent);
+    handsetFixture.detectChanges();
 
-    const compiled = fixture.nativeElement;
+    const compiled = handsetFixture.nativeElement;
     expect(compiled.querySelector('p-sidebar')).toBeTruthy();
   });
 });

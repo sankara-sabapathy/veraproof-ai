@@ -25,6 +25,7 @@ describe('ApiKeysListComponent', () => {
   let mockStateService: jasmine.SpyObj<ApiKeysStateService>;
   let mockNotificationService: jasmine.SpyObj<NotificationService>;
   let mockConfirmationDialog: jasmine.SpyObj<ConfirmationDialogService>;
+  let clipboardSpy: jasmine.Spy;
 
   const mockApiKeys: ApiKey[] = [
     {
@@ -99,6 +100,14 @@ describe('ApiKeysListComponent', () => {
 
     fixture = TestBed.createComponent(ApiKeysListComponent);
     component = fixture.componentInstance;
+    
+    // Set up clipboard spy after component creation (check if already spied)
+    if (!(navigator.clipboard.writeText as any).and) {
+      clipboardSpy = spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
+    } else {
+      clipboardSpy = navigator.clipboard.writeText as jasmine.Spy;
+      clipboardSpy.and.returnValue(Promise.resolve());
+    }
   });
 
   it('should create', () => {
@@ -206,7 +215,7 @@ describe('ApiKeysListComponent', () => {
   });
 
   it('should copy key to clipboard successfully', async () => {
-    spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
+    clipboardSpy.and.returnValue(Promise.resolve());
     
     await component.copyToClipboard('test_key');
     
@@ -215,7 +224,7 @@ describe('ApiKeysListComponent', () => {
   });
 
   it('should handle clipboard copy failure', async () => {
-    spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.reject(new Error('Clipboard error')));
+    clipboardSpy.and.returnValue(Promise.reject(new Error('Clipboard error')));
     
     await component.copyToClipboard('test_key');
     

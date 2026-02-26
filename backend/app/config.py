@@ -9,7 +9,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # Database
-    database_url: str
+    database_url: str = "postgresql://veraproof:test@localhost:5432/veraproof_test"
     
     # AWS
     aws_endpoint_url: str = "http://localhost:4566"
@@ -19,16 +19,16 @@ class Settings(BaseSettings):
     s3_bucket_name: str = "veraproof-artifacts"
     
     # JWT
-    jwt_secret: str
+    jwt_secret: str = "test-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 1
     refresh_token_expiration_days: int = 30
     
     # Application
     environment: str = "development"
-    backend_url: str
-    frontend_verification_url: str
-    frontend_dashboard_url: str
+    backend_url: str = "http://localhost:8100"
+    frontend_verification_url: str = "http://localhost:8300"
+    frontend_dashboard_url: str = "http://localhost:8200"
     
     # CORS
     cors_origins: str = "http://localhost:3000,http://localhost:4200"
@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     use_mock_sagemaker: bool = True
     use_mock_razorpay: bool = True
     use_local_auth: bool = True
+    
+    # Port configuration (optional, for reference only)
+    backend_http_port: int = 8100
+    backend_https_port: int = 8443
+    partner_dashboard_port: int = 8200
+    verification_interface_port: int = 8300
+    postgres_port: int = 5432
+    localstack_port: int = 4566
     
     @property
     def cors_origins_list(self) -> List[str]:

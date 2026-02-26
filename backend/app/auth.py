@@ -29,6 +29,10 @@ class LocalAuthManager:
         """Create a new user account"""
         from app.database import db_manager
         
+        # Check in-memory cache first
+        if email in self.users:
+            raise ValueError("User already exists")
+        
         # Check if user already exists in database
         check_query = "SELECT user_id FROM users WHERE email = $1"
         existing_user = await db_manager.fetch_one(check_query, email)

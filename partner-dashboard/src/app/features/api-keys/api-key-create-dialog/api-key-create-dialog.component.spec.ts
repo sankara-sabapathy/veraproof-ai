@@ -23,6 +23,7 @@ describe('ApiKeyCreateDialogComponent', () => {
   let mockApiKeysService: jasmine.SpyObj<ApiKeysService>;
   let mockStateService: jasmine.SpyObj<ApiKeysStateService>;
   let mockNotificationService: jasmine.SpyObj<NotificationService>;
+  let clipboardSpy: jasmine.Spy;
 
   const mockApiKeyResponse: ApiKeyResponse = {
     key_id: 'key_123',
@@ -60,6 +61,15 @@ describe('ApiKeyCreateDialogComponent', () => {
 
     fixture = TestBed.createComponent(ApiKeyCreateDialogComponent);
     component = fixture.componentInstance;
+    
+    // Set up clipboard spy after component creation (check if already spied)
+    if (!(navigator.clipboard.writeText as any).and) {
+      clipboardSpy = spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
+    } else {
+      clipboardSpy = navigator.clipboard.writeText as jasmine.Spy;
+      clipboardSpy.and.returnValue(Promise.resolve());
+    }
+    
     fixture.detectChanges();
   });
 
@@ -125,7 +135,7 @@ describe('ApiKeyCreateDialogComponent', () => {
   });
 
   it('should copy API key to clipboard', async () => {
-    spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
+    clipboardSpy.and.returnValue(Promise.resolve());
     component.generatedKey = mockApiKeyResponse;
     
     await component.copyToClipboard(mockApiKeyResponse.api_key);
@@ -136,7 +146,7 @@ describe('ApiKeyCreateDialogComponent', () => {
   });
 
   it('should handle clipboard copy failure', async () => {
-    spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.reject(new Error('Clipboard error')));
+    clipboardSpy.and.returnValue(Promise.reject(new Error('Clipboard error')));
     
     component.copyToClipboard('test');
     
@@ -147,7 +157,7 @@ describe('ApiKeyCreateDialogComponent', () => {
   });
 
   it('should reset copied state after 2 seconds', (done) => {
-    spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
+    clipboardSpy.and.returnValue(Promise.resolve());
     component.generatedKey = mockApiKeyResponse;
     
     component.copyToClipboard(mockApiKeyResponse.api_key);
