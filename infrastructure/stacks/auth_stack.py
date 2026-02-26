@@ -113,13 +113,15 @@ class VeraproofAuthStack(Stack):
             refresh_token_validity=Duration.days(30)
         )
         
-        # User Pool Domain
-        self.user_pool_domain = self.user_pool.add_domain(
-            f"Veraproof-Auth-Domain-{stage}",
-            cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"veraproof-{stage}"
-            )
-        )
+        # User Pool Domain - Commented out due to update issues
+        # Cognito domains are immutable and cannot be updated once created
+        # If you need a domain, create it manually in AWS Console or delete existing one first
+        # self.user_pool_domain = self.user_pool.add_domain(
+        #     f"Veraproof-Auth-Domain-{stage}",
+        #     cognito_domain=cognito.CognitoDomainOptions(
+        #         domain_prefix=f"veraproof-{stage}"
+        #     )
+        # )
         
         # Store Cognito configuration in SSM for easy access
         ssm.StringParameter(
@@ -165,13 +167,14 @@ class VeraproofAuthStack(Stack):
             export_name=f"Veraproof-User-Pool-Client-ID-{stage}"
         )
         
-        CfnOutput(
-            self,
-            f"Auth-Domain-{stage}",
-            value=self.user_pool_domain.domain_name,
-            description=f"Cognito Auth Domain for {stage}",
-            export_name=f"Veraproof-Auth-Domain-{stage}"
-        )
+        # Auth-Domain output commented out since domain creation is disabled
+        # CfnOutput(
+        #     self,
+        #     f"Auth-Domain-{stage}",
+        #     value=self.user_pool_domain.domain_name,
+        #     description=f"Cognito Auth Domain for {stage}",
+        #     export_name=f"Veraproof-Auth-Domain-{stage}"
+        # )
         
         CfnOutput(
             self,
