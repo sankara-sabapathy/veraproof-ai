@@ -227,6 +227,10 @@ jobs:
         id: outputs
         run: |
           cd infrastructure
+          
+          echo "CDK outputs file content:"
+          cat cdk-outputs.json
+          
           LIGHTSAIL_SERVICE=$(jq -r '.["Veraproof-Lightsail-Stack-${{ steps.stage.outputs.stage }}"]["LightsailContainerService${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           DASHBOARD_BUCKET=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["DashboardBucketName${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           VERIFICATION_BUCKET=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationBucketName${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
@@ -234,6 +238,10 @@ jobs:
           VERIFICATION_DIST=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationDistributionID${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           DASHBOARD_URL=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["DashboardURL${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           VERIFICATION_URL=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationURL${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
+          
+          echo "Extracted values:"
+          echo "LIGHTSAIL_SERVICE=$LIGHTSAIL_SERVICE"
+          echo "DASHBOARD_BUCKET=$DASHBOARD_BUCKET"
           
           echo "lightsail-service=$LIGHTSAIL_SERVICE" >> $GITHUB_OUTPUT
           echo "dashboard-bucket=$DASHBOARD_BUCKET" >> $GITHUB_OUTPUT
@@ -312,12 +320,17 @@ jobs:
       - name: Push to Lightsail
         id: push-image
         run: |
+          echo "Service name: ${{ needs.deploy-infrastructure.outputs.lightsail-service }}"
+          
           aws lightsail push-container-image \
             --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
             --label veraproof-api \
             --image veraproof-api:${{ github.sha }} \
             --region ${{ env.AWS_REGION }} \
             --output json > push-output.json
+          
+          echo "Push output:"
+          cat push-output.json
           
           IMAGE_NAME=$(jq -r '.containerImage.image' push-output.json)
           echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
