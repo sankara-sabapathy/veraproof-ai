@@ -31,20 +31,21 @@ describe('AuthService', () => {
     // Mock localStorage - check if already spied to avoid double-spy error
     localStorageMock = {};
     
-    if (!(localStorage.getItem as any).and) {
+    // Safer check: use optional chaining and check if method exists
+    if (!localStorage.getItem || !(localStorage.getItem as any)?.and) {
       spyOn(localStorage, 'getItem').and.callFake((key: string) => localStorageMock[key] || null);
     }
-    if (!(localStorage.setItem as any).and) {
+    if (!localStorage.setItem || !(localStorage.setItem as any)?.and) {
       spyOn(localStorage, 'setItem').and.callFake((key: string, value: string) => {
         localStorageMock[key] = value;
       });
     }
-    if (!(localStorage.removeItem as any).and) {
+    if (!localStorage.removeItem || !(localStorage.removeItem as any)?.and) {
       spyOn(localStorage, 'removeItem').and.callFake((key: string) => {
         delete localStorageMock[key];
       });
     }
-    if (!(localStorage.clear as any).and) {
+    if (!localStorage.clear || !(localStorage.clear as any)?.and) {
       spyOn(localStorage, 'clear').and.callFake(() => {
         localStorageMock = {};
       });
@@ -57,6 +58,7 @@ describe('AuthService', () => {
         { provide: Router, useValue: routerSpyObj }
       ]
     });
+
 
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);
