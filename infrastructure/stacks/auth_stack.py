@@ -117,7 +117,7 @@ class VeraproofAuthStack(Stack):
         self.user_pool_domain = self.user_pool.add_domain(
             f"Veraproof-Auth-Domain-{stage}",
             cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"veraproof-auth-{stage}-{self.account}"
+                domain_prefix=f"veraproof-{stage}"
             )
         )
         
