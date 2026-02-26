@@ -313,35 +313,31 @@ jobs:
       
       - name: Install Lightsail Control Plugin
         run: |
-          # Install lightsailctl plugin for pushing images (no sudo needed for download)
+          # Install lightsailctl plugin for AWS CLI
           curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/tmp/lightsailctl"
           sudo mv /tmp/lightsailctl /usr/local/bin/lightsailctl
           sudo chmod +x /usr/local/bin/lightsailctl
           
-          # Verify installation
-          /usr/local/bin/lightsailctl --version || echo "lightsailctl installed"
+          # Verify AWS CLI is available
+          aws --version
       
       - name: Push to Lightsail
         id: push-image
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           SERVICE_NAME="${{ needs.deploy-infrastructure.outputs.lightsail-service }}"
           echo "Service name: $SERVICE_NAME"
-          echo "Region: $AWS_DEFAULT_REGION"
+          echo "Region: ${{ env.AWS_REGION }}"
           
-          # Push the image using lightsailctl (run without sudo to preserve env vars)
-          /usr/local/bin/lightsailctl push-container-image \
+          # Use AWS CLI with lightsailctl plugin to push the image
+          aws lightsail push-container-image \
             --service-name "$SERVICE_NAME" \
             --label veraproof-api \
             --image veraproof-api:${{ github.sha }} \
-            --region $AWS_DEFAULT_REGION 2>&1 | tee push-output.txt
+            --region ${{ env.AWS_REGION }} 2>&1 | tee push-output.txt
           
           # Check if push was successful
           if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "Error: lightsailctl push failed"
+            echo "Error: AWS Lightsail push failed"
             cat push-output.txt
             exit 1
           fi
