@@ -208,10 +208,16 @@ jobs:
             echo "stage=dev" >> $GITHUB_OUTPUT
           fi
       
+      - name: Get AWS Account ID
+        id: account
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+      
       - name: CDK Diff
         run: |
           cd infrastructure
-          cdk diff --context stage=${{ steps.stage.outputs.stage }} --context account=${{ secrets.AWS_ACCOUNT_ID }}
+          cdk diff --context stage=${{ steps.stage.outputs.stage }} --context account=${{ steps.account.outputs.id }}
         continue-on-error: true
       
       - name: CDK Deploy
@@ -219,7 +225,7 @@ jobs:
           cd infrastructure
           cdk deploy --all \
             --context stage=${{ steps.stage.outputs.stage }} \
-            --context account=${{ secrets.AWS_ACCOUNT_ID }} \
+            --context account=${{ steps.account.outputs.id }} \
             --require-approval never \
             --outputs-file cdk-outputs.json
       
@@ -271,6 +277,12 @@ jobs:
           else
             echo "stage=dev" >> $GITHUB_OUTPUT
           fi
+      
+      - name: Get AWS Account ID
+        id: account
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
       
       - name: Get database credentials
         id: db-creds
@@ -350,8 +362,8 @@ jobs:
                   "DATABASE_URL": "postgresql://veraproof_admin:${{ steps.db-creds.outputs.password }}@${{ steps.db-creds.outputs.endpoint }}:5432/veraproof",
                   "COGNITO_USER_POOL_ID": "ap-south-1_l4nlq0n8y",
                   "COGNITO_CLIENT_ID": "2b7tq4gj7426iamis9snrrh2fo",
-                  "ARTIFACTS_BUCKET": "veraproof-artifacts-${{ steps.stage.outputs.stage }}-${{ secrets.AWS_ACCOUNT_ID }}",
-                  "BRANDING_BUCKET": "veraproof-branding-${{ steps.stage.outputs.stage }}-${{ secrets.AWS_ACCOUNT_ID }}",
+                  "ARTIFACTS_BUCKET": "veraproof-artifacts-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
+                  "BRANDING_BUCKET": "veraproof-branding-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
                   "JWT_SECRET": "$JWT_SECRET",
                   "JWT_ALGORITHM": "HS256",
                   "JWT_EXPIRATION_HOURS": "1",
