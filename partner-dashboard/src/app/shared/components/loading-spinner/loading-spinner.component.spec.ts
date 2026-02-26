@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { LoadingSpinnerComponent } from './loading-spinner.component';
 import { DebugElement } from '@angular/core';
 import { By } from '@angular/platform-browser';
@@ -11,8 +11,7 @@ describe('LoadingSpinnerComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ LoadingSpinnerComponent ],
-      imports: [ MatProgressSpinnerModule ]
+      imports: [ LoadingSpinnerComponent ]
     })
     .compileComponents();
 
@@ -29,7 +28,7 @@ describe('LoadingSpinnerComponent', () => {
     it('should render spinner with default diameter', () => {
       fixture.detectChanges();
       
-      const spinner = compiled.query(By.css('mat-spinner'));
+      const spinner = compiled.query(By.css('p-progressSpinner'));
       expect(spinner).toBeTruthy();
       expect(component.diameter).toBe(50);
     });
@@ -38,7 +37,7 @@ describe('LoadingSpinnerComponent', () => {
       component.diameter = 100;
       fixture.detectChanges();
       
-      const spinner = compiled.query(By.css('mat-spinner'));
+      const spinner = compiled.query(By.css('p-progressSpinner'));
       expect(spinner).toBeTruthy();
       expect(component.diameter).toBe(100);
     });

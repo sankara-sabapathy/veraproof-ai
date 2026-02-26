@@ -167,23 +167,81 @@ class VerificationApp {
    * Initialize all components
    */
   async initializeComponents() {
-    // Initialize video capture
-    this.videoCapture = new VideoCapture(250); // 250ms chunks
-    const stream = await this.videoCapture.initialize();
-    this.ui.setupVideoPreview(stream);
+    try {
+      // Initialize video capture
+      this.videoCapture = new VideoCapture(250); // 250ms chunks
+      const stream = await this.videoCapture.initialize();
+      this.ui.setupVideoPreview(stream);
 
-    // Initialize IMU collector
-    this.imuCollector = new IMUCollector(60); // 60Hz sampling
+      // Initialize IMU collector
+      this.imuCollector = new IMUCollector(60); // 60Hz sampling
 
-    // Initialize WebSocket manager
-    this.wsManager = new WSManager(this.sessionId);
-    await this.wsManager.connect();
+      // Initialize WebSocket manager
+      this.wsManager = new WSManager(this.sessionId);
+      
+      // Test backend connection first (for self-signed cert acceptance)
+      await this.testBackendConnection();
+      
+      await this.wsManager.connect();
 
-    // Initialize challenge controller
-    this.challengeController = new ChallengeController(this.wsManager);
+      // Initialize challenge controller
+      this.challengeController = new ChallengeController(this.wsManager);
 
-    // Setup event handlers
-    this.setupEventHandlers();
+      // Setup event handlers
+      this.setupEventHandlers();
+    } catch (error) {
+      console.error('Component initialization error:', error);
+      
+      // Check if it's a certificate/connection error
+      if (error.message.includes('WebSocket') || error.message.includes('certificate')) {
+        this.ui.showError({ 
+          message: 'Connection failed. Please ensure you have accepted the security certificate. Click "Try Again" and accept any certificate warnings.',
+          showRetry: true
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Test backend connection (helps with self-signed cert acceptance)
+   * Only runs in development (localhost)
+   */
+  async testBackendConnection() {
+    // Skip certificate check in production
+    if (!window.location.hostname.includes('localhost') && window.location.port !== '3443') {
+      console.log('Production environment detected, skipping certificate check');
+      return;
+    }
+    
+    const apiUrl = this.wsManager.apiUrl;
+    const healthUrl = `${apiUrl.replace('wss:', 'https:').replace('ws:', 'http:')}/health`;
+    
+    try {
+      const response = await fetch(healthUrl, { 
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Backend health check failed');
+      }
+      
+      console.log('Backend connection test successful');
+    } catch (error) {
+      console.error('Backend connection test failed:', error);
+      
+      // Only redirect to cert helper in local development
+      if (window.location.hostname === 'localhost' || window.location.port === '3443') {
+        const params = new URLSearchParams(window.location.search);
+        window.location.href = `/cert-helper.html?${params.toString()}`;
+        throw new Error('Redirecting to certificate setup...');
+      } else {
+        // In production, throw a more helpful error
+        throw new Error('Cannot connect to backend server. Please check your network connection and try again.');
+      }
+    }
   }
 
   /**

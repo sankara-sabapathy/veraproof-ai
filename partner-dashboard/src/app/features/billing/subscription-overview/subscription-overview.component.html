@@ -1,13 +1,13 @@
 <div class="subscription-overview">
-  <mat-card *ngIf="subscription$ | async as subscription; else loading">
-    <mat-card-header>
-      <mat-card-title>Current Subscription</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
+  <p-card *ngIf="subscription$ | async as subscription; else loading">
+    <ng-template pTemplate="header">
+      <div class="card-header">Current Subscription</div>
+    </ng-template>
+    <ng-template pTemplate="content">
       <div class="subscription-details">
         <div class="detail-row">
           <span class="label">Plan:</span>
-          <mat-chip [color]="'primary'" selected>{{ subscription.subscription_tier }}</mat-chip>
+          <p-chip [label]="subscription.subscription_tier" styleClass="plan-chip"></p-chip>
         </div>
         <div class="detail-row">
           <span class="label">Monthly Quota:</span>
@@ -23,15 +23,15 @@
         </div>
         
         <div class="quota-progress">
-          <mat-progress-bar 
-            mode="determinate" 
+          <p-progressBar 
             [value]="subscription.usage_percentage"
-            [color]="getUsageColor(subscription.usage_percentage)">
-          </mat-progress-bar>
+            [showValue]="false"
+            [styleClass]="'usage-' + getUsageColor(subscription.usage_percentage)">
+          </p-progressBar>
           <span class="progress-label">{{ subscription.usage_percentage | number:'1.0-1' }}% used</span>
         </div>
 
-        <mat-divider></mat-divider>
+        <p-divider></p-divider>
 
         <div class="detail-row">
           <span class="label">Billing Cycle:</span>
@@ -48,17 +48,23 @@
       </div>
 
       <div class="actions" *ngIf="subscription.usage_percentage >= 80">
-        <mat-card class="warning-card">
-          <mat-icon color="warn">warning</mat-icon>
-          <p>You've used {{ subscription.usage_percentage | number:'1.0-1' }}% of your monthly quota. Consider upgrading your plan or purchasing additional credits.</p>
-        </mat-card>
+        <p-card styleClass="warning-card">
+          <ng-template pTemplate="content">
+            <div class="warning-content">
+              <i class="pi pi-exclamation-triangle warning-icon"></i>
+              <p>You've used {{ subscription.usage_percentage | number:'1.0-1' }}% of your monthly quota. Consider upgrading your plan or purchasing additional credits.</p>
+            </div>
+          </ng-template>
+        </p-card>
       </div>
-    </mat-card-content>
-    <mat-card-actions>
-      <button mat-raised-button color="primary" routerLink="/billing/plans">View Plans</button>
-      <button mat-button routerLink="/billing/invoices">View Invoices</button>
-    </mat-card-actions>
-  </mat-card>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <div class="card-actions">
+        <p-button label="View Plans" [routerLink]="['/billing/plans']" severity="primary"></p-button>
+        <p-button label="View Invoices" [routerLink]="['/billing/invoices']" severity="secondary" [text]="true"></p-button>
+      </div>
+    </ng-template>
+  </p-card>
 
   <ng-template #loading>
     <app-loading-spinner message="Loading subscription details..."></app-loading-spinner>

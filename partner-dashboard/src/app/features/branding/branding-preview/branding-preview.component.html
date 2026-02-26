@@ -1,9 +1,11 @@
-<mat-card class="preview-card">
-  <mat-card-header>
-    <mat-card-title>Preview</mat-card-title>
-    <mat-card-subtitle>How your verification interface will look</mat-card-subtitle>
-  </mat-card-header>
-  <mat-card-content>
+<p-card styleClass="preview-card">
+  <ng-template pTemplate="header">
+    <div class="card-header">
+      <h3>Preview</h3>
+      <p class="card-subtitle">How your verification interface will look</p>
+    </div>
+  </ng-template>
+  <ng-template pTemplate="content">
     <div class="verification-preview" *ngIf="config">
       <div class="preview-header">
         <img *ngIf="config && config.logo_url" [src]="config.logo_url" alt="Logo" class="preview-logo">
@@ -19,12 +21,12 @@
         </div>
         
         <div class="preview-instruction">
-          <mat-icon>phone_iphone</mat-icon>
+          <i class="pi pi-mobile"></i>
           <span>Tilt phone right</span>
         </div>
         
         <button class="preview-button">Continue</button>
       </div>
     </div>
-  </mat-card-content>
-</mat-card>
+  </ng-template>
+</p-card>

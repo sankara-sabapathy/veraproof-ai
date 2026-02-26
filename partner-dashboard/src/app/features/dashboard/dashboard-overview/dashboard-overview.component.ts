@@ -1,14 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
-import { MatTableModule } from '@angular/material/table';
+import { Router, RouterModule } from '@angular/router';
+import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { ChipModule } from 'primeng/chip';
+import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { DashboardService, DashboardData } from '../services/dashboard.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AnalyticsService } from '../../analytics/services/analytics.service';
@@ -23,19 +22,19 @@ import { SessionCreateDialogComponent } from '../../sessions/session-create-dial
   standalone: true,
   imports: [
     CommonModule,
-    MatDialogModule,
-    MatCardModule,
-    MatButtonModule,
-    MatProgressBarModule,
-    MatChipsModule,
-    MatIconModule,
-    MatListModule,
-    MatTableModule,
+    RouterModule,
+    CardModule,
+    ButtonModule,
+    ProgressBarModule,
+    ChipModule,
+    TableModule,
+    TooltipModule,
     StatCardComponent,
     UsageChartComponent,
     OutcomeChartComponent,
     LoadingSpinnerComponent
   ],
+  providers: [DialogService],
   templateUrl: './dashboard-overview.component.html',
   styleUrls: ['./dashboard-overview.component.scss']
 })
@@ -44,13 +43,14 @@ export class DashboardOverviewComponent implements OnInit {
   loading = false;
   usageTrendData: any[] = [];
   outcomeDistribution: any = null;
+  dialogRef: DynamicDialogRef | undefined;
 
   constructor(
     private dashboardService: DashboardService,
     private analyticsService: AnalyticsService,
     private notification: NotificationService,
     private router: Router,
-    private dialog: MatDialog
+    private dialogService: DialogService
   ) {}
 
   ngOnInit(): void {
@@ -93,12 +93,13 @@ export class DashboardOverviewComponent implements OnInit {
   }
 
   createSession(): void {
-    const dialogRef = this.dialog.open(SessionCreateDialogComponent, {
+    this.dialogRef = this.dialogService.open(SessionCreateDialogComponent, {
+      header: 'Create Session',
       width: '600px',
-      disableClose: false
+      modal: true
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    this.dialogRef.onClose.subscribe(result => {
       if (result) {
         // Session was created, reload dashboard to show it
         this.loadDashboard();

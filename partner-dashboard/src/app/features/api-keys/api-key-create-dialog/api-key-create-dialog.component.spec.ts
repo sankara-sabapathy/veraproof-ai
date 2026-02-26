@@ -1,13 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
-import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DynamicDialogRef, DynamicDialogConfig } from 'primeng/dynamicdialog';
+import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
+import { CardModule } from 'primeng/card';
+import { ChipModule } from 'primeng/chip';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { ApiKeyCreateDialogComponent } from './api-key-create-dialog.component';
@@ -19,7 +18,8 @@ import { ApiKeyResponse } from '../../../core/models/interfaces';
 describe('ApiKeyCreateDialogComponent', () => {
   let component: ApiKeyCreateDialogComponent;
   let fixture: ComponentFixture<ApiKeyCreateDialogComponent>;
-  let mockDialogRef: jasmine.SpyObj<MatDialogRef<ApiKeyCreateDialogComponent>>;
+  let mockDialogRef: jasmine.SpyObj<DynamicDialogRef>;
+  let mockConfig: DynamicDialogConfig;
   let mockApiKeysService: jasmine.SpyObj<ApiKeysService>;
   let mockStateService: jasmine.SpyObj<ApiKeysStateService>;
   let mockNotificationService: jasmine.SpyObj<NotificationService>;
@@ -31,27 +31,27 @@ describe('ApiKeyCreateDialogComponent', () => {
   };
 
   beforeEach(async () => {
-    mockDialogRef = jasmine.createSpyObj('MatDialogRef', ['close']);
+    mockDialogRef = jasmine.createSpyObj('DynamicDialogRef', ['close']);
+    mockConfig = { data: {} };
     mockApiKeysService = jasmine.createSpyObj('ApiKeysService', ['generateKey']);
     mockStateService = jasmine.createSpyObj('ApiKeysStateService', ['addKey']);
     mockNotificationService = jasmine.createSpyObj('NotificationService', ['success', 'error']);
 
     await TestBed.configureTestingModule({
-      declarations: [ApiKeyCreateDialogComponent],
       imports: [
+        ApiKeyCreateDialogComponent,
         BrowserAnimationsModule,
         ReactiveFormsModule,
-        MatDialogModule,
-        MatFormFieldModule,
-        MatSelectModule,
-        MatButtonModule,
-        MatIconModule,
-        MatCardModule,
-        MatChipsModule,
-        MatProgressSpinnerModule
+        ButtonModule,
+        DropdownModule,
+        CardModule,
+        ChipModule,
+        ProgressSpinnerModule,
+        TooltipModule
       ],
       providers: [
-        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DynamicDialogRef, useValue: mockDialogRef },
+        { provide: DynamicDialogConfig, useValue: mockConfig },
         { provide: ApiKeysService, useValue: mockApiKeysService },
         { provide: ApiKeysStateService, useValue: mockStateService },
         { provide: NotificationService, useValue: mockNotificationService }
@@ -73,6 +73,12 @@ describe('ApiKeyCreateDialogComponent', () => {
 
   it('should have valid form when environment is selected', () => {
     expect(component.createForm.valid).toBe(true);
+  });
+
+  it('should initialize environment options', () => {
+    expect(component.environmentOptions.length).toBe(2);
+    expect(component.environmentOptions[0].value).toBe('sandbox');
+    expect(component.environmentOptions[1].value).toBe('production');
   });
 
   it('should generate API key successfully', () => {

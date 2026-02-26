@@ -1,82 +1,114 @@
 <div class="webhook-list">
   <div class="header">
     <h2>Webhooks</h2>
-    <button mat-raised-button color="primary" (click)="openCreateDialog()">
-      <mat-icon>add</mat-icon>
-      Add Webhook
-    </button>
+    <p-button 
+      label="Add Webhook" 
+      icon="pi pi-plus" 
+      (onClick)="openCreateDialog()">
+    </p-button>
   </div>
 
-  <mat-card *ngIf="webhooks$ | async as webhooks; else loading">
-    <table mat-table [dataSource]="webhooks" class="webhooks-table">
-      <ng-container matColumnDef="url">
-        <th mat-header-cell *matHeaderCellDef>URL</th>
-        <td mat-cell *matCellDef="let webhook">
-          <div class="url-cell">
-            <span class="url">{{ webhook.url }}</span>
-            <mat-chip *ngIf="!webhook.enabled" color="warn" selected>Disabled</mat-chip>
-          </div>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="enabled">
-        <th mat-header-cell *matHeaderCellDef>Status</th>
-        <td mat-cell *matCellDef="let webhook">
-          <mat-slide-toggle 
-            [checked]="webhook.enabled"
-            (change)="toggleWebhook(webhook)"
-            color="primary">
-          </mat-slide-toggle>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="events">
-        <th mat-header-cell *matHeaderCellDef>Events</th>
-        <td mat-cell *matCellDef="let webhook">
-          <mat-chip-listbox>
-            <mat-chip *ngFor="let event of webhook.events">{{ event }}</mat-chip>
-          </mat-chip-listbox>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="stats">
-        <th mat-header-cell *matHeaderCellDef>Statistics</th>
-        <td mat-cell *matCellDef="let webhook">
-          <div class="stats">
-            <span class="success">✓ {{ webhook.success_count }}</span>
-            <span class="failure">✗ {{ webhook.failure_count }}</span>
-          </div>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let webhook">
-          <button mat-icon-button (click)="testWebhook(webhook)" matTooltip="Test Webhook">
-            <mat-icon>play_arrow</mat-icon>
-          </button>
-          <button mat-icon-button (click)="viewLogs(webhook)" matTooltip="View Logs">
-            <mat-icon>history</mat-icon>
-          </button>
-          <button mat-icon-button (click)="openEditDialog(webhook)" matTooltip="Edit">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button (click)="deleteWebhook(webhook)" matTooltip="Delete">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-
-    <div *ngIf="webhooks.length === 0" class="no-data">
-      <mat-icon>webhook</mat-icon>
-      <p>No webhooks configured</p>
-      <button mat-raised-button color="primary" (click)="openCreateDialog()">Add Your First Webhook</button>
-    </div>
-  </mat-card>
+  <p-card *ngIf="webhooks$ | async as webhooks; else loading">
+    <p-table 
+      [value]="webhooks" 
+      styleClass="p-datatable-striped"
+      [tableStyle]="{'min-width': '50rem'}">
+      
+      <ng-template pTemplate="header">
+        <tr>
+          <th>URL</th>
+          <th style="width: 100px">Status</th>
+          <th style="width: 250px">Events</th>
+          <th style="width: 150px">Statistics</th>
+          <th style="width: 200px">Actions</th>
+        </tr>
+      </ng-template>
+      
+      <ng-template pTemplate="body" let-webhook>
+        <tr>
+          <td>
+            <div class="url-cell">
+              <span class="url">{{ webhook.url }}</span>
+              <p-chip 
+                *ngIf="!webhook.enabled" 
+                label="Disabled" 
+                styleClass="chip-warn">
+              </p-chip>
+            </div>
+          </td>
+          <td>
+            <p-inputSwitch 
+              [(ngModel)]="webhook.enabled"
+              (onChange)="toggleWebhook(webhook)">
+            </p-inputSwitch>
+          </td>
+          <td>
+            <div class="events-cell">
+              <p-chip 
+                *ngFor="let event of webhook.events" 
+                [label]="event"
+                styleClass="event-chip">
+              </p-chip>
+            </div>
+          </td>
+          <td>
+            <div class="stats">
+              <span class="success">✓ {{ webhook.success_count }}</span>
+              <span class="failure">✗ {{ webhook.failure_count }}</span>
+            </div>
+          </td>
+          <td>
+            <div class="actions">
+              <p-button 
+                icon="pi pi-play" 
+                [text]="true" 
+                [rounded]="true"
+                (onClick)="testWebhook(webhook)" 
+                pTooltip="Test Webhook">
+              </p-button>
+              <p-button 
+                icon="pi pi-history" 
+                [text]="true" 
+                [rounded]="true"
+                (onClick)="viewLogs(webhook)" 
+                pTooltip="View Logs">
+              </p-button>
+              <p-button 
+                icon="pi pi-pencil" 
+                [text]="true" 
+                [rounded]="true"
+                (onClick)="openEditDialog(webhook)" 
+                pTooltip="Edit">
+              </p-button>
+              <p-button 
+                icon="pi pi-trash" 
+                [text]="true" 
+                [rounded]="true"
+                severity="danger"
+                (onClick)="deleteWebhook(webhook)" 
+                pTooltip="Delete">
+              </p-button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5">
+            <div class="no-data">
+              <i class="pi pi-inbox" style="font-size: 3rem"></i>
+              <p>No webhooks configured</p>
+              <p-button 
+                label="Add Your First Webhook" 
+                (onClick)="openCreateDialog()">
+              </p-button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
 
   <ng-template #loading>
     <app-loading-spinner message="Loading webhooks..."></app-loading-spinner>

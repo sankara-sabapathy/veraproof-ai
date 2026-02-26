@@ -2,98 +2,133 @@
   <h2>Custom Branding</h2>
 
   <div class="editor-container">
-    <mat-card class="editor-card">
-      <mat-card-header>
-        <mat-card-title>Logo</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
+    <p-card styleClass="editor-card">
+      <ng-template pTemplate="header">
+        <div class="card-header">Logo</div>
+      </ng-template>
+      <ng-template pTemplate="content">
         <div class="logo-section">
           <div class="logo-preview" *ngIf="logoPreview">
             <img [src]="logoPreview" alt="Logo preview">
           </div>
           <div class="logo-upload">
-            <input type="file" #fileInput (change)="onFileSelected($event)" 
-                   accept="image/png,image/jpeg,image/svg+xml" hidden>
-            <button mat-raised-button (click)="fileInput.click()">
-              <mat-icon>upload</mat-icon>
-              Choose Logo
-            </button>
-            <button mat-raised-button color="primary" (click)="uploadLogo()" 
-                    [disabled]="!logoFile || (loading$ | async)">
-              <mat-icon>cloud_upload</mat-icon>
-              Upload
-            </button>
+            <p-fileUpload 
+              mode="basic" 
+              chooseLabel="Choose Logo" 
+              [auto]="false"
+              accept="image/png,image/jpeg,image/svg+xml"
+              [maxFileSize]="2097152"
+              (onSelect)="onFileSelected($event)"
+              [disabled]="(loading$ | async) ?? false">
+            </p-fileUpload>
+            <p-button 
+              label="Upload" 
+              icon="pi pi-cloud-upload" 
+              (onClick)="uploadLogo()" 
+              [disabled]="!logoFile || ((loading$ | async) ?? false)">
+            </p-button>
           </div>
-          <mat-hint>PNG, JPG, or SVG. Max 2MB</mat-hint>
+          <small class="p-text-secondary">PNG, JPG, or SVG. Max 2MB</small>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </ng-template>
+    </p-card>
 
-    <mat-card class="editor-card">
-      <mat-card-header>
-        <mat-card-title>Colors</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
+    <p-card styleClass="editor-card">
+      <ng-template pTemplate="header">
+        <div class="card-header">Colors</div>
+      </ng-template>
+      <ng-template pTemplate="content">
         <form [formGroup]="form">
           <div class="color-field">
             <label>Primary Color</label>
             <div class="color-input">
-              <input type="color" [value]="form.get('primary_color')?.value"
-                     (input)="form.patchValue({ primary_color: $any($event.target).value })">
-              <mat-form-field appearance="outline">
-                <input matInput formControlName="primary_color" placeholder="#3f51b5">
-                <mat-error *ngIf="form.get('primary_color')?.invalid">
-                  {{ getErrorMessage('primary_color') }}
-                </mat-error>
-              </mat-form-field>
+              <p-colorPicker 
+                formControlName="primary_color" 
+                [inline]="false">
+              </p-colorPicker>
+              <span class="p-float-label">
+                <input 
+                  pInputText 
+                  id="primary_color"
+                  formControlName="primary_color" 
+                  [class.ng-invalid]="form.get('primary_color')?.invalid && form.get('primary_color')?.touched">
+                <label for="primary_color">Hex Color</label>
+              </span>
             </div>
-            <mat-hint *ngIf="contrastWarnings['primary_color']" class="warning">
-              <mat-icon>warning</mat-icon>
+            <small *ngIf="form.get('primary_color')?.invalid && form.get('primary_color')?.touched" class="p-error">
+              {{ getErrorMessage('primary_color') }}
+            </small>
+            <small *ngIf="contrastWarnings['primary_color']" class="warning">
+              <i class="pi pi-exclamation-triangle"></i>
               {{ contrastWarnings['primary_color'] }}
-            </mat-hint>
+            </small>
           </div>
 
           <div class="color-field">
             <label>Secondary Color</label>
             <div class="color-input">
-              <input type="color" [value]="form.get('secondary_color')?.value"
-                     (input)="form.patchValue({ secondary_color: $any($event.target).value })">
-              <mat-form-field appearance="outline">
-                <input matInput formControlName="secondary_color" placeholder="#ff4081">
-                <mat-error *ngIf="form.get('secondary_color')?.invalid">
-                  {{ getErrorMessage('secondary_color') }}
-                </mat-error>
-              </mat-form-field>
+              <p-colorPicker 
+                formControlName="secondary_color" 
+                [inline]="false">
+              </p-colorPicker>
+              <span class="p-float-label">
+                <input 
+                  pInputText 
+                  id="secondary_color"
+                  formControlName="secondary_color" 
+                  [class.ng-invalid]="form.get('secondary_color')?.invalid && form.get('secondary_color')?.touched">
+                <label for="secondary_color">Hex Color</label>
+              </span>
             </div>
+            <small *ngIf="form.get('secondary_color')?.invalid && form.get('secondary_color')?.touched" class="p-error">
+              {{ getErrorMessage('secondary_color') }}
+            </small>
           </div>
 
           <div class="color-field">
             <label>Button Color</label>
             <div class="color-input">
-              <input type="color" [value]="form.get('button_color')?.value"
-                     (input)="form.patchValue({ button_color: $any($event.target).value })">
-              <mat-form-field appearance="outline">
-                <input matInput formControlName="button_color" placeholder="#3f51b5">
-                <mat-error *ngIf="form.get('button_color')?.invalid">
-                  {{ getErrorMessage('button_color') }}
-                </mat-error>
-              </mat-form-field>
+              <p-colorPicker 
+                formControlName="button_color" 
+                [inline]="false">
+              </p-colorPicker>
+              <span class="p-float-label">
+                <input 
+                  pInputText 
+                  id="button_color"
+                  formControlName="button_color" 
+                  [class.ng-invalid]="form.get('button_color')?.invalid && form.get('button_color')?.touched">
+                <label for="button_color">Hex Color</label>
+              </span>
             </div>
-            <mat-hint *ngIf="contrastWarnings['button_color']" class="warning">
-              <mat-icon>warning</mat-icon>
+            <small *ngIf="form.get('button_color')?.invalid && form.get('button_color')?.touched" class="p-error">
+              {{ getErrorMessage('button_color') }}
+            </small>
+            <small *ngIf="contrastWarnings['button_color']" class="warning">
+              <i class="pi pi-exclamation-triangle"></i>
               {{ contrastWarnings['button_color'] }}
-            </mat-hint>
+            </small>
           </div>
         </form>
-      </mat-card-content>
-      <mat-card-actions>
-        <button mat-raised-button color="primary" (click)="saveColors()" 
-                [disabled]="form.invalid || (loading$ | async)">
-          Save Colors
-        </button>
-        <button mat-button (click)="resetBranding()">Reset to Default</button>
-      </mat-card-actions>
-    </mat-card>
+      </ng-template>
+      <ng-template pTemplate="footer">
+        <div class="card-actions">
+          <p-button 
+            label="Save Colors" 
+            icon="pi pi-check" 
+            (onClick)="saveColors()" 
+            [disabled]="form.invalid || ((loading$ | async) ?? false)">
+          </p-button>
+          <p-button 
+            label="Reset to Default" 
+            icon="pi pi-refresh" 
+            [outlined]="true"
+            severity="secondary"
+            (onClick)="resetBranding()">
+          </p-button>
+        </div>
+      </ng-template>
+    </p-card>
 
     <app-branding-preview [config]="config$ | async"></app-branding-preview>
   </div>

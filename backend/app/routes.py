@@ -23,6 +23,41 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1")
 
 
+# Helper function to ensure tenant exists in database
+async def ensure_tenant_exists(tenant_id: str):
+    """Ensure tenant exists in database (for development with in-memory auth)"""
+    from datetime import datetime, timedelta
+    
+    # Check if tenant exists
+    check_query = "SELECT tenant_id FROM tenants WHERE tenant_id = $1"
+    exists = await db_manager.fetch_one(check_query, tenant_id)
+    
+    if exists:
+        return  # Tenant already exists
+    
+    # Create tenant
+    insert_query = """
+        INSERT INTO tenants (
+            tenant_id, email, subscription_tier, 
+            monthly_quota, current_usage, billing_cycle_start, billing_cycle_end
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    """
+    try:
+        await db_manager.execute_query(
+            insert_query,
+            tenant_id,
+            f"tenant_{tenant_id[:8]}@veraproof.ai",
+            'Sandbox',
+            1000,
+            0,
+            datetime.utcnow().date(),
+            (datetime.utcnow() + timedelta(days=30)).date()
+        )
+        logger.info(f"Created tenant in database: {tenant_id}")
+    except Exception as e:
+        logger.warning(f"Could not create tenant: {e}")
+
+
 # Dependency to extract tenant_id from API key
 async def get_tenant_from_api_key(authorization: str = Header(...)) -> str:
     """Extract tenant_id from API key"""
@@ -68,28 +103,8 @@ async def create_session(
     if not await quota_manager.check_quota(tenant_id):
         raise HTTPException(status_code=429, detail="Usage quota exceeded")
     
-    # Ensure tenant exists in database (for development with in-memory auth)
-    from datetime import datetime, timedelta
-    ensure_tenant_query = """
-        INSERT INTO tenants (
-            tenant_id, email, subscription_tier, 
-            monthly_quota, current_usage, billing_cycle_start, billing_cycle_end
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (tenant_id) DO NOTHING
-    """
-    try:
-        await db_manager.execute_query(
-            ensure_tenant_query,
-            tenant_id,
-            f"tenant_{tenant_id[:8]}@veraproof.ai",
-            'Sandbox',
-            1000,
-            0,
-            datetime.utcnow().date(),
-            (datetime.utcnow() + timedelta(days=30)).date()
-        )
-    except Exception as e:
-        logger.warning(f"Could not ensure tenant exists: {e}")
+    # Ensure tenant exists in database
+    await ensure_tenant_exists(tenant_id)
     
     # Create session
     session = await session_manager.create_session(
@@ -114,6 +129,9 @@ async def create_session_dashboard(
     # Check quota
     if not await quota_manager.check_quota(tenant_id):
         raise HTTPException(status_code=429, detail="Usage quota exceeded")
+    
+    # Ensure tenant exists in database
+    await ensure_tenant_exists(tenant_id)
     
     # Create session
     session = await session_manager.create_session(
@@ -366,6 +384,165 @@ async def get_branding(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get branding configuration"""
     branding = await branding_manager.get_branding(tenant_id)
     return branding
+
+
+@router.post("/branding/reset")
+async def reset_branding(tenant_id: str = Depends(get_tenant_from_jwt)):
+    """Reset branding to defaults"""
+    await branding_manager.reset_branding(tenant_id)
+    return {"message": "Branding reset to defaults"}
+
+
+# Webhook Management Endpoints
+@router.get("/webhooks")
+async def list_webhooks(tenant_id: str = Depends(get_tenant_from_jwt)):
+    """List all webhooks for tenant"""
+    query = """
+        SELECT webhook_id, tenant_id, url, enabled, events, 
+               created_at, last_triggered_at, success_count, failure_count
+        FROM webhooks
+        WHERE tenant_id = $1
+        ORDER BY created_at DESC
+    """
+    webhooks = await db_manager.fetch_all(query, tenant_id)
+    return webhooks
+
+
+@router.post("/webhooks")
+async def create_webhook(
+    config: dict,
+    tenant_id: str = Depends(get_tenant_from_jwt)
+):
+    """Create a new webhook"""
+    import uuid
+    from datetime import datetime
+    
+    webhook_id = str(uuid.uuid4())
+    query = """
+        INSERT INTO webhooks (webhook_id, tenant_id, url, enabled, events, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING webhook_id, tenant_id, url, enabled, events, created_at, 
+                  last_triggered_at, success_count, failure_count
+    """
+    webhook = await db_manager.fetch_one(
+        query,
+        webhook_id,
+        tenant_id,
+        config['url'],
+        config.get('enabled', True),
+        config.get('events', ['verification.complete']),
+        datetime.utcnow()
+    )
+    return webhook
+
+
+@router.put("/webhooks/{webhook_id}")
+async def update_webhook(
+    webhook_id: str,
+    config: dict,
+    tenant_id: str = Depends(get_tenant_from_jwt)
+):
+    """Update webhook configuration"""
+    query = """
+        UPDATE webhooks
+        SET url = $1, enabled = $2, events = $3
+        WHERE webhook_id = $4 AND tenant_id = $5
+        RETURNING webhook_id, tenant_id, url, enabled, events, created_at,
+                  last_triggered_at, success_count, failure_count
+    """
+    webhook = await db_manager.fetch_one(
+        query,
+        config['url'],
+        config.get('enabled', True),
+        config.get('events', ['verification.complete']),
+        webhook_id,
+        tenant_id
+    )
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    return webhook
+
+
+@router.delete("/webhooks/{webhook_id}")
+async def delete_webhook(
+    webhook_id: str,
+    tenant_id: str = Depends(get_tenant_from_jwt)
+):
+    """Delete a webhook"""
+    query = "DELETE FROM webhooks WHERE webhook_id = $1 AND tenant_id = $2"
+    result = await db_manager.execute_query(query, webhook_id, tenant_id)
+    return {"message": "Webhook deleted"}
+
+
+@router.post("/webhooks/{webhook_id}/test")
+async def test_webhook(
+    webhook_id: str,
+    tenant_id: str = Depends(get_tenant_from_jwt)
+):
+    """Test webhook delivery"""
+    import httpx
+    from datetime import datetime
+    
+    # Get webhook
+    query = "SELECT url, enabled FROM webhooks WHERE webhook_id = $1 AND tenant_id = $2"
+    webhook = await db_manager.fetch_one(query, webhook_id, tenant_id)
+    
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    
+    # Send test payload
+    test_payload = {
+        "event": "webhook.test",
+        "session_id": "test-session",
+        "tier_1_score": 95,
+        "tier_2_score": 92,
+        "final_trust_score": 93,
+        "verification_status": "success",
+        "timestamp": datetime.utcnow().isoformat(),
+        "metadata": {"test": True}
+    }
+    
+    try:
+        start_time = datetime.utcnow()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(webhook['url'], json=test_payload)
+        end_time = datetime.utcnow()
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        
+        return {
+            "success": response.status_code < 400,
+            "status_code": response.status_code,
+            "response_time_ms": response_time_ms,
+            "error_message": None if response.status_code < 400 else response.text
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "status_code": 0,
+            "response_time_ms": 0,
+            "error_message": str(e)
+        }
+
+
+@router.get("/webhooks/{webhook_id}/logs")
+async def get_webhook_logs(
+    webhook_id: str,
+    tenant_id: str = Depends(get_tenant_from_jwt),
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get webhook delivery logs"""
+    query = """
+        SELECT log_id, webhook_id, timestamp, event_type, status_code,
+               response_time_ms, success, error_message, retry_count
+        FROM webhook_logs
+        WHERE webhook_id = $1
+        ORDER BY timestamp DESC
+        LIMIT $2 OFFSET $3
+    """
+    logs = await db_manager.fetch_all(query, webhook_id, limit, offset)
+    return logs
+
 
 # Billing Endpoints
 @router.get("/billing/subscription")

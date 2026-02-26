@@ -1,17 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatTableModule } from '@angular/material/table';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { FormsModule } from '@angular/forms';
+import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
+import { ChipModule } from 'primeng/chip';
+import { InputSwitchModule } from 'primeng/inputswitch';
+import { TooltipModule } from 'primeng/tooltip';
 import { WebhooksService, Webhook } from '../services/webhooks.service';
 import { WebhooksStateService } from '../services/webhooks-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { WebhookFormComponent } from '../webhook-form/webhook-form.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 
@@ -20,29 +20,30 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   standalone: true,
   imports: [
     CommonModule,
-    MatDialogModule,
-    MatCardModule,
-    MatButtonModule,
-    MatTableModule,
-    MatChipsModule,
-    MatSlideToggleModule,
-    MatIconModule,
-    MatTooltipModule,
+    FormsModule,
+    CardModule,
+    ButtonModule,
+    TableModule,
+    ChipModule,
+    InputSwitchModule,
+    TooltipModule,
     LoadingSpinnerComponent
   ],
+  providers: [DialogService],
   templateUrl: './webhook-list.component.html',
   styleUrls: ['./webhook-list.component.scss']
 })
 export class WebhookListComponent implements OnInit {
   webhooks$ = this.webhooksState.webhooks$;
   loading$ = this.webhooksState.loading$;
-  displayedColumns = ['url', 'enabled', 'events', 'stats', 'actions'];
+  dialogRef: DynamicDialogRef | undefined;
 
   constructor(
     private webhooksService: WebhooksService,
     private webhooksState: WebhooksStateService,
     private notification: NotificationService,
-    private dialog: MatDialog
+    private dialogService: DialogService,
+    private confirmationDialog: ConfirmationDialogService
   ) {}
 
   ngOnInit(): void {
@@ -61,12 +62,13 @@ export class WebhookListComponent implements OnInit {
   }
 
   openCreateDialog(): void {
-    const dialogRef = this.dialog.open(WebhookFormComponent, {
+    this.dialogRef = this.dialogService.open(WebhookFormComponent, {
+      header: 'Add Webhook',
       width: '600px',
       data: { webhook: null }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    this.dialogRef.onClose.subscribe(result => {
       if (result) {
         this.loadWebhooks();
       }
@@ -74,12 +76,13 @@ export class WebhookListComponent implements OnInit {
   }
 
   openEditDialog(webhook: Webhook): void {
-    const dialogRef = this.dialog.open(WebhookFormComponent, {
+    this.dialogRef = this.dialogService.open(WebhookFormComponent, {
+      header: 'Edit Webhook',
       width: '600px',
       data: { webhook }
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    this.dialogRef.onClose.subscribe(result => {
       if (result) {
         this.loadWebhooks();
       }
@@ -123,16 +126,13 @@ export class WebhookListComponent implements OnInit {
   }
 
   deleteWebhook(webhook: Webhook): void {
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      data: {
-        title: 'Delete Webhook',
-        message: `Are you sure you want to delete this webhook? This action cannot be undone.`,
-        confirmText: 'Delete',
-        confirmColor: 'warn'
-      }
-    });
-
-    dialogRef.afterClosed().subscribe(confirmed => {
+    this.confirmationDialog.confirm({
+      title: 'Delete Webhook',
+      message: `Are you sure you want to delete this webhook? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmColor: 'warn'
+    }).subscribe(confirmed => {
       if (confirmed) {
         this.webhooksService.deleteWebhook(webhook.webhook_id).subscribe({
           next: () => {

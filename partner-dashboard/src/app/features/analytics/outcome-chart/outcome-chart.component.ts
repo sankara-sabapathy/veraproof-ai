@@ -1,13 +1,12 @@
 import { Component, Input, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
 import { OutcomeDistribution } from '../../../core/models/interfaces';
 
 @Component({
   selector: 'app-outcome-chart',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule],
+  imports: [CommonModule, CardModule],
   templateUrl: './outcome-chart.component.html',
   styleUrls: ['./outcome-chart.component.scss']
 })

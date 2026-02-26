@@ -1,24 +1,10 @@
 <div class="sidebar-header">
   <div class="logo-container">
-    <mat-icon class="logo-icon">verified_user</mat-icon>
+    <i class="pi pi-shield logo-icon"></i>
     <h2 class="logo-text">VeraProof AI</h2>
   </div>
 </div>
 
-<mat-divider></mat-divider>
+<p-divider></p-divider>
 
-<mat-nav-list class="nav-list">
-  <ng-container *ngFor="let item of navigationItems">
-    <a
-      mat-list-item
-      *ngIf="shouldShowItem(item)"
-      [routerLink]="item.route"
-      routerLinkActive="active"
-      [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
-      (click)="onNavItemClick()"
-      class="nav-item">
-      <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-      <span matListItemTitle>{{ item.label }}</span>
-    </a>
-  </ng-container>
-</mat-nav-list>
+<p-menu [model]="menuItems" styleClass="sidebar-menu"></p-menu>

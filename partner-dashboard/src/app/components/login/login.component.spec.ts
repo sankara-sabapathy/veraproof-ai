@@ -63,4 +63,13 @@ describe('LoginComponent', () => {
         expect(component.getEmailError()).toBe('Please enter a valid email address');
       });
 
-      it('should accept valid email form
+      it('should accept valid email format', () => {
+        const emailControl = component.email;
+        emailControl?.setValue('test@example.com');
+        emailControl?.markAsTouched();
+        fixture.detectChanges();
+        expect(emailControl?.valid).toBeTruthy();
+      });
+    });
+  });
+});

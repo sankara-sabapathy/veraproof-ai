@@ -19,14 +19,29 @@ export class WSManager {
   getDefaultApiUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
-    // For HTTPS on port 3443, connect to HTTPS backend on port 8443
+    // Production: Use environment variable or derive from current host
+    if (window.VERAPROOF_API_URL) {
+      // API URL injected during build/deployment
+      return window.VERAPROOF_API_URL.replace('https:', 'wss:').replace('http:', 'ws:');
+    }
+    
+    // Development: localhost detection
     let host;
-    if (window.location.hostname === 'localhost') {
+    if (window.location.hostname === 'localhost' && window.location.protocol === 'https:') {
+      // HTTPS localhost - connect to HTTPS backend
+      host = 'localhost:8443';
+    } else if (window.location.hostname === 'localhost') {
+      // HTTP localhost - connect to HTTP backend
       host = 'localhost:8000';
     } else if (window.location.port === '3443') {
       // HTTPS verification interface - connect to HTTPS backend
       host = `${window.location.hostname}:8443`;
+    } else if (window.location.hostname.includes('cloudfront.net') || window.location.hostname.includes('yourdomain.com')) {
+      // Production CloudFront - use API subdomain or environment variable
+      // This will be replaced during deployment with actual API URL
+      return 'wss://api.yourdomain.com';
     } else {
+      // Fallback: same host as current page
       host = window.location.host;
     }
     

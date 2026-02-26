@@ -1,0 +1,43 @@
+﻿{
+    "coreWebVitals":  {
+                          "TTI":  {
+                                      "displayValue":  "8.6Â s",
+                                      "value":  8601,
+                                      "score":  0.37
+                                  },
+                          "FCP":  {
+                                      "displayValue":  "6.5Â s",
+                                      "value":  6508,
+                                      "score":  0.02
+                                  },
+                          "CLS":  {
+                                      "displayValue":  "0",
+                                      "value":  0,
+                                      "score":  1
+                                  },
+                          "LCP":  {
+                                      "displayValue":  "8.6Â s",
+                                      "value":  8601,
+                                      "score":  0.01
+                                  },
+                          "TBT":  {
+                                      "displayValue":  "60Â ms",
+                                      "value":  62,
+                                      "score":  1
+                                  }
+                      },
+    "seo":  {
+                "score":  0.9
+            },
+    "captureDate":  "2026-02-21T22:44:16Z",
+    "performance":  {
+                        "score":  0.59
+                    },
+    "bestPractices":  {
+                          "score":  0.96
+                      },
+    "accessibility":  {
+                          "score":  1
+                      },
+    "lighthouseVersion":  "12.8.2"
+}

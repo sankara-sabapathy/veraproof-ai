@@ -1,8 +1,12 @@
+.webhook-form-dialog {
+  padding: 1.5rem;
+  min-width: 500px;
+}
+
 form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-width: 500px;
+  gap: 1.5rem;
 }
 
 .full-width {
@@ -10,36 +14,47 @@ form {
 }
 
 .form-field {
-  label {
-    display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .field-label {
     font-weight: 500;
-    margin-bottom: 8px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-color);
+    font-size: 0.875rem;
   }
 
-  mat-hint {
-    font-size: 12px;
-    color: rgba(0, 0, 0, 0.6);
-    margin-top: 4px;
+  .p-hint {
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+  }
+
+  .p-error {
+    font-size: 0.75rem;
+    display: block;
   }
 }
 
-.documentation {
-  margin-top: 16px;
+.toggle-field {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 
-  mat-icon {
-    margin-right: 8px;
+  .toggle-label {
+    font-weight: 500;
+    color: var(--text-color);
   }
 }
 
 .payload-example {
   h4 {
     margin-top: 0;
+    margin-bottom: 1rem;
   }
 
   pre {
-    background-color: #f5f5f5;
-    padding: 16px;
+    background-color: var(--surface-100);
+    padding: 1rem;
     border-radius: 4px;
     overflow-x: auto;
 
@@ -48,4 +63,13 @@ form {
       font-size: 13px;
     }
   }
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-border);
 }

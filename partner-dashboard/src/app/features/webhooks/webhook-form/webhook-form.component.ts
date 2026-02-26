@@ -1,14 +1,12 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatListModule } from '@angular/material/list';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatIconModule } from '@angular/material/icon';
+import { DynamicDialogRef, DynamicDialogConfig } from 'primeng/dynamicdialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { ButtonModule } from 'primeng/button';
+import { InputSwitchModule } from 'primeng/inputswitch';
+import { ListboxModule } from 'primeng/listbox';
+import { AccordionModule } from 'primeng/accordion';
 import { WebhooksService, Webhook, WebhookConfig } from '../services/webhooks.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
@@ -27,14 +25,11 @@ const EVENT_TYPES = [
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatSlideToggleModule,
-    MatListModule,
-    MatExpansionModule,
-    MatIconModule
+    InputTextModule,
+    ButtonModule,
+    InputSwitchModule,
+    ListboxModule,
+    AccordionModule
   ],
   templateUrl: './webhook-form.component.html',
   styleUrls: ['./webhook-form.component.scss']
@@ -48,10 +43,10 @@ export class WebhookFormComponent implements OnInit {
     private fb: FormBuilder,
     private webhooksService: WebhooksService,
     private notification: NotificationService,
-    public dialogRef: MatDialogRef<WebhookFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { webhook: Webhook | null }
+    public ref: DynamicDialogRef,
+    public config: DynamicDialogConfig
   ) {
-    this.isEdit = !!data.webhook;
+    this.isEdit = !!config.data?.webhook;
     this.form = this.fb.group({
       url: ['', [Validators.required, Validators.pattern(URL_PATTERN), Validators.maxLength(2048)]],
       enabled: [true],
@@ -60,11 +55,11 @@ export class WebhookFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    if (this.data.webhook) {
+    if (this.config.data?.webhook) {
       this.form.patchValue({
-        url: this.data.webhook.url,
-        enabled: this.data.webhook.enabled,
-        events: this.data.webhook.events
+        url: this.config.data.webhook.url,
+        enabled: this.config.data.webhook.enabled,
+        events: this.config.data.webhook.events
       });
     }
   }
@@ -83,13 +78,13 @@ export class WebhookFormComponent implements OnInit {
     }
 
     const request = this.isEdit
-      ? this.webhooksService.updateWebhook(this.data.webhook!.webhook_id, config)
+      ? this.webhooksService.updateWebhook(this.config.data.webhook!.webhook_id, config)
       : this.webhooksService.createWebhook(config);
 
     request.subscribe({
       next: () => {
         this.notification.success(`Webhook ${this.isEdit ? 'updated' : 'created'} successfully`);
-        this.dialogRef.close(true);
+        this.ref.close(true);
       },
       error: (error) => {
         this.notification.error(`Failed to ${this.isEdit ? 'update' : 'create'} webhook`);
@@ -98,7 +93,7 @@ export class WebhookFormComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.dialogRef.close(false);
+    this.ref.close(false);
   }
 
   getErrorMessage(field: string): string {

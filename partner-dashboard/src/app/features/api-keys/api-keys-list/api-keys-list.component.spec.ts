@@ -1,16 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatTableModule } from '@angular/material/table';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCardModule } from '@angular/material/card';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSortModule } from '@angular/material/sort';
+import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { TableModule } from 'primeng/table';
+import { ChipModule } from 'primeng/chip';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { MenuModule } from 'primeng/menu';
+import { CardModule } from 'primeng/card';
+import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
@@ -18,7 +14,9 @@ import { ApiKeysListComponent } from './api-keys-list.component';
 import { ApiKeysService } from '../services/api-keys.service';
 import { ApiKeysStateService } from '../services/api-keys-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { ApiKey } from '../../../core/models/interfaces';
+import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 
 describe('ApiKeysListComponent', () => {
   let component: ApiKeysListComponent;
@@ -26,7 +24,7 @@ describe('ApiKeysListComponent', () => {
   let mockApiKeysService: jasmine.SpyObj<ApiKeysService>;
   let mockStateService: jasmine.SpyObj<ApiKeysStateService>;
   let mockNotificationService: jasmine.SpyObj<NotificationService>;
-  let mockDialog: jasmine.SpyObj<MatDialog>;
+  let mockConfirmationDialog: jasmine.SpyObj<ConfirmationDialogService>;
 
   const mockApiKeys: ApiKey[] = [
     {
@@ -74,31 +72,28 @@ describe('ApiKeysListComponent', () => {
       'error',
       'warning'
     ]);
-    mockDialog = jasmine.createSpyObj('MatDialog', ['open']);
+    mockConfirmationDialog = jasmine.createSpyObj('ConfirmationDialogService', ['confirm']);
 
     await TestBed.configureTestingModule({
-      declarations: [ApiKeysListComponent],
       imports: [
+        ApiKeysListComponent,
         BrowserAnimationsModule,
-        MatDialogModule,
-        MatTableModule,
-        MatChipsModule,
-        MatIconModule,
-        MatButtonModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatMenuModule,
-        MatProgressSpinnerModule,
-        MatCardModule,
-        MatTooltipModule,
-        MatSortModule,
-        FormsModule
+        TableModule,
+        ChipModule,
+        ButtonModule,
+        InputTextModule,
+        MenuModule,
+        CardModule,
+        TooltipModule,
+        FormsModule,
+        LoadingSpinnerComponent
       ],
       providers: [
+        DialogService,
         { provide: ApiKeysService, useValue: mockApiKeysService },
         { provide: ApiKeysStateService, useValue: mockStateService },
         { provide: NotificationService, useValue: mockNotificationService },
-        { provide: MatDialog, useValue: mockDialog }
+        { provide: ConfirmationDialogService, useValue: mockConfirmationDialog }
       ]
     }).compileComponents();
 
@@ -115,15 +110,32 @@ describe('ApiKeysListComponent', () => {
     expect(mockStateService.loadKeys).toHaveBeenCalled();
   });
 
-  it('should populate data source with keys from state', () => {
+  it('should populate apiKeys array with keys from state', () => {
     fixture.detectChanges();
-    expect(component.dataSource.data).toEqual(mockApiKeys);
+    expect(component.apiKeys).toEqual(mockApiKeys);
+    expect(component.filteredKeys).toEqual(mockApiKeys);
   });
 
   it('should filter keys based on search term', () => {
     fixture.detectChanges();
     component.onSearch('sandbox');
-    expect(component.dataSource.filter).toBe('sandbox');
+    expect(component.filteredKeys.length).toBe(2);
+    expect(component.filteredKeys.every(k => k.environment === 'sandbox')).toBe(true);
+  });
+
+  it('should filter keys by api_key', () => {
+    fixture.detectChanges();
+    component.onSearch('prod');
+    expect(component.filteredKeys.length).toBe(1);
+    expect(component.filteredKeys[0].environment).toBe('production');
+  });
+
+  it('should show all keys when search term is empty', () => {
+    fixture.detectChanges();
+    component.onSearch('sandbox');
+    expect(component.filteredKeys.length).toBe(2);
+    component.onSearch('');
+    expect(component.filteredKeys.length).toBe(3);
   });
 
   it('should mask API key showing only last 4 characters', () => {
@@ -155,28 +167,24 @@ describe('ApiKeysListComponent', () => {
     const revokedKey = mockApiKeys[2];
     component.onRevokeKey(revokedKey);
     expect(mockNotificationService.warning).toHaveBeenCalledWith('This key is already revoked');
-    expect(mockDialog.open).not.toHaveBeenCalled();
+    expect(mockConfirmationDialog.confirm).not.toHaveBeenCalled();
   });
 
   it('should open confirmation dialog when revoking active key', () => {
     const activeKey = mockApiKeys[0];
-    const dialogRefSpy = jasmine.createSpyObj('MatDialogRef', ['afterClosed']);
-    dialogRefSpy.afterClosed.and.returnValue(of(false));
-    mockDialog.open.and.returnValue(dialogRefSpy);
+    mockConfirmationDialog.confirm.and.returnValue(of(false));
 
     component.onRevokeKey(activeKey);
 
-    expect(mockDialog.open).toHaveBeenCalled();
-    const dialogConfig = mockDialog.open.calls.mostRecent().args[1];
-    expect((dialogConfig?.data as any).title).toBe('Revoke API Key');
-    expect((dialogConfig?.data as any).requireConfirmation).toBe(true);
+    expect(mockConfirmationDialog.confirm).toHaveBeenCalled();
+    const dialogData = mockConfirmationDialog.confirm.calls.mostRecent().args[0];
+    expect(dialogData.title).toBe('Revoke API Key');
+    expect(dialogData.requireConfirmation).toBe(true);
   });
 
   it('should revoke key when confirmation dialog is confirmed', () => {
     const activeKey = mockApiKeys[0];
-    const dialogRefSpy = jasmine.createSpyObj('MatDialogRef', ['afterClosed']);
-    dialogRefSpy.afterClosed.and.returnValue(of(true));
-    mockDialog.open.and.returnValue(dialogRefSpy);
+    mockConfirmationDialog.confirm.and.returnValue(of(true));
     mockApiKeysService.revokeKey.and.returnValue(of(void 0));
 
     component.onRevokeKey(activeKey);
@@ -188,9 +196,7 @@ describe('ApiKeysListComponent', () => {
 
   it('should handle revoke key error', () => {
     const activeKey = mockApiKeys[0];
-    const dialogRefSpy = jasmine.createSpyObj('MatDialogRef', ['afterClosed']);
-    dialogRefSpy.afterClosed.and.returnValue(of(true));
-    mockDialog.open.and.returnValue(dialogRefSpy);
+    mockConfirmationDialog.confirm.and.returnValue(of(true));
     mockApiKeysService.revokeKey.and.returnValue(throwError(() => new Error('Network error')));
 
     component.onRevokeKey(activeKey);
@@ -219,12 +225,31 @@ describe('ApiKeysListComponent', () => {
     expect(mockNotificationService.error).toHaveBeenCalledWith('Failed to copy to clipboard');
   });
 
-  it('should setup columns with correct templates', () => {
+  it('should generate menu items for a key', () => {
+    const activeKey = mockApiKeys[0];
+    const menuItems = component.getMenuItems(activeKey);
+    
+    expect(menuItems.length).toBe(1);
+    expect(menuItems[0].label).toBe('Revoke Key');
+    expect(menuItems[0].icon).toBe('pi pi-ban');
+    expect(menuItems[0].styleClass).toBe('menu-item-danger');
+  });
+
+  it('should open create dialog when onCreateKey is called', () => {
     fixture.detectChanges();
-    expect(component.columns.length).toBe(6);
-    expect(component.columns[0].key).toBe('environment');
-    expect(component.columns[1].key).toBe('api_key');
-    expect(component.columns[5].key).toBe('actions');
+    
+    const dialogRefSpy = jasmine.createSpyObj<DynamicDialogRef>('DynamicDialogRef', ['close']);
+    dialogRefSpy.onClose = of(undefined);
+    
+    // Spy on the component's private dialogService
+    spyOn(component['dialogService'], 'open').and.returnValue(dialogRefSpy);
+
+    component.onCreateKey();
+
+    expect(component['dialogService'].open).toHaveBeenCalled();
+    const callArgs = (component['dialogService'].open as jasmine.Spy).calls.mostRecent().args;
+    expect(callArgs[1]?.header).toBe('Generate API Key');
+    expect(callArgs[1]?.width).toBe('600px');
   });
 
   it('should unsubscribe on destroy', () => {

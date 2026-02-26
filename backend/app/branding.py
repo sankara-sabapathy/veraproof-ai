@@ -134,6 +134,15 @@ class BrandingManager:
                 "button_color": "#10B981"
             }
 
+    async def reset_branding(self, tenant_id: str):
+        """Reset branding to defaults"""
+        query = """
+            DELETE FROM branding_configs
+            WHERE tenant_id = $1
+        """
+        await db_manager.execute_query(query, tenant_id)
+        logger.info(f"Branding reset to defaults for tenant {tenant_id}")
+
 
 # Global branding manager instance
 branding_manager = BrandingManager()

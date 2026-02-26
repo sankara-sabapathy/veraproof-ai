@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
 import { AnalyticsStateService } from '../services/analytics-state.service';
 import { AnalyticsService } from '../services/analytics.service';
 import { AnalyticsStats, OutcomeDistribution, UsageTrendData, ReportParams } from '../../../core/models/interfaces';
@@ -24,10 +24,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     CommonModule,
     FormsModule,
     MatCardModule,
-    MatButtonModule,
     MatProgressBarModule,
-    MatSelectModule,
     MatIconModule,
+    ButtonModule,
+    DropdownModule,
     StatCardComponent,
     UsageChartComponent,
     OutcomeChartComponent,
@@ -48,6 +48,13 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
   selectedPeriod: 'daily' | 'weekly' | 'monthly' = 'daily';
   loading = false;
   error: string | null = null;
+
+  // Period options for PrimeNG Dropdown
+  periodOptions = [
+    { label: 'Daily', value: 'daily' },
+    { label: 'Weekly', value: 'weekly' },
+    { label: 'Monthly', value: 'monthly' }
+  ];
 
   ngOnInit(): void {
     // Subscribe to state changes

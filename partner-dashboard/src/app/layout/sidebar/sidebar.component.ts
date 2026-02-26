@@ -1,12 +1,12 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { MatListModule } from '@angular/material/list';
-import { MatIconModule } from '@angular/material/icon';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatSidenav } from '@angular/material/sidenav';
+import { Router, RouterModule, NavigationEnd } from '@angular/router';
+import { MenuModule } from 'primeng/menu';
+import { DividerModule } from 'primeng/divider';
+import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
 interface NavItem {
   label: string;
@@ -21,81 +21,121 @@ interface NavItem {
   imports: [
     CommonModule,
     RouterModule,
-    MatListModule,
-    MatIconModule,
-    MatDividerModule
+    MenuModule,
+    DividerModule
   ],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
 })
-export class SidebarComponent implements OnInit {
-  @Input() drawer!: MatSidenav;
+export class SidebarComponent implements OnInit, OnDestroy {
+  @Output() navItemClick = new EventEmitter<void>();
   
   isAdmin$: Observable<boolean>;
+  menuItems: MenuItem[] = [];
+  private routerSubscription?: Subscription;
   
-  navigationItems: NavItem[] = [
+  private navigationItems: NavItem[] = [
     {
       label: 'Dashboard',
-      icon: 'dashboard',
+      icon: 'pi pi-home',
       route: '/dashboard'
     },
     {
       label: 'API Keys',
-      icon: 'vpn_key',
+      icon: 'pi pi-key',
       route: '/api-keys'
     },
     {
       label: 'Sessions',
-      icon: 'verified_user',
+      icon: 'pi pi-shield',
       route: '/sessions'
     },
     {
       label: 'Analytics',
-      icon: 'analytics',
+      icon: 'pi pi-chart-line',
       route: '/analytics'
     },
     {
       label: 'Billing',
-      icon: 'payment',
+      icon: 'pi pi-file',
       route: '/billing'
     },
     {
       label: 'Webhooks',
-      icon: 'webhook',
+      icon: 'pi pi-link',
       route: '/webhooks'
     },
     {
       label: 'Branding',
-      icon: 'palette',
+      icon: 'pi pi-palette',
       route: '/branding'
     },
     {
       label: 'Admin',
-      icon: 'admin_panel_settings',
+      icon: 'pi pi-users',
       route: '/admin',
       adminOnly: true
     }
   ];
 
-  constructor(private authService: AuthService) {
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) {
     this.isAdmin$ = new Observable<boolean>(observer => {
       observer.next(this.authService.isAdmin());
     });
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.buildMenuItems();
+    
+    // Update active state when route changes
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(() => {
+        this.updateActiveState();
+      });
+  }
 
-  shouldShowItem(item: NavItem): boolean {
+  ngOnDestroy(): void {
+    this.routerSubscription?.unsubscribe();
+  }
+
+  private buildMenuItems(): void {
+    this.menuItems = this.navigationItems
+      .filter(item => this.shouldShowItem(item))
+      .map(item => ({
+        label: item.label,
+        icon: item.icon,
+        command: () => {
+          this.router.navigate([item.route]);
+          this.onNavItemClicked();
+        },
+        styleClass: this.isActiveRoute(item.route) ? 'active-menu-item' : ''
+      }));
+  }
+
+  private shouldShowItem(item: NavItem): boolean {
     if (item.adminOnly) {
       return this.authService.isAdmin();
     }
     return true;
   }
 
-  onNavItemClick(): void {
-    // Close drawer on mobile after navigation
-    if (this.drawer && this.drawer.mode === 'over') {
-      this.drawer.close();
+  private isActiveRoute(route: string): boolean {
+    if (route === '/dashboard') {
+      return this.router.url === route;
     }
+    return this.router.url.startsWith(route);
+  }
+
+  onNavItemClicked(): void {
+    this.navItemClick.emit();
+  }
+
+  // Rebuild menu items when route changes to update active state
+  updateActiveState(): void {
+    this.buildMenuItems();
   }
 }

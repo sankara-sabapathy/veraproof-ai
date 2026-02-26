@@ -1,13 +1,12 @@
 import { Component, Input, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
 import { UsageTrendData } from '../../../core/models/interfaces';
 
 @Component({
   selector: 'app-usage-chart',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule],
+  imports: [CommonModule, CardModule],
   templateUrl: './usage-chart.component.html',
   styleUrls: ['./usage-chart.component.scss']
 })

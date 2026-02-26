@@ -2,18 +2,23 @@
   <div class="header">
     <h2>Dashboard</h2>
     <div class="quick-actions">
-      <button mat-raised-button color="primary" (click)="createSession()">
-        <mat-icon>add</mat-icon>
-        Create Session
-      </button>
-      <button mat-raised-button (click)="generateApiKey()">
-        <mat-icon>vpn_key</mat-icon>
-        Get API Key
-      </button>
+      <p-button 
+        label="Create Session" 
+        icon="pi pi-plus" 
+        severity="primary"
+        [raised]="true"
+        (onClick)="createSession()">
+      </p-button>
+      <p-button 
+        label="Get API Key" 
+        icon="pi pi-key"
+        [raised]="true"
+        (onClick)="generateApiKey()">
+      </p-button>
     </div>
   </div>
 
-  <div *ngIf="dashboardData && !loading; else loading">
+  <div *ngIf="dashboardData && !loading; else loadingTemplate">
     <!-- Stats Cards -->
     <div class="stats-grid">
       <app-stat-card
@@ -53,11 +58,11 @@
     </div>
 
     <!-- Quota Usage -->
-    <mat-card class="quota-card">
-      <mat-card-header>
-        <mat-card-title>Monthly Quota Usage</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
+    <p-card styleClass="quota-card">
+      <ng-template pTemplate="header">
+        <div class="card-header">Monthly Quota Usage</div>
+      </ng-template>
+      <ng-template pTemplate="content">
         <div class="quota-info">
           <div class="quota-numbers">
             <span class="current">{{ dashboardData.quota.current_usage | number }}</span>
@@ -69,104 +74,121 @@
             {{ dashboardData.quota.usage_percentage | number:'1.0-1' }}% used
           </div>
         </div>
-        <mat-progress-bar 
-          mode="determinate" 
+        <p-progressBar 
           [value]="dashboardData.quota.usage_percentage"
-          [color]="getUsageColor(dashboardData.quota.usage_percentage)">
-        </mat-progress-bar>
+          [showValue]="false">
+        </p-progressBar>
         <div *ngIf="dashboardData.quota.usage_percentage >= 80" class="quota-warning">
-          <mat-icon>warning</mat-icon>
+          <i class="pi pi-exclamation-triangle"></i>
           <span>You're approaching your monthly quota limit. Consider upgrading your plan.</span>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </ng-template>
+    </p-card>
 
     <!-- Charts -->
     <div class="charts-grid">
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Usage Trend</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
+      <p-card styleClass="chart-card">
+        <ng-template pTemplate="header">
+          <div class="card-header">Usage Trend</div>
+        </ng-template>
+        <ng-template pTemplate="content">
           <app-usage-chart [data]="usageTrendData"></app-usage-chart>
-        </mat-card-content>
-      </mat-card>
+        </ng-template>
+      </p-card>
 
-      <mat-card class="chart-card">
-        <mat-card-header>
-          <mat-card-title>Outcome Distribution</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
+      <p-card styleClass="chart-card">
+        <ng-template pTemplate="header">
+          <div class="card-header">Outcome Distribution</div>
+        </ng-template>
+        <ng-template pTemplate="content">
           <app-outcome-chart [data]="outcomeDistribution"></app-outcome-chart>
-        </mat-card-content>
-      </mat-card>
+        </ng-template>
+      </p-card>
     </div>
 
     <!-- Recent Sessions -->
-    <mat-card class="recent-sessions">
-      <mat-card-header>
-        <mat-card-title>Recent Sessions</mat-card-title>
-        <button mat-button routerLink="/sessions">View All</button>
-      </mat-card-header>
-      <mat-card-content>
-        <table mat-table [dataSource]="dashboardData.recentSessions" class="sessions-table">
-          <ng-container matColumnDef="session_id">
-            <th mat-header-cell *matHeaderCellDef>Session ID</th>
-            <td mat-cell *matCellDef="let session">
-              <span class="session-id">{{ session.session_id }}</span>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="created_at">
-            <th mat-header-cell *matHeaderCellDef>Created</th>
-            <td mat-cell *matCellDef="let session">{{ session.created_at | date:'short' }}</td>
-          </ng-container>
-
-          <ng-container matColumnDef="state">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let session">
-              <mat-chip [color]="session.state === 'complete' ? 'primary' : 'accent'" selected>
-                {{ session.state | uppercase }}
-              </mat-chip>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="trust_score">
-            <th mat-header-cell *matHeaderCellDef>Trust Score</th>
-            <td mat-cell *matCellDef="let session">
-              <span *ngIf="session.final_trust_score" 
-                    [style.color]="getTrustScoreColor(session.final_trust_score) === 'primary' ? '#4caf50' : getTrustScoreColor(session.final_trust_score) === 'accent' ? '#ff9800' : '#f44336'">
-                {{ session.final_trust_score | number:'1.1-1' }}
-              </span>
-              <span *ngIf="!session.final_trust_score">-</span>
-            </td>
-          </ng-container>
-
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let session">
-              <button mat-icon-button (click)="viewSession(session.session_id)" matTooltip="View Details">
-                <mat-icon>visibility</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="['session_id', 'created_at', 'state', 'trust_score', 'actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['session_id', 'created_at', 'state', 'trust_score', 'actions'];" 
-              class="clickable-row" (click)="viewSession(row.session_id)"></tr>
-        </table>
-
-        <div *ngIf="dashboardData.recentSessions.length === 0" class="no-sessions">
-          <mat-icon>verified_user</mat-icon>
-          <p>No sessions yet</p>
-          <p class="help-text">Create a test session to get started</p>
-          <button mat-raised-button color="primary" (click)="createSession()">Create Your First Session</button>
+    <p-card styleClass="recent-sessions">
+      <ng-template pTemplate="header">
+        <div class="card-header-with-action">
+          <div class="card-header">Recent Sessions</div>
+          <p-button 
+            label="View All" 
+            [text]="true"
+            routerLink="/sessions">
+          </p-button>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </ng-template>
+      <ng-template pTemplate="content">
+        <p-table 
+          [value]="dashboardData.recentSessions" 
+          styleClass="sessions-table"
+          [tableStyle]="{ 'min-width': '100%' }">
+          
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Session ID</th>
+              <th>Created</th>
+              <th>Status</th>
+              <th>Trust Score</th>
+              <th>Actions</th>
+            </tr>
+          </ng-template>
+          
+          <ng-template pTemplate="body" let-session>
+            <tr class="clickable-row" (click)="viewSession(session.session_id)">
+              <td>
+                <span class="session-id">{{ session.session_id }}</span>
+              </td>
+              <td>{{ session.created_at | date:'short' }}</td>
+              <td>
+                <p-chip 
+                  [label]="session.state | uppercase"
+                  [styleClass]="session.state === 'complete' ? 'chip-primary' : 'chip-accent'">
+                </p-chip>
+              </td>
+              <td>
+                <span *ngIf="session.final_trust_score" 
+                      [style.color]="getTrustScoreColor(session.final_trust_score) === 'primary' ? '#4caf50' : getTrustScoreColor(session.final_trust_score) === 'accent' ? '#ff9800' : '#f44336'">
+                  {{ session.final_trust_score | number:'1.1-1' }}
+                </span>
+                <span *ngIf="!session.final_trust_score">-</span>
+              </td>
+              <td>
+                <p-button 
+                  icon="pi pi-eye" 
+                  [text]="true"
+                  [rounded]="true"
+                  pTooltip="View Details"
+                  (onClick)="viewSession(session.session_id); $event.stopPropagation()">
+                </p-button>
+              </td>
+            </tr>
+          </ng-template>
+          
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5">
+                <div class="no-sessions">
+                  <i class="pi pi-shield" style="font-size: 80px"></i>
+                  <p>No sessions yet</p>
+                  <p class="help-text">Create a test session to get started</p>
+                  <p-button 
+                    label="Create Your First Session" 
+                    icon="pi pi-plus"
+                    severity="primary"
+                    [raised]="true"
+                    (onClick)="createSession()">
+                  </p-button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </ng-template>
+    </p-card>
   </div>
 
-  <ng-template #loading>
+  <ng-template #loadingTemplate>
     <app-loading-spinner message="Loading dashboard..."></app-loading-spinner>
   </ng-template>
 </div>

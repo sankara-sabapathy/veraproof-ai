@@ -1,0 +1,147 @@
+<div class="session-details-container">
+  <div class="header">
+    <div class="header-content">
+      <p-button 
+        icon="pi pi-arrow-left" 
+        [text]="true"
+        (onClick)="goBack()"
+        label="Back to Sessions">
+      </p-button>
+      <h1>Session Details</h1>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+
+  <div *ngIf="!loading && session" class="content">
+    <p-tabView>
+      <!-- Overview Tab -->
+      <p-tabPanel header="Overview" leftIcon="pi pi-info-circle">
+        <div class="tab-content">
+          <div class="cards-grid">
+            <p-card header="Session Information">
+              <div class="detail-row">
+                <span class="label">Session ID:</span>
+                <span class="value">{{ session.session_id }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Created:</span>
+                <span class="value">{{ session.created_at | date:'medium' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Status:</span>
+                <p-chip 
+                  [label]="session.status | uppercase" 
+                  [styleClass]="getStatusClass(session.status)">
+                </p-chip>
+              </div>
+            </p-card>
+
+            <p-card header="Trust Scores">
+              <div class="score-item">
+                <span class="label">Tier 1 (Sensor Fusion):</span>
+                <span class="score" [style.color]="getScoreColor(session.tier_1_score)">
+                  {{ session.tier_1_score }}/100
+                </span>
+              </div>
+              <div class="score-item" *ngIf="session.tier_2_score">
+                <span class="label">Tier 2 (AI Forensics):</span>
+                <span class="score" [style.color]="getScoreColor(session.tier_2_score)">
+                  {{ session.tier_2_score }}/100
+                </span>
+              </div>
+              <div class="score-item final">
+                <span class="label">Final Trust Score:</span>
+                <span class="score final-score" [style.color]="getScoreColor(session.final_trust_score)">
+                  {{ session.final_trust_score }}/100
+                </span>
+              </div>
+              <div class="score-item">
+                <span class="label">Pearson Correlation:</span>
+                <span class="score">{{ session.correlation_value.toFixed(3) }}</span>
+              </div>
+            </p-card>
+          </div>
+        </div>
+      </p-tabPanel>
+
+      <!-- Timeline Tab -->
+      <p-tabPanel header="Timeline" leftIcon="pi pi-clock">
+        <div class="tab-content">
+          <p-card header="Verification Timeline">
+            <p-timeline [value]="timelineEvents" align="alternate">
+              <ng-template pTemplate="content" let-event>
+                <div class="timeline-content">
+                  <p-chip 
+                    [label]="event.status" 
+                    [styleClass]="'timeline-chip ' + event.color">
+                  </p-chip>
+                  <small class="timeline-date">{{ event.date | date:'short' }}</small>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="marker" let-event>
+                <span class="timeline-marker" [style.background-color]="event.color">
+                  <i [class]="event.icon"></i>
+                </span>
+              </ng-template>
+            </p-timeline>
+          </p-card>
+        </div>
+      </p-tabPanel>
+
+      <!-- Artifacts Tab -->
+      <p-tabPanel header="Artifacts" leftIcon="pi pi-download">
+        <div class="tab-content">
+          <p-card header="Session Artifacts">
+            <div *ngIf="hasArtifacts(); else noArtifacts" class="artifacts-grid">
+              <p-button 
+                *ngIf="session.artifacts.video_url"
+                label="Download Video" 
+                icon="pi pi-video"
+                severity="secondary"
+                (onClick)="downloadArtifact(session.artifacts.video_url, 'video')">
+              </p-button>
+              <p-button 
+                *ngIf="session.artifacts.imu_data_url"
+                label="Download IMU Data" 
+                icon="pi pi-chart-line"
+                severity="secondary"
+                (onClick)="downloadArtifact(session.artifacts.imu_data_url, 'imu')">
+              </p-button>
+              <p-button 
+                *ngIf="session.artifacts.optical_flow_url"
+                label="Download Optical Flow" 
+                icon="pi pi-image"
+                severity="secondary"
+                (onClick)="downloadArtifact(session.artifacts.optical_flow_url, 'flow')">
+              </p-button>
+            </div>
+            <ng-template #noArtifacts>
+              <div class="empty-state">
+                <i class="pi pi-inbox" style="font-size: 3rem; color: #94a3b8;"></i>
+                <p>No artifacts available</p>
+                <small>Artifacts are not available in sandbox mode</small>
+              </div>
+            </ng-template>
+          </p-card>
+        </div>
+      </p-tabPanel>
+    </p-tabView>
+  </div>
+
+  <div *ngIf="!loading && !session" class="error-state">
+    <p-card>
+      <div class="empty-state">
+        <i class="pi pi-exclamation-triangle" style="font-size: 3rem; color: #f59e0b;"></i>
+        <p>Session not found</p>
+        <p-button 
+          label="Back to Sessions" 
+          icon="pi pi-arrow-left"
+          (onClick)="goBack()">
+        </p-button>
+      </div>
+    </p-card>
+  </div>
+</div>

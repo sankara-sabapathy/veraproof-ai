@@ -1,11 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { ChipModule } from 'primeng/chip';
+import { ProgressBarModule } from 'primeng/progressbar';
 import { AdminService } from '../services/admin.service';
 import { AdminStateService } from '../services/admin-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -17,11 +16,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatButtonModule,
-    MatChipsModule,
-    MatProgressBarModule,
-    MatIconModule,
+    CardModule,
+    ButtonModule,
+    ChipModule,
+    ProgressBarModule,
     StatCardComponent,
     LoadingSpinnerComponent
   ],

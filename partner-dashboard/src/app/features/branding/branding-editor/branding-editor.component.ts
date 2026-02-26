@@ -1,17 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatIconModule } from '@angular/material/icon';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { ColorPickerModule } from 'primeng/colorpicker';
+import { FileUploadModule } from 'primeng/fileupload';
 import { BrandingService, BrandingConfig, ColorConfig } from '../services/branding.service';
 import { BrandingStateService } from '../services/branding-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { BrandingPreviewComponent } from '../branding-preview/branding-preview.component';
 
 const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
@@ -24,13 +22,11 @@ const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatIconModule,
-    MatExpansionModule,
+    CardModule,
+    ButtonModule,
+    InputTextModule,
+    ColorPickerModule,
+    FileUploadModule,
     BrandingPreviewComponent
   ],
   templateUrl: './branding-editor.component.html',
@@ -49,7 +45,7 @@ export class BrandingEditorComponent implements OnInit {
     private brandingService: BrandingService,
     private brandingState: BrandingStateService,
     private notification: NotificationService,
-    private dialog: MatDialog
+    private confirmationDialog: ConfirmationDialogService
   ) {
     this.form = this.fb.group({
       primary_color: ['#3f51b5', [Validators.required, Validators.pattern(HEX_COLOR_PATTERN)]],
@@ -60,7 +56,23 @@ export class BrandingEditorComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadBranding();
-    this.form.valueChanges.subscribe(() => this.checkContrast());
+    this.form.valueChanges.subscribe(() => {
+      this.checkContrast();
+      this.updateLivePreview();
+    });
+  }
+
+  private updateLivePreview(): void {
+    const currentConfig = this.brandingState['state$'].value.config;
+    if (currentConfig && this.form.valid) {
+      const previewConfig: BrandingConfig = {
+        ...currentConfig,
+        primary_color: this.form.get('primary_color')?.value,
+        secondary_color: this.form.get('secondary_color')?.value,
+        button_color: this.form.get('button_color')?.value
+      };
+      this.brandingState.setConfig(previewConfig);
+    }
   }
 
   loadBranding(): void {
@@ -82,11 +94,9 @@ export class BrandingEditorComponent implements OnInit {
     });
   }
 
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const file = input.files[0];
+  onFileSelected(event: any): void {
+    const file = event.files?.[0] || event.currentFiles?.[0];
+    if (!file) return;
 
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
       this.notification.error('Only PNG, JPG, and SVG files are allowed');
@@ -145,16 +155,13 @@ export class BrandingEditorComponent implements OnInit {
   }
 
   resetBranding(): void {
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      data: {
-        title: 'Reset Branding',
-        message: 'Are you sure you want to reset all branding to defaults? This will remove your logo and reset all colors.',
-        confirmText: 'Reset',
-        confirmColor: 'warn'
-      }
-    });
-
-    dialogRef.afterClosed().subscribe(confirmed => {
+    this.confirmationDialog.confirm({
+      title: 'Reset Branding',
+      message: 'Are you sure you want to reset all branding to defaults? This will remove your logo and reset all colors.',
+      confirmText: 'Reset',
+      cancelText: 'Cancel',
+      confirmColor: 'warn'
+    }).subscribe(confirmed => {
       if (confirmed) {
         this.brandingState.setLoading(true);
         this.brandingService.resetBranding().subscribe({

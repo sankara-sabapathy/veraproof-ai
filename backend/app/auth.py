@@ -13,7 +13,7 @@ class LocalAuthManager:
     """Local authentication manager for development"""
     
     def __init__(self):
-        # In-memory user store for development
+        # Keep in-memory cache for performance, but sync with database
         self.users: Dict[str, Dict] = {}
         self.api_keys: Dict[str, Dict] = {}
     
@@ -27,29 +27,24 @@ class LocalAuthManager:
     
     async def signup(self, email: str, password: str, tenant_id: Optional[str] = None) -> Dict:
         """Create a new user account"""
-        if email in self.users:
+        from app.database import db_manager
+        
+        # Check if user already exists in database
+        check_query = "SELECT user_id FROM users WHERE email = $1"
+        existing_user = await db_manager.fetch_one(check_query, email)
+        
+        if existing_user:
             raise ValueError("User already exists")
         
         user_id = str(uuid.uuid4())
         if not tenant_id:
             tenant_id = str(uuid.uuid4())
         
-        user = {
-            "user_id": user_id,
-            "tenant_id": tenant_id,
-            "email": email,
-            "password_hash": self.hash_password(password),
-            "role": "Admin",
-            "created_at": datetime.utcnow().isoformat()
-        }
+        password_hash = self.hash_password(password)
         
-        self.users[email] = user
-        logger.info(f"User created: {email} with tenant_id: {tenant_id}")
-        
-        # Create tenant record in database
-        from app.database import db_manager
+        # Create tenant record in database first
         try:
-            query = """
+            tenant_query = """
                 INSERT INTO tenants (
                     tenant_id, email, subscription_tier, 
                     monthly_quota, current_usage, billing_cycle_start, billing_cycle_end
@@ -57,7 +52,7 @@ class LocalAuthManager:
                 ON CONFLICT (tenant_id) DO NOTHING
             """
             await db_manager.execute_query(
-                query,
+                tenant_query,
                 tenant_id,
                 email,
                 'Sandbox',
@@ -69,6 +64,39 @@ class LocalAuthManager:
             logger.info(f"Tenant record created in database: {tenant_id}")
         except Exception as e:
             logger.error(f"Failed to create tenant record: {e}")
+            raise ValueError(f"Failed to create tenant: {e}")
+        
+        # Create user record in database
+        try:
+            user_query = """
+                INSERT INTO users (
+                    user_id, tenant_id, email, password_hash, role, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+            """
+            await db_manager.execute_query(
+                user_query,
+                user_id,
+                tenant_id,
+                email,
+                password_hash,
+                'Admin',
+                datetime.utcnow()
+            )
+            logger.info(f"User created in database: {email} with tenant_id: {tenant_id}")
+        except Exception as e:
+            logger.error(f"Failed to create user record: {e}")
+            raise ValueError(f"Failed to create user: {e}")
+        
+        # Cache in memory
+        user = {
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "email": email,
+            "password_hash": password_hash,
+            "role": "Admin",
+            "created_at": datetime.utcnow().isoformat()
+        }
+        self.users[email] = user
         
         return {
             "user_id": user_id,
@@ -79,7 +107,28 @@ class LocalAuthManager:
     
     async def login(self, email: str, password: str) -> Dict:
         """Authenticate user and return JWT tokens"""
+        from app.database import db_manager
+        
+        # Try to get from cache first
         user = self.users.get(email)
+        
+        # If not in cache, fetch from database
+        if not user:
+            query = "SELECT user_id, tenant_id, email, password_hash, role FROM users WHERE email = $1"
+            user_record = await db_manager.fetch_one(query, email)
+            
+            if user_record:
+                user = {
+                    "user_id": str(user_record['user_id']),
+                    "tenant_id": str(user_record['tenant_id']),
+                    "email": user_record['email'],
+                    "password_hash": user_record['password_hash'],
+                    "role": user_record['role']
+                }
+                # Cache it
+                self.users[email] = user
+                logger.info(f"User loaded from database: {email}")
+        
         if not user or not self.verify_password(password, user["password_hash"]):
             raise ValueError("Invalid credentials")
         

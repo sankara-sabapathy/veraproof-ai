@@ -1,17 +1,70 @@
-.toolbar {
+::ng-deep .toolbar {
   position: sticky;
   top: 0;
   z-index: 1000;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--primary-color, #1976d2) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  
+  .p-toolbar-group-start,
+  .p-toolbar-group-end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .p-toolbar-group-start {
+    flex: 1;
+    overflow: hidden;
+  }
 }
 
-.menu-button {
-  margin-right: 16px;
+::ng-deep .menu-button,
+::ng-deep .user-menu-button {
+  color: white !important;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  &:focus {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.3) !important;
+  }
+}
+
+.brand-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.brand-icon {
+  font-size: 28px;
+  color: white;
+}
+
+.brand-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .breadcrumb-container {
   flex: 1;
   overflow: hidden;
+  margin-left: 24px;
 }
 
 .breadcrumb {
@@ -28,6 +81,7 @@
   display: flex;
   align-items: center;
   font-size: 14px;
+  color: white;
   
   &.active {
     font-weight: 500;
@@ -46,19 +100,14 @@
 }
 
 .breadcrumb-separator {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
+  font-size: 14px;
   margin: 0 4px;
   opacity: 0.6;
+  color: white;
 }
 
-.spacer {
-  flex: 1 1 auto;
-}
-
-.user-menu-button {
-  margin-left: 8px;
+.user-menu-container {
+  position: relative;
 }
 
 .user-menu-header {
@@ -66,16 +115,15 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  cursor: default;
   
-  mat-icon {
-    color: rgba(0, 0, 0, 0.54);
+  i {
+    color: var(--text-color-secondary, rgba(0, 0, 0, 0.54));
   }
 }
 
 .user-email {
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--text-color, rgba(0, 0, 0, 0.87));
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,14 +136,39 @@
     display: none;
   }
   
-  .menu-button {
-    margin-right: 8px;
+  .brand-text {
+    display: none;
+  }
+  
+  .brand-container {
+    margin-left: 0;
+    padding: 4px 8px;
+  }
+}
+
+// Tablet adjustments
+@media (max-width: 1200px) {
+  .brand-text {
+    font-size: 16px;
   }
 }
 
 // Ensure touch-friendly button size
-.user-menu-button,
-.menu-button {
-  min-width: 44px;
-  min-height: 44px;
+::ng-deep .user-menu-button,
+::ng-deep .menu-button {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+// PrimeNG Menu styling
+::ng-deep .p-menu {
+  min-width: 250px;
+  
+  .p-menuitem-link {
+    padding: 12px 16px;
+    
+    .p-menuitem-icon {
+      margin-right: 12px;
+    }
+  }
 }

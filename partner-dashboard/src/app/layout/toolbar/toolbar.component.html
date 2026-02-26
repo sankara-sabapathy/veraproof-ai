@@ -1,51 +1,61 @@
-<mat-toolbar color="primary" class="toolbar">
-  <button
-    type="button"
-    mat-icon-button
-    (click)="drawer.toggle()"
-    class="menu-button">
-    <mat-icon>menu</mat-icon>
-  </button>
+<p-toolbar styleClass="toolbar">
+  <ng-template pTemplate="start">
+    <p-button
+      *ngIf="showMenuButton"
+      icon="pi pi-bars"
+      (onClick)="onMenuToggle()"
+      [text]="true"
+      [rounded]="true"
+      styleClass="menu-button"
+      aria-label="Toggle menu">
+    </p-button>
 
-  <div class="breadcrumb-container">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb">
-        <li 
-          *ngFor="let crumb of breadcrumbs$ | async; let last = last"
-          class="breadcrumb-item"
-          [class.active]="last">
-          <a 
-            *ngIf="!last" 
-            [routerLink]="crumb.url"
-            class="breadcrumb-link">
-            {{ crumb.label }}
-          </a>
-          <span *ngIf="last">{{ crumb.label }}</span>
-          <mat-icon *ngIf="!last" class="breadcrumb-separator">chevron_right</mat-icon>
-        </li>
-      </ol>
-    </nav>
-  </div>
-
-  <span class="spacer"></span>
-
-  <button
-    mat-icon-button
-    [matMenuTriggerFor]="userMenu"
-    class="user-menu-button"
-    aria-label="User menu">
-    <mat-icon>account_circle</mat-icon>
-  </button>
-
-  <mat-menu #userMenu="matMenu" xPosition="before">
-    <div class="user-menu-header" mat-menu-item disabled>
-      <mat-icon>email</mat-icon>
-      <span class="user-email">{{ userEmail$ | async }}</span>
+    <div class="brand-container">
+      <i class="pi pi-shield brand-icon"></i>
+      <span class="brand-text">VeraProof AI</span>
     </div>
-    <mat-divider></mat-divider>
-    <button mat-menu-item (click)="onLogout()">
-      <mat-icon>logout</mat-icon>
-      <span>Logout</span>
-    </button>
-  </mat-menu>
-</mat-toolbar>
+
+    <div class="breadcrumb-container">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li 
+            *ngFor="let crumb of breadcrumbs$ | async; let last = last"
+            class="breadcrumb-item"
+            [class.active]="last">
+            <a 
+              *ngIf="!last" 
+              [routerLink]="crumb.url"
+              class="breadcrumb-link">
+              {{ crumb.label }}
+            </a>
+            <span *ngIf="last">{{ crumb.label }}</span>
+            <i *ngIf="!last" class="pi pi-chevron-right breadcrumb-separator"></i>
+          </li>
+        </ol>
+      </nav>
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="end">
+    <div class="user-menu-container">
+      <p-button
+        icon="pi pi-user"
+        (onClick)="userMenu.toggle($event)"
+        [text]="true"
+        [rounded]="true"
+        styleClass="user-menu-button"
+        aria-label="User menu">
+      </p-button>
+      
+      <p-menu #userMenu [model]="userMenuItems" [popup]="true" appendTo="body">
+        <ng-template pTemplate="start">
+          <div class="user-menu-header">
+            <i class="pi pi-envelope"></i>
+            <span class="user-email">{{ userEmail$ | async }}</span>
+          </div>
+          <p-divider></p-divider>
+        </ng-template>
+      </p-menu>
+    </div>
+  </ng-template>
+</p-toolbar>

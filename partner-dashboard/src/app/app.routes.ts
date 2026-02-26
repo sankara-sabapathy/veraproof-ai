@@ -40,7 +40,7 @@ export const routes: Routes = [
         children: [
           {
             path: '',
-            loadComponent: () => import('./components/session-details/session-details.component').then(m => m.SessionDetailsComponent)
+            loadComponent: () => import('./features/sessions/sessions-list/sessions-list.component').then(m => m.SessionsListComponent)
           },
           {
             path: ':id',

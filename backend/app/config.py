@@ -65,3 +65,5 @@ settings = Settings()
 import logging
 logger = logging.getLogger(__name__)
 logger.info(f"Config loaded - Frontend URL: {settings.frontend_verification_url}")
+logger.info(f"Config loaded - CORS Origins: {settings.cors_origins}")
+logger.info(f"Config loaded - CORS Origins List: {settings.cors_origins_list}")

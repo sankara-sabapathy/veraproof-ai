@@ -1,37 +1,67 @@
-.stat-card {
+::ng-deep .stat-card {
   height: 100%;
   
-  mat-card-header {
+  .p-card-header {
+    padding: 1.5rem 1.5rem 0 1.5rem;
+  }
+  
+  .p-card-body {
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+  }
+  
+  .p-card-content {
+    padding: 0;
+  }
+  
+  .card-header {
     display: flex;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     
     .stat-icon {
       margin-right: 12px;
       font-size: 32px;
-      width: 32px;
-      height: 32px;
+      
+      &.icon-primary {
+        color: var(--primary-color);
+      }
+      
+      &.icon-accent {
+        color: var(--pink-500);
+      }
+      
+      &.icon-warn {
+        color: var(--red-500);
+      }
     }
     
     .stat-title {
       font-size: 14px;
       font-weight: 500;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-color-secondary);
       margin: 0;
     }
   }
   
-  mat-card-content {
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80px;
+  }
+  
+  .stat-content {
     .stat-value {
       font-size: 32px;
       font-weight: 600;
       margin-bottom: 8px;
       line-height: 1.2;
+      color: var(--text-color);
     }
     
     .stat-subtitle {
       font-size: 14px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-color-secondary);
       margin-bottom: 8px;
     }
     
@@ -41,10 +71,8 @@
       font-size: 14px;
       font-weight: 500;
       
-      mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+      i {
+        font-size: 16px;
         margin-right: 4px;
         
         &.positive {
@@ -57,8 +85,12 @@
       }
       
       span {
-        &:has(+ mat-icon.positive) {
+        &.positive {
           color: #4caf50;
+        }
+        
+        &.negative {
+          color: #f44336;
         }
       }
     }

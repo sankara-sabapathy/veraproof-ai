@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: veraproof
       POSTGRES_PASSWORD: veraproof_dev_password
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -30,7 +30,7 @@ services:
       SERVICES: s3
       DEBUG: 0
     ports:
-      - "4566:4566"
+      - "${LOCALSTACK_PORT:-4566}:4566"
     volumes:
       - localstack_data:/tmp/localstack
     networks:
@@ -56,10 +56,10 @@ services:
       REFRESH_TOKEN_EXPIRATION_DAYS: 30
       ENVIRONMENT: development
       STAGE: local
-      BACKEND_URL: http://localhost:8000
-      FRONTEND_DASHBOARD_URL: http://localhost:4200
-      FRONTEND_VERIFICATION_URL: http://localhost:3000
-      CORS_ORIGINS: http://localhost:4200,http://localhost:3000,http://localhost:8000
+      BACKEND_URL: http://localhost:${BACKEND_HTTP_PORT:-8100}
+      FRONTEND_DASHBOARD_URL: http://localhost:${PARTNER_DASHBOARD_PORT:-8200}
+      FRONTEND_VERIFICATION_URL: http://localhost:${VERIFICATION_INTERFACE_PORT:-8300}
+      CORS_ORIGINS: http://localhost:${PARTNER_DASHBOARD_PORT:-8200},http://localhost:${VERIFICATION_INTERFACE_PORT:-8300},http://localhost:${BACKEND_HTTP_PORT:-8100},https://localhost:${BACKEND_HTTPS_PORT:-8443}
       MAX_CONCURRENT_SESSIONS: 10
       API_RATE_LIMIT_PER_MINUTE: 100
       SESSION_EXPIRATION_MINUTES: 15
@@ -72,7 +72,7 @@ services:
       COGNITO_USER_POOL_ID: local
       COGNITO_CLIENT_ID: local
     ports:
-      - "8000:8000"
+      - "${BACKEND_HTTP_PORT:-8100}:8000"
     depends_on:
       postgres:
         condition: service_healthy

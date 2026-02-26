@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { ChipModule } from 'primeng/chip';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { DividerModule } from 'primeng/divider';
 import { BillingService } from '../services/billing.service';
 import { BillingStateService } from '../services/billing-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -16,12 +16,12 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatButtonModule,
-    MatChipsModule,
-    MatProgressBarModule,
-    MatDividerModule,
-    MatIconModule,
+    RouterLink,
+    CardModule,
+    ButtonModule,
+    ChipModule,
+    ProgressBarModule,
+    DividerModule,
     LoadingSpinnerComponent
   ],
   templateUrl: './subscription-overview.component.html',
@@ -53,8 +53,8 @@ export class SubscriptionOverviewComponent implements OnInit {
   }
 
   getUsageColor(percentage: number): string {
-    if (percentage >= 100) return 'warn';
-    if (percentage >= 80) return 'accent';
-    return 'primary';
+    if (percentage >= 100) return 'danger';
+    if (percentage >= 80) return 'warning';
+    return 'success';
   }
 }

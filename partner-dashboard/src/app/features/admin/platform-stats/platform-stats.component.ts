@@ -1,9 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
+import { CardModule } from 'primeng/card';
+import { ChipModule } from 'primeng/chip';
 import { AdminService } from '../services/admin.service';
 import { AdminStateService } from '../services/admin-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -15,10 +13,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatButtonModule,
-    MatIconModule,
-    MatChipsModule,
+    CardModule,
+    ChipModule,
     StatCardComponent,
     LoadingSpinnerComponent
   ],
@@ -63,14 +59,5 @@ export class PlatformStatsComponent implements OnInit {
         this.notification.error('Failed to load system health');
       }
     });
-  }
-
-  getHealthColor(status: string): string {
-    switch (status) {
-      case 'healthy': return 'primary';
-      case 'degraded': return 'accent';
-      case 'down': return 'warn';
-      default: return '';
-    }
   }
 }

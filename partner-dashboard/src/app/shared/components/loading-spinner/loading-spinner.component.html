@@ -1,4 +1,7 @@
 <div class="loading-container">
-  <mat-spinner [diameter]="diameter"></mat-spinner>
+  <p-progressSpinner 
+    [style]="{ width: diameter + 'px', height: diameter + 'px' }"
+    strokeWidth="4">
+  </p-progressSpinner>
   <p *ngIf="message" class="loading-message">{{ message }}</p>
 </div>

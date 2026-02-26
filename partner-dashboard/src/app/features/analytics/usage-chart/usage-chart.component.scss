@@ -1,8 +1,23 @@
 .chart-card {
   height: 100%;
 
-  mat-card-header {
-    margin-bottom: 16px;
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--surface-border);
+
+    i {
+      font-size: 24px;
+      color: var(--primary-color);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text-color);
+    }
   }
 
   .chart-container {
@@ -36,7 +51,7 @@
 
       .legend-label {
         font-size: 14px;
-        color: rgba(0, 0, 0, 0.87);
+        color: var(--text-color);
       }
     }
   }
@@ -47,12 +62,10 @@
     align-items: center;
     justify-content: center;
     padding: 40px;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--text-color-secondary);
 
-    mat-icon {
+    i {
       font-size: 48px;
-      width: 48px;
-      height: 48px;
       margin-bottom: 16px;
     }
 

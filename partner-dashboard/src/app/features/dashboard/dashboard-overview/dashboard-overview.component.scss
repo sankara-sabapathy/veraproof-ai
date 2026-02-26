@@ -1,20 +1,62 @@
 .dashboard-overview {
   padding: 24px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: calc(100vh - 64px);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   h2 {
     margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a202c;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .quick-actions {
     display: flex;
-    gap: 12px;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    
+    ::ng-deep .p-button {
+      border-radius: 8px;
+      font-weight: 600;
+      text-transform: none;
+      padding: 0.75rem 1.5rem !important;
+      min-height: 44px;
+      min-width: 140px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      margin: 0 !important; // Override global button margin
+      
+      .p-button-label {
+        font-size: 14px;
+      }
+      
+      .p-button-icon {
+        font-size: 16px;
+        margin-right: 0.5rem;
+      }
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
   }
 }
 
@@ -22,18 +64,33 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .quota-card {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  
+  .card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px 24px;
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+  }
+  
+  ::ng-deep .p-card-body {
+    padding: 24px;
+  }
 }
 
 .quota-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .quota-numbers {
@@ -42,46 +99,64 @@
   gap: 8px;
 
   .current {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 700;
-    color: #3f51b5;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
   .separator {
-    font-size: 24px;
-    color: rgba(0, 0, 0, 0.4);
+    font-size: 28px;
+    color: rgba(0, 0, 0, 0.3);
   }
 
   .total {
-    font-size: 24px;
-    font-weight: 500;
+    font-size: 28px;
+    font-weight: 600;
     color: rgba(0, 0, 0, 0.6);
   }
 
   .label {
     font-size: 14px;
     color: rgba(0, 0, 0, 0.6);
+    font-weight: 500;
   }
 }
 
 .quota-percentage {
-  font-size: 18px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.8);
+  font-size: 20px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+::ng-deep .p-progressbar {
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  
+  .p-progressbar-value {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
 }
 
 .quota-warning {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 12px;
-  background-color: #fff3e0;
-  border-radius: 4px;
-  color: #f57c00;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-radius: 8px;
+  border-left: 4px solid #f57c00;
+  color: #e65100;
+  font-weight: 500;
 
-  mat-icon {
+  i {
     flex-shrink: 0;
+    color: #f57c00;
+    font-size: 20px;
   }
 }
 
@@ -89,7 +164,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
@@ -97,32 +172,97 @@
 }
 
 .chart-card {
-  min-height: 300px;
+  min-height: 350px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  
+  .card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    font-weight: 600;
+    font-size: 18px;
+    color: #1a202c;
+  }
 }
 
 .recent-sessions {
-  mat-card-header {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  
+  .card-header-with-action {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    
+    .card-header {
+      font-weight: 600;
+      font-size: 18px;
+      color: #1a202c;
+      padding: 0;
+      border: none;
+    }
+    
+    ::ng-deep .p-button {
+      color: #667eea;
+      font-weight: 600;
+      
+      &:hover {
+        background: rgba(102, 126, 234, 0.1);
+      }
+    }
   }
 }
 
 .sessions-table {
   width: 100%;
+  
+  ::ng-deep th {
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  ::ng-deep td {
+    color: #2d3748;
+  }
+  
+  ::ng-deep .chip-primary {
+    background: #667eea;
+    color: white;
+  }
+  
+  ::ng-deep .chip-accent {
+    background: #ff9800;
+    color: white;
+  }
 }
 
 .session-id {
-  font-family: monospace;
+  font-family: 'Courier New', monospace;
   font-size: 13px;
+  background: #f7fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #667eea;
+  font-weight: 600;
 }
 
 .clickable-row {
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
   }
 }
 
@@ -131,18 +271,65 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
+  padding: 64px 32px;
   color: rgba(0, 0, 0, 0.4);
 
-  mat-icon {
-    font-size: 64px;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 16px;
+  i {
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 24px;
+    color: #cbd5e0;
   }
 
   p {
     font-size: 18px;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
+    color: #4a5568;
+    font-weight: 600;
+    
+    &.help-text {
+      font-size: 14px;
+      color: #a0aec0;
+      font-weight: 400;
+      margin-bottom: 24px;
+    }
+  }
+  
+  ::ng-deep .p-button {
+    border-radius: 8px;
+    padding: 12px 32px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .dashboard-overview {
+    padding: 16px;
+  }
+  
+  .header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+    
+    .quick-actions {
+      width: 100%;
+      
+      button {
+        flex: 1;
+      }
+    }
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 }

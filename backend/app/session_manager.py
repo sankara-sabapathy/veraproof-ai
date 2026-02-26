@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """Manages verification sessions"""
     
+    def __init__(self):
+        """Initialize session manager with in-memory fallback storage"""
+        self.in_memory_sessions = {}  # Fallback when database unavailable
+    
     async def create_session(
         self,
         tenant_id: str,
@@ -32,16 +36,44 @@ class SessionManager:
         """
         
         import json
-        result = await db_manager.fetch_one(
-            query,
-            session_id,
-            tenant_id,
-            created_at,
-            expires_at,
-            SessionState.IDLE.value,
-            return_url,
-            json.dumps(metadata) if metadata else '{}'
-        )
+        try:
+            result = await db_manager.fetch_one(
+                query,
+                session_id,
+                tenant_id,
+                created_at,
+                expires_at,
+                SessionState.IDLE.value,
+                return_url,
+                json.dumps(metadata) if metadata else '{}'
+            )
+        except Exception as e:
+            logger.error(f"Failed to insert session into database: {e}")
+            result = None
+        
+        # Store in memory as fallback if database unavailable
+        session_data = {
+            "session_id": session_id,
+            "tenant_id": tenant_id,
+            "created_at": created_at,
+            "expires_at": expires_at,
+            "state": SessionState.IDLE.value,
+            "return_url": return_url,
+            "metadata": metadata or {},
+            "tier_1_score": None,
+            "tier_2_score": None,
+            "final_trust_score": None,
+            "correlation_value": None,
+            "reasoning": None,
+            "video_s3_key": None,
+            "imu_data_s3_key": None,
+            "optical_flow_s3_key": None
+        }
+        
+        if result is None:
+            # Database unavailable, use in-memory storage
+            logger.warning(f"Database unavailable, storing session {session_id} in memory")
+            self.in_memory_sessions[session_id] = session_data
         
         logger.info(f"Session created: {session_id} for tenant: {tenant_id}")
         
@@ -63,8 +95,12 @@ class SessionManager:
         
         session = await db_manager.fetch_one(query, session_id)
         
-        if session:
-            logger.debug(f"Session retrieved: {session_id}")
+        # Fallback to in-memory storage if database unavailable
+        if session is None and session_id in self.in_memory_sessions:
+            session = self.in_memory_sessions[session_id]
+            logger.debug(f"Session retrieved from memory: {session_id}")
+        elif session:
+            logger.debug(f"Session retrieved from database: {session_id}")
         else:
             logger.warning(f"Session not found: {session_id}")
         
@@ -195,8 +231,7 @@ class SessionManager:
             query,
             tenant_id,
             limit,
-            offset,
-            tenant_id=tenant_id
+            offset
         )
         
         # Return empty list if database unavailable (graceful degradation)

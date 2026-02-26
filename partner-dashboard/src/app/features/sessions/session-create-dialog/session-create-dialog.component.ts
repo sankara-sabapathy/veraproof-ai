@@ -1,12 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { DynamicDialogRef, DynamicDialogConfig } from 'primeng/dynamicdialog';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { InputTextModule } from 'primeng/inputtext';
+import { ButtonModule } from 'primeng/button';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { SessionsService } from '../services/sessions.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CreateSessionResponse } from '../../../core/models/interfaces';
@@ -17,39 +16,48 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule
+    InputTextModule,
+    ButtonModule,
+    ProgressSpinnerModule,
+    TooltipModule
   ],
   template: `
     <div class="dialog-container">
-      <h2 mat-dialog-title>Create Test Session</h2>
-
-      <mat-dialog-content>
+      <div class="dialog-content">
         <p class="description">
           Create a test verification session. You'll receive a session URL that can be opened on a mobile device.
         </p>
 
         <form [formGroup]="createForm">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Return URL</mat-label>
-            <input matInput formControlName="return_url" placeholder="https://yourapp.com/callback">
-            <mat-hint>URL where results will be sent after verification</mat-hint>
-          </mat-form-field>
+          <div class="field">
+            <span class="p-float-label">
+              <input 
+                pInputText 
+                id="return_url"
+                formControlName="return_url" 
+                class="full-width"
+                [class.ng-invalid]="createForm.get('return_url')?.invalid && createForm.get('return_url')?.touched">
+              <label for="return_url">Return URL</label>
+            </span>
+            <small class="field-hint">URL where results will be sent after verification</small>
+          </div>
 
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>User ID (Optional)</mat-label>
-            <input matInput formControlName="user_id" placeholder="user-123">
-            <mat-hint>Your internal user identifier</mat-hint>
-          </mat-form-field>
+          <div class="field">
+            <span class="p-float-label">
+              <input 
+                pInputText 
+                id="user_id"
+                formControlName="user_id" 
+                class="full-width">
+              <label for="user_id">User ID (Optional)</label>
+            </span>
+            <small class="field-hint">Your internal user identifier</small>
+          </div>
         </form>
 
         <div *ngIf="createdSession" class="session-created">
           <div class="success-message">
-            <mat-icon color="primary">check_circle</mat-icon>
+            <i class="pi pi-check-circle"></i>
             <span>Session created successfully!</span>
           </div>
 
@@ -62,9 +70,13 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
               <span class="label">Session URL:</span>
               <div class="url-container">
                 <code class="session-url">{{ createdSession.session_url }}</code>
-                <button mat-icon-button (click)="copyUrl()" matTooltip="Copy URL">
-                  <mat-icon>{{ urlCopied ? 'check' : 'content_copy' }}</mat-icon>
-                </button>
+                <p-button 
+                  [icon]="urlCopied ? 'pi pi-check' : 'pi pi-copy'"
+                  [text]="true"
+                  [rounded]="true"
+                  (onClick)="copyUrl()"
+                  pTooltip="Copy URL">
+                </p-button>
               </div>
             </div>
             <div class="info-row">
@@ -74,46 +86,68 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
           </div>
 
           <div class="help-text">
-            <mat-icon>info</mat-icon>
+            <i class="pi pi-info-circle"></i>
             <span>Open this URL on a mobile device to start the verification process.</span>
           </div>
         </div>
-      </mat-dialog-content>
+      </div>
 
-      <mat-dialog-actions align="end">
-        <button mat-button (click)="onClose()" [disabled]="loading">
-          {{ createdSession ? 'Close' : 'Cancel' }}
-        </button>
-        <button *ngIf="!createdSession" 
-                mat-raised-button 
-                color="primary" 
-                (click)="onCreate()"
-                [disabled]="loading || createForm.invalid">
-          <mat-spinner *ngIf="loading" diameter="20" class="button-spinner"></mat-spinner>
-          <span *ngIf="!loading">Create Session</span>
-        </button>
-      </mat-dialog-actions>
+      <div class="dialog-actions">
+        <p-button 
+          label="{{ createdSession ? 'Close' : 'Cancel' }}"
+          [text]="true"
+          (onClick)="onClose()" 
+          [disabled]="loading">
+        </p-button>
+        <p-button 
+          *ngIf="!createdSession"
+          label="Create Session"
+          [loading]="loading"
+          (onClick)="onCreate()"
+          [disabled]="loading || createForm.invalid">
+        </p-button>
+      </div>
     </div>
   `,
   styles: [`
     .dialog-container {
       min-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .dialog-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
     }
 
     .description {
-      color: var(--text-secondary);
+      color: var(--text-color-secondary);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .field {
       margin-bottom: 1.5rem;
     }
 
     .full-width {
       width: 100%;
-      margin-bottom: 1rem;
+    }
+
+    .field-hint {
+      display: block;
+      margin-top: 0.25rem;
+      color: var(--text-color-secondary);
+      font-size: 0.875rem;
     }
 
     .session-created {
-      margin-top: 1.5rem;
+      margin-top: 0.5rem;
       padding: 1rem;
-      background: var(--background-secondary);
+      background: var(--surface-50);
       border-radius: 8px;
     }
 
@@ -124,6 +158,10 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
       margin-bottom: 1rem;
       color: var(--primary-color);
       font-weight: 500;
+    }
+
+    .success-message i {
+      font-size: 1.25rem;
     }
 
     .session-info {
@@ -141,13 +179,13 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
     .label {
       font-size: 0.875rem;
       font-weight: 500;
-      color: var(--text-secondary);
+      color: var(--text-color-secondary);
     }
 
     code {
       padding: 0.5rem;
-      background: var(--background);
-      border: 1px solid var(--border-color);
+      background: var(--surface-0);
+      border: 1px solid var(--surface-border);
       border-radius: 4px;
       font-family: 'Courier New', monospace;
       font-size: 0.875rem;
@@ -170,28 +208,31 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
       gap: 0.5rem;
       margin-top: 1rem;
       padding: 0.75rem;
-      background: var(--info-background);
-      border-left: 3px solid var(--info-color);
+      background: var(--blue-50);
+      border-left: 3px solid var(--blue-500);
       border-radius: 4px;
       font-size: 0.875rem;
     }
 
-    .help-text mat-icon {
+    .help-text i {
       font-size: 1.25rem;
-      width: 1.25rem;
-      height: 1.25rem;
-      color: var(--info-color);
+      color: var(--blue-500);
+      margin-top: 0.125rem;
     }
 
-    .button-spinner {
-      display: inline-block;
-      margin-right: 0.5rem;
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--surface-border);
     }
   `]
 })
 export class SessionCreateDialogComponent implements OnInit {
   private fb = inject(FormBuilder);
-  private dialogRef = inject(MatDialogRef<SessionCreateDialogComponent>);
+  private ref = inject(DynamicDialogRef);
+  private config = inject(DynamicDialogConfig);
   private sessionsService = inject(SessionsService);
   private notificationService = inject(NotificationService);
 
@@ -247,6 +288,6 @@ export class SessionCreateDialogComponent implements OnInit {
   }
 
   onClose(): void {
-    this.dialogRef.close(this.createdSession);
+    this.ref.close(this.createdSession);
   }
 }

@@ -10,21 +10,17 @@
   .table-wrapper {
     overflow-x: auto;
     
-    table {
-      width: 100%;
-      
-      .clickable-row {
-        cursor: pointer;
-        transition: background-color 0.2s;
-        
-        &:hover {
-          background-color: rgba(0, 0, 0, 0.04);
+    ::ng-deep {
+      .p-datatable {
+        .clickable-row {
+          cursor: pointer;
+          transition: background-color 0.2s;
+          
+          &:hover {
+            background-color: var(--surface-hover);
+          }
         }
       }
     }
-  }
-  
-  mat-paginator {
-    margin-top: 16px;
   }
 }

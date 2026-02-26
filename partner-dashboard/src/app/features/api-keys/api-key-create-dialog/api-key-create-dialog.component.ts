@@ -1,18 +1,24 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { DynamicDialogRef, DynamicDialogConfig } from 'primeng/dynamicdialog';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatCardModule } from '@angular/material/card';
-import { MatChipsModule } from '@angular/material/chips';
+import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
+import { CardModule } from 'primeng/card';
+import { ChipModule } from 'primeng/chip';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { TooltipModule } from 'primeng/tooltip';
 import { ApiKeysService } from '../services/api-keys.service';
 import { ApiKeysStateService } from '../services/api-keys-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ApiKeyResponse, ApiKey } from '../../../core/models/interfaces';
+
+interface EnvironmentOption {
+  label: string;
+  value: 'sandbox' | 'production';
+  icon: string;
+  description: string;
+}
 
 @Component({
   selector: 'app-api-key-create-dialog',
@@ -20,21 +26,20 @@ import { ApiKeyResponse, ApiKey } from '../../../core/models/interfaces';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatCardModule,
-    MatChipsModule
+    ButtonModule,
+    DropdownModule,
+    CardModule,
+    ChipModule,
+    ProgressSpinnerModule,
+    TooltipModule
   ],
   templateUrl: './api-key-create-dialog.component.html',
   styleUrls: ['./api-key-create-dialog.component.scss']
 })
 export class ApiKeyCreateDialogComponent implements OnInit {
   private fb = inject(FormBuilder);
-  private dialogRef = inject(MatDialogRef<ApiKeyCreateDialogComponent>);
+  private dialogRef = inject(DynamicDialogRef);
+  private config = inject(DynamicDialogConfig);
   private apiKeysService = inject(ApiKeysService);
   private stateService = inject(ApiKeysStateService);
   private notificationService = inject(NotificationService);
@@ -44,6 +49,21 @@ export class ApiKeyCreateDialogComponent implements OnInit {
   generatedKey: ApiKeyResponse | null = null;
   keyCopied = false;
   showCloseWarning = false;
+
+  environmentOptions: EnvironmentOption[] = [
+    {
+      label: 'Sandbox',
+      value: 'sandbox',
+      icon: 'pi pi-flask',
+      description: 'For testing and development'
+    },
+    {
+      label: 'Production',
+      value: 'production',
+      icon: 'pi pi-check-circle',
+      description: 'For live verification sessions'
+    }
+  ];
 
   ngOnInit(): void {
     this.createForm = this.fb.group({

@@ -22,3 +22,9 @@ Every verification session must guide the user through this sequence:
 Use Amazon SageMaker only after Phase 1 math is verified. Focus on:
 - Diffusion Artifact Detection.
 - GAN-based inpainting "ghosting" effects.
+
+## 5. Documentation & Summary Rules
+- **Rule 03:** NEVER create markdown files to summarize work or document task completion.
+- **Rule 04:** Provide summaries ONLY in chat responses, not as files.
+- **Rule 05:** Do not create files in root, scripts/, or documentation/ folders unless explicitly requested.
+- **Rule 06:** Keep the repository clean - avoid bloat from temporary summaries, checklists, or status files.

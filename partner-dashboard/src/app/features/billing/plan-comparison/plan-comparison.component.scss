@@ -12,7 +12,7 @@
   gap: 24px;
 }
 
-mat-card {
+::ng-deep .plan-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -22,12 +22,47 @@ mat-card {
     border: 2px solid #ff4081;
     box-shadow: 0 4px 12px rgba(255, 64, 129, 0.2);
   }
+
+  .p-card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .p-card-content {
+    flex: 1;
+  }
+
+  .p-card-footer {
+    margin-top: auto;
+  }
+}
+
+.card-header-content {
+  position: relative;
+  padding: 16px;
 }
 
 .recommended-badge {
   position: absolute;
   top: 16px;
   right: 16px;
+  background-color: #ff4081 !important;
+  color: white !important;
+}
+
+.plan-title {
+  h3 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  .plan-subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+  }
 }
 
 .pricing {
@@ -70,16 +105,13 @@ mat-card {
     gap: 8px;
     margin-bottom: 12px;
 
-    mat-icon {
+    i.pi-check-circle {
       color: #4caf50;
       font-size: 20px;
-      width: 20px;
-      height: 20px;
     }
   }
 }
 
-mat-card-actions {
-  margin-top: auto;
-  padding: 16px;
+::ng-deep .w-full {
+  width: 100%;
 }

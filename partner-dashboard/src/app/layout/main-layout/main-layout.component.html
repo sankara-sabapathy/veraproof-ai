@@ -1,19 +1,30 @@
-<mat-sidenav-container class="sidenav-container">
-  <mat-sidenav
-    #drawer
-    class="sidenav"
-    fixedInViewport
-    [attr.role]="(isHandset$ | async) ? 'dialog' : 'navigation'"
-    [mode]="(isHandset$ | async) ? 'over' : 'side'"
-    [opened]="!(isHandset$ | async)">
-    <app-sidebar [drawer]="drawer"></app-sidebar>
-  </mat-sidenav>
+<div class="layout-container">
+  <!-- Desktop: Toggleable sidebar -->
+  <aside class="layout-sidebar" *ngIf="!(isHandset$ | async) && sidebarVisible()">
+    <app-sidebar (navItemClick)="onSidebarNavClick()"></app-sidebar>
+  </aside>
   
-  <mat-sidenav-content>
-    <app-toolbar [drawer]="drawer"></app-toolbar>
+  <!-- Mobile: Overlay sidebar -->
+  <p-sidebar 
+    [(visible)]="sidebarVisible" 
+    [modal]="true" 
+    [showCloseIcon]="true"
+    [dismissible]="true"
+    [closeOnEscape]="true"
+    position="left"
+    styleClass="mobile-sidebar"
+    *ngIf="isHandset$ | async">
+    <app-sidebar (navItemClick)="onSidebarNavClick()"></app-sidebar>
+  </p-sidebar>
+  
+  <div class="layout-content">
+    <app-toolbar 
+      (menuToggle)="toggleSidebar()"
+      [showMenuButton]="true">
+    </app-toolbar>
     
     <main class="main-content">
       <router-outlet></router-outlet>
     </main>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+  </div>
+</div>

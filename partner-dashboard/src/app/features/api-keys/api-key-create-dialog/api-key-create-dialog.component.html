@@ -1,134 +1,145 @@
 <div class="dialog-container">
-  <h2 mat-dialog-title>Generate API Key</h2>
+  <!-- Step 1: Environment Selection (shown before generation) -->
+  <div *ngIf="!hasGeneratedKey" class="selection-step">
+    <p class="description">
+      Select the environment for your new API key. Sandbox keys are for testing, 
+      while production keys are for live verification sessions.
+    </p>
 
-  <mat-dialog-content>
-    <!-- Step 1: Environment Selection (shown before generation) -->
-    <div *ngIf="!hasGeneratedKey" class="selection-step">
-      <p class="description">
-        Select the environment for your new API key. Sandbox keys are for testing, 
-        while production keys are for live verification sessions.
-      </p>
-
-      <form [formGroup]="createForm">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Environment</mat-label>
-          <mat-select formControlName="environment">
-            <mat-option value="sandbox">
-              <div class="environment-option">
-                <mat-icon>science</mat-icon>
-                <div>
-                  <div class="option-title">Sandbox</div>
-                  <div class="option-description">For testing and development</div>
-                </div>
-              </div>
-            </mat-option>
-            <mat-option value="production">
-              <div class="environment-option">
-                <mat-icon>verified</mat-icon>
-                <div>
-                  <div class="option-title">Production</div>
-                  <div class="option-description">For live verification sessions</div>
-                </div>
-              </div>
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </form>
-    </div>
-
-    <!-- Step 2: Generated Key Display (shown after generation) -->
-    <div *ngIf="hasGeneratedKey" class="generated-step">
-      <!-- Security Warning -->
-      <mat-card class="warning-card">
-        <mat-card-content>
-          <div class="warning-content">
-            <mat-icon color="warn">info</mat-icon>
-            <div>
-              <strong>API Key Generated Successfully</strong>
-              <p>
-                Copy your API key and store it securely. You'll need this key to authenticate 
-                your API requests when creating verification sessions.
-              </p>
+    <form [formGroup]="createForm">
+      <span class="p-float-label full-width">
+        <p-dropdown 
+          formControlName="environment"
+          [options]="environmentOptions"
+          optionLabel="label"
+          optionValue="value"
+          inputId="environment"
+          styleClass="full-width">
+          <ng-template pTemplate="selectedItem" let-option>
+            <div class="environment-option" *ngIf="option">
+              <i [class]="option.icon"></i>
+              <span>{{ option.label }}</span>
             </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
+          </ng-template>
+          <ng-template pTemplate="item" let-option>
+            <div class="environment-option">
+              <i [class]="option.icon"></i>
+              <div>
+                <div class="option-title">{{ option.label }}</div>
+                <div class="option-description">{{ option.description }}</div>
+              </div>
+            </div>
+          </ng-template>
+        </p-dropdown>
+        <label for="environment">Environment</label>
+      </span>
+    </form>
+  </div>
 
-      <!-- API Key Display -->
-      <div class="credential-section">
-        <label class="credential-label">API Key</label>
-        <div class="credential-display">
-          <code class="credential-value">{{ generatedKey?.api_key }}</code>
-          <button mat-icon-button 
-                  (click)="copyToClipboard(generatedKey!.api_key)"
-                  [class.copied]="keyCopied"
-                  matTooltip="Copy to clipboard">
-            <mat-icon>{{ keyCopied ? 'check' : 'content_copy' }}</mat-icon>
-          </button>
+  <!-- Step 2: Generated Key Display (shown after generation) -->
+  <div *ngIf="hasGeneratedKey" class="generated-step">
+    <!-- Security Warning -->
+    <p-card styleClass="warning-card">
+      <ng-template pTemplate="content">
+        <div class="warning-content">
+          <i class="pi pi-info-circle"></i>
+          <div>
+            <strong>API Key Generated Successfully</strong>
+            <p>
+              Copy your API key and store it securely. You'll need this key to authenticate 
+              your API requests when creating verification sessions.
+            </p>
+          </div>
         </div>
-        <span class="credential-hint">Use this key in the Authorization header: Bearer YOUR_API_KEY</span>
-      </div>
+      </ng-template>
+    </p-card>
 
-      <!-- Environment Badge -->
-      <div class="environment-badge">
-        <mat-chip-set>
-          <mat-chip [class.sandbox]="generatedKey?.environment === 'sandbox'"
-                    [class.production]="generatedKey?.environment === 'production'">
-            <mat-icon>{{ generatedKey?.environment === 'sandbox' ? 'science' : 'verified' }}</mat-icon>
-            {{ generatedKey?.environment | titlecase }}
-          </mat-chip>
-        </mat-chip-set>
+    <!-- API Key Display -->
+    <div class="credential-section">
+      <label class="credential-label">API Key</label>
+      <div class="credential-display">
+        <code class="credential-value">{{ generatedKey?.api_key }}</code>
+        <p-button 
+          icon="{{ keyCopied ? 'pi pi-check' : 'pi pi-copy' }}"
+          [text]="true"
+          [rounded]="true"
+          (onClick)="copyToClipboard(generatedKey!.api_key)"
+          [class.copied]="keyCopied"
+          pTooltip="Copy to clipboard">
+        </p-button>
       </div>
+      <span class="credential-hint">Use this key in the Authorization header: Bearer YOUR_API_KEY</span>
     </div>
 
-    <!-- Close Warning (shown when trying to close without copying) -->
-    <div *ngIf="showCloseWarning" class="close-warning">
-      <mat-card class="warning-card danger">
-        <mat-card-content>
-          <div class="warning-content">
-            <mat-icon color="warn">error</mat-icon>
-            <div>
-              <strong>Are you sure you want to close?</strong>
-              <p>
-                You haven't copied the API key yet. Make sure to copy it before closing.
-              </p>
-            </div>
+    <!-- Environment Badge -->
+    <div class="environment-badge">
+      <p-chip 
+        [label]="(generatedKey?.environment | titlecase) || ''"
+        [icon]="generatedKey?.environment === 'sandbox' ? 'pi pi-flask' : 'pi pi-check-circle'"
+        [styleClass]="generatedKey?.environment === 'sandbox' ? 'sandbox' : 'production'">
+      </p-chip>
+    </div>
+  </div>
+
+  <!-- Close Warning (shown when trying to close without copying) -->
+  <div *ngIf="showCloseWarning" class="close-warning">
+    <p-card styleClass="warning-card danger">
+      <ng-template pTemplate="content">
+        <div class="warning-content">
+          <i class="pi pi-exclamation-triangle"></i>
+          <div>
+            <strong>Are you sure you want to close?</strong>
+            <p>
+              You haven't copied the API key yet. Make sure to copy it before closing.
+            </p>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </mat-dialog-content>
+        </div>
+      </ng-template>
+    </p-card>
+  </div>
 
-  <mat-dialog-actions align="end">
+  <!-- Dialog Actions -->
+  <div class="dialog-actions">
     <!-- Actions before generation -->
     <ng-container *ngIf="!hasGeneratedKey">
-      <button mat-button (click)="onClose()" [disabled]="loading">
-        Cancel
-      </button>
-      <button mat-raised-button 
-              color="primary" 
-              (click)="onGenerate()"
-              [disabled]="loading || createForm.invalid">
-        <mat-spinner *ngIf="loading" diameter="20" class="button-spinner"></mat-spinner>
-        <span *ngIf="!loading">Generate</span>
-      </button>
+      <p-button 
+        label="Cancel" 
+        severity="secondary"
+        [text]="true"
+        (onClick)="onClose()" 
+        [disabled]="loading">
+      </p-button>
+      <p-button 
+        label="Generate" 
+        severity="primary"
+        (onClick)="onGenerate()"
+        [disabled]="loading || createForm.invalid"
+        [loading]="loading">
+      </p-button>
     </ng-container>
 
     <!-- Actions after generation -->
     <ng-container *ngIf="hasGeneratedKey && !showCloseWarning">
-      <button mat-raised-button color="primary" (click)="onClose()">
-        Done
-      </button>
+      <p-button 
+        label="Done" 
+        severity="primary"
+        (onClick)="onClose()">
+      </p-button>
     </ng-container>
 
     <!-- Actions for close warning -->
     <ng-container *ngIf="showCloseWarning">
-      <button mat-button (click)="cancelClose()">
-        Go Back
-      </button>
-      <button mat-raised-button color="warn" (click)="confirmClose()">
-        Close Anyway
-      </button>
+      <p-button 
+        label="Go Back" 
+        severity="secondary"
+        [text]="true"
+        (onClick)="cancelClose()">
+      </p-button>
+      <p-button 
+        label="Close Anyway" 
+        severity="danger"
+        (onClick)="confirmClose()">
+      </p-button>
     </ng-container>
-  </mat-dialog-actions>
+  </div>
 </div>

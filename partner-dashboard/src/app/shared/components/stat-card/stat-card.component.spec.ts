@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { StatCardComponent } from './stat-card.component';
 import { DebugElement } from '@angular/core';
 import { By } from '@angular/platform-browser';
@@ -12,8 +12,7 @@ describe('StatCardComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ StatCardComponent ],
-      imports: [ MatCardModule, MatIconModule ]
+      imports: [ StatCardComponent, CardModule, ProgressSpinnerModule ]
     })
     .compileComponents();
 
@@ -87,9 +86,9 @@ describe('StatCardComponent', () => {
       fixture.detectChanges();
 
       const trendElement = compiled.query(By.css('.stat-trend'));
-      const iconElement = trendElement.query(By.css('mat-icon'));
+      const iconElement = trendElement.query(By.css('i.pi-arrow-up'));
       expect(trendElement).toBeTruthy();
-      expect(iconElement.nativeElement.textContent.trim()).toBe('trending_up');
+      expect(iconElement).toBeTruthy();
       expect(trendElement.nativeElement.textContent).toContain('+15%');
     });
 
@@ -101,9 +100,9 @@ describe('StatCardComponent', () => {
       fixture.detectChanges();
 
       const trendElement = compiled.query(By.css('.stat-trend'));
-      const iconElement = trendElement.query(By.css('mat-icon'));
+      const iconElement = trendElement.query(By.css('i.pi-arrow-down'));
       expect(trendElement).toBeTruthy();
-      expect(iconElement.nativeElement.textContent.trim()).toBe('trending_down');
+      expect(iconElement).toBeTruthy();
       expect(trendElement.nativeElement.textContent).toContain('-10%');
     });
 
@@ -115,9 +114,9 @@ describe('StatCardComponent', () => {
       fixture.detectChanges();
 
       const trendElement = compiled.query(By.css('.stat-trend'));
-      const iconElement = trendElement.query(By.css('mat-icon'));
+      const iconElement = trendElement.query(By.css('i.pi-arrow-down'));
       expect(trendElement).toBeTruthy();
-      expect(iconElement.nativeElement.textContent.trim()).toBe('trending_down');
+      expect(iconElement).toBeTruthy();
       expect(trendElement.nativeElement.textContent).toContain('0%');
     });
 
@@ -138,8 +137,8 @@ describe('StatCardComponent', () => {
       component.iconColor = 'primary';
       fixture.detectChanges();
 
-      const iconElement = compiled.query(By.css('mat-icon'));
-      expect(iconElement.nativeElement.getAttribute('ng-reflect-color')).toBe('primary');
+      const iconElement = compiled.query(By.css('.stat-icon'));
+      expect(iconElement.nativeElement.classList.contains('icon-primary')).toBe(true);
     });
 
     it('should apply accent icon color', () => {
@@ -149,8 +148,8 @@ describe('StatCardComponent', () => {
       component.iconColor = 'accent';
       fixture.detectChanges();
 
-      const iconElement = compiled.query(By.css('mat-icon'));
-      expect(iconElement.nativeElement.getAttribute('ng-reflect-color')).toBe('accent');
+      const iconElement = compiled.query(By.css('.stat-icon'));
+      expect(iconElement.nativeElement.classList.contains('icon-accent')).toBe(true);
     });
 
     it('should apply warn icon color', () => {
@@ -160,8 +159,8 @@ describe('StatCardComponent', () => {
       component.iconColor = 'warn';
       fixture.detectChanges();
 
-      const iconElement = compiled.query(By.css('mat-icon'));
-      expect(iconElement.nativeElement.getAttribute('ng-reflect-color')).toBe('warn');
+      const iconElement = compiled.query(By.css('.stat-icon'));
+      expect(iconElement.nativeElement.classList.contains('icon-warn')).toBe(true);
     });
   });
 
@@ -194,6 +193,45 @@ describe('StatCardComponent', () => {
 
       const valueElement = compiled.query(By.css('.stat-value'));
       expect(valueElement.nativeElement.textContent).toContain('0');
+    });
+  });
+
+  describe('loading state', () => {
+    it('should display loading spinner when loading is true', () => {
+      component.title = 'Test';
+      component.value = 100;
+      component.icon = 'info';
+      component.loading = true;
+      fixture.detectChanges();
+
+      const loadingElement = compiled.query(By.css('.loading-container'));
+      const spinnerElement = compiled.query(By.css('p-progressSpinner'));
+      expect(loadingElement).toBeTruthy();
+      expect(spinnerElement).toBeTruthy();
+    });
+
+    it('should hide content when loading is true', () => {
+      component.title = 'Test';
+      component.value = 100;
+      component.icon = 'info';
+      component.loading = true;
+      fixture.detectChanges();
+
+      const contentElement = compiled.query(By.css('.stat-content'));
+      expect(contentElement).toBeFalsy();
+    });
+
+    it('should display content when loading is false', () => {
+      component.title = 'Test';
+      component.value = 100;
+      component.icon = 'info';
+      component.loading = false;
+      fixture.detectChanges();
+
+      const contentElement = compiled.query(By.css('.stat-content'));
+      const loadingElement = compiled.query(By.css('.loading-container'));
+      expect(contentElement).toBeTruthy();
+      expect(loadingElement).toBeFalsy();
     });
   });
 });

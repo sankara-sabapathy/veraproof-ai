@@ -2,13 +2,20 @@
   <div class="header">
     <h1>Analytics</h1>
     <div class="actions">
-      <button mat-raised-button color="primary" (click)="exportCSV()" [disabled]="loading">
-        <mat-icon>download</mat-icon>
-        Export CSV
-      </button>
-      <button mat-icon-button (click)="refresh()" [disabled]="loading">
-        <mat-icon>refresh</mat-icon>
-      </button>
+      <p-button 
+        label="Export CSV" 
+        icon="pi pi-download" 
+        (onClick)="exportCSV()" 
+        [disabled]="loading"
+        severity="primary">
+      </p-button>
+      <p-button 
+        icon="pi pi-refresh" 
+        (onClick)="refresh()" 
+        [disabled]="loading"
+        [text]="true"
+        [rounded]="true">
+      </p-button>
     </div>
   </div>
 
@@ -20,7 +27,7 @@
     <mat-card>
       <mat-card-content>
         <p class="error-message">{{ error }}</p>
-        <button mat-raised-button color="primary" (click)="refresh()">Retry</button>
+        <p-button label="Retry" (onClick)="refresh()" severity="primary"></p-button>
       </mat-card-content>
     </mat-card>
   </div>
@@ -92,14 +99,15 @@
 
     <!-- Period Selector -->
     <div class="period-selector">
-      <mat-form-field appearance="outline">
-        <mat-label>Time Period</mat-label>
-        <mat-select [(value)]="selectedPeriod" (selectionChange)="onPeriodChange($event.value)">
-          <mat-option value="daily">Daily</mat-option>
-          <mat-option value="weekly">Weekly</mat-option>
-          <mat-option value="monthly">Monthly</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <p-dropdown 
+        [(ngModel)]="selectedPeriod" 
+        [options]="periodOptions" 
+        optionLabel="label" 
+        optionValue="value"
+        (onChange)="onPeriodChange($event.value)"
+        placeholder="Select Time Period"
+        [style]="{'width': '200px'}">
+      </p-dropdown>
     </div>
 
     <!-- Charts -->

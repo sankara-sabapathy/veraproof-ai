@@ -1,12 +1,12 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 
 @Component({
   selector: 'app-stat-card',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule],
+  imports: [CommonModule, CardModule, ProgressSpinnerModule],
   templateUrl: './stat-card.component.html',
   styleUrls: ['./stat-card.component.scss']
 })
@@ -17,4 +17,5 @@ export class StatCardComponent {
   @Input() icon: string = '';
   @Input() iconColor: 'primary' | 'accent' | 'warn' = 'primary';
   @Input() trend?: number;
+  @Input() loading: boolean = false;
 }

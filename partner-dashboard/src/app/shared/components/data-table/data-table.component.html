@@ -1,33 +1,83 @@
 <div class="table-container">
-  <mat-form-field class="search-field">
-    <mat-icon matPrefix>search</mat-icon>
-    <input matInput placeholder="Search..." [(ngModel)]="searchTerm" 
-           (ngModelChange)="onSearchChange()">
-  </mat-form-field>
-  
-  <div class="table-wrapper">
-    <table mat-table [dataSource]="dataSource" matSort>
-      <ng-container *ngFor="let column of columns" [matColumnDef]="column.key">
-        <th mat-header-cell *matHeaderCellDef [mat-sort-header]="column.sortable !== false ? column.key : ''">
-          {{ column.label }}
-        </th>
-        <td mat-cell *matCellDef="let row">
-          <ng-container *ngIf="column.template; else defaultCell">
-            <ng-container *ngTemplateOutlet="column.template; context: { $implicit: row }">
-            </ng-container>
-          </ng-container>
-          <ng-template #defaultCell>{{ row[column.key] }}</ng-template>
-        </td>
-      </ng-container>
-      
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
-          (click)="onRowClick(row)" class="clickable-row"></tr>
-    </table>
+  <div class="search-field">
+    <span class="p-input-icon-left">
+      <i class="pi pi-search"></i>
+      <input 
+        pInputText 
+        type="text" 
+        placeholder="Search..." 
+        [(ngModel)]="searchTerm" 
+        (ngModelChange)="onSearchChange()" />
+    </span>
   </div>
   
-  <mat-paginator [length]="totalItems" [pageSize]="pageSize" 
-                 [pageSizeOptions]="[10, 25, 50, 100]"
-                 (page)="onPageChange($event)">
-  </mat-paginator>
+  <div class="table-wrapper">
+    <p-table 
+      [value]="data" 
+      [columns]="columns"
+      [paginator]="true" 
+      [rows]="rows"
+      [first]="first"
+      [totalRecords]="totalItems"
+      [rowsPerPageOptions]="[10, 25, 50, 100]"
+      [loading]="loading"
+      [resizableColumns]="resizableColumns"
+      [reorderableColumns]="reorderableColumns"
+      [(selection)]="selectedRows"
+      [selectionMode]="selectionMode"
+      (onSort)="onSortChange($event)"
+      (onPage)="onPageChange($event)"
+      (onRowSelect)="onRowSelect($event)"
+      (onRowUnselect)="onRowUnselect($event)"
+      styleClass="p-datatable-striped">
+      
+      <ng-template pTemplate="header" let-columns>
+        <tr>
+          <th *ngIf="selectionMode" style="width: 3rem">
+            <p-tableHeaderCheckbox *ngIf="selectionMode === 'multiple'"></p-tableHeaderCheckbox>
+          </th>
+          <th *ngFor="let col of columns" 
+              [pSortableColumn]="col.sortable !== false ? col.key : null">
+            {{ col.label }}
+            <p-sortIcon *ngIf="col.sortable !== false" [field]="col.key"></p-sortIcon>
+          </th>
+          <th *ngIf="hasActions">Actions</th>
+        </tr>
+      </ng-template>
+      
+      <ng-template pTemplate="body" let-row let-columns="columns" let-expanded="expanded">
+        <tr [pSelectableRow]="row" (click)="onRowClick(row)" class="clickable-row">
+          <td *ngIf="selectionMode">
+            <p-tableCheckbox [value]="row" *ngIf="selectionMode === 'multiple'"></p-tableCheckbox>
+            <p-tableRadioButton [value]="row" *ngIf="selectionMode === 'single'"></p-tableRadioButton>
+          </td>
+          <td *ngFor="let col of columns">
+            <ng-container *ngIf="col.template; else defaultCell">
+              <ng-container *ngTemplateOutlet="col.template; context: { $implicit: row }"></ng-container>
+            </ng-container>
+            <ng-template #defaultCell>{{ row[col.key] }}</ng-template>
+          </td>
+          <td *ngIf="hasActions">
+            <ng-container *ngIf="actionsTemplate" [ngTemplateOutlet]="actionsTemplate" [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+          </td>
+        </tr>
+      </ng-template>
+      
+      <ng-template pTemplate="rowexpansion" let-row *ngIf="expansionTemplate">
+        <tr>
+          <td [attr.colspan]="columns.length + (selectionMode ? 1 : 0) + (hasActions ? 1 : 0)">
+            <ng-container *ngIf="expansionTemplate" [ngTemplateOutlet]="expansionTemplate" [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+          </td>
+        </tr>
+      </ng-template>
+      
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="columns.length + (selectionMode ? 1 : 0) + (hasActions ? 1 : 0)">
+            No records found
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
 </div>

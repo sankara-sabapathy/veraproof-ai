@@ -1,8 +1,11 @@
 <div class="tenant-detail" *ngIf="tenant$ | async as tenant; else loading">
   <div class="header">
-    <button mat-icon-button (click)="back()">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
+    <p-button 
+      icon="pi pi-arrow-left" 
+      [text]="true" 
+      [rounded]="true"
+      (onClick)="back()">
+    </p-button>
     <h2>{{ tenant.email }}</h2>
   </div>
 
@@ -10,47 +13,48 @@
     <app-stat-card
       title="Total Sessions"
       [value]="tenant.total_sessions"
-      icon="verified_user"
+      icon="pi pi-shield"
       iconColor="primary">
     </app-stat-card>
 
     <app-stat-card
       title="Success Rate"
       [value]="(tenant.success_rate | number:'1.1-1') + '%'"
-      icon="check_circle"
+      icon="pi pi-check-circle"
       iconColor="primary">
     </app-stat-card>
 
     <app-stat-card
       title="Avg Trust Score"
       [value]="tenant.average_trust_score | number:'1.1-1'"
-      icon="stars"
+      icon="pi pi-star"
       iconColor="accent">
     </app-stat-card>
 
     <app-stat-card
       title="API Keys"
       [value]="tenant.api_keys_count"
-      icon="vpn_key"
+      icon="pi pi-key"
       iconColor="primary">
     </app-stat-card>
   </div>
 
-  <mat-card class="info-card">
-    <mat-card-header>
-      <mat-card-title>Subscription Details</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
+  <p-card styleClass="info-card">
+    <ng-template pTemplate="header">
+      <div class="card-header">Subscription Details</div>
+    </ng-template>
+    <ng-template pTemplate="content">
       <div class="info-grid">
         <div class="info-item">
           <span class="label">Subscription Tier:</span>
-          <mat-chip color="primary" selected>{{ tenant.subscription_tier }}</mat-chip>
+          <p-chip [label]="tenant.subscription_tier" styleClass="chip-primary"></p-chip>
         </div>
         <div class="info-item">
           <span class="label">Status:</span>
-          <mat-chip [color]="tenant.status === 'active' ? 'primary' : 'warn'" selected>
-            {{ tenant.status | uppercase }}
-          </mat-chip>
+          <p-chip 
+            [label]="tenant.status | uppercase" 
+            [styleClass]="tenant.status === 'active' ? 'chip-primary' : 'chip-warn'">
+          </p-chip>
         </div>
         <div class="info-item">
           <span class="label">Monthly Quota:</span>
@@ -61,11 +65,10 @@
           <span class="value">{{ tenant.current_usage | number }} / {{ tenant.monthly_quota | number }}</span>
         </div>
         <div class="info-item full-width">
-          <mat-progress-bar 
-            mode="determinate" 
+          <p-progressBar 
             [value]="getUsagePercentage(tenant.current_usage, tenant.monthly_quota)"
-            [color]="getUsagePercentage(tenant.current_usage, tenant.monthly_quota) >= 80 ? 'warn' : 'primary'">
-          </mat-progress-bar>
+            [styleClass]="getUsagePercentage(tenant.current_usage, tenant.monthly_quota) >= 80 ? 'progress-warn' : 'progress-primary'">
+          </p-progressBar>
         </div>
         <div class="info-item">
           <span class="label">Billing Cycle:</span>
@@ -84,14 +87,17 @@
           <span class="value">{{ tenant.last_active_at | date }}</span>
         </div>
       </div>
-    </mat-card-content>
-    <mat-card-actions>
-      <button mat-raised-button color="primary" (click)="viewSessions()">
-        <mat-icon>list</mat-icon>
-        View Sessions
-      </button>
-    </mat-card-actions>
-  </mat-card>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <div class="card-actions">
+        <p-button 
+          label="View Sessions" 
+          icon="pi pi-list" 
+          (onClick)="viewSessions()">
+        </p-button>
+      </div>
+    </ng-template>
+  </p-card>
 </div>
 
 <ng-template #loading>

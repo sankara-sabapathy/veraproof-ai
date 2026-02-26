@@ -1,10 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatTableModule } from '@angular/material/table';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
+import { ChipModule } from 'primeng/chip';
 import { WebhooksService, WebhookLog } from '../services/webhooks.service';
 import { WebhooksStateService } from '../services/webhooks-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -15,11 +14,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatButtonModule,
-    MatTableModule,
-    MatChipsModule,
-    MatIconModule,
+    CardModule,
+    ButtonModule,
+    TableModule,
+    ChipModule,
     LoadingSpinnerComponent
   ],
   templateUrl: './webhook-logs.component.html',
@@ -29,7 +27,6 @@ export class WebhookLogsComponent implements OnInit {
   selectedWebhook$ = this.webhooksState.selectedWebhook$;
   logs$ = this.webhooksState.logs$;
   loading$ = this.webhooksState.loading$;
-  displayedColumns = ['timestamp', 'event_type', 'status_code', 'response_time', 'success', 'retry_count'];
 
   constructor(
     private webhooksService: WebhooksService,
@@ -57,7 +54,7 @@ export class WebhookLogsComponent implements OnInit {
   }
 
   getStatusColor(success: boolean): string {
-    return success ? 'primary' : 'warn';
+    return success ? 'success' : 'danger';
   }
 
   back(): void {

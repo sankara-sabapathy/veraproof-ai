@@ -1,21 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { MatSidenav } from '@angular/material/sidenav';
 import { SidebarComponent } from './sidebar.component';
 import { AuthService } from '../../core/services/auth.service';
-import { of } from 'rxjs';
 
 describe('SidebarComponent', () => {
   let component: SidebarComponent;
   let fixture: ComponentFixture<SidebarComponent>;
   let authService: jasmine.SpyObj<AuthService>;
-  let mockDrawer: jasmine.SpyObj<MatSidenav>;
+  let router: Router;
 
   beforeEach(async () => {
     const authServiceSpy = jasmine.createSpyObj('AuthService', ['isAdmin']);
-    mockDrawer = jasmine.createSpyObj('MatSidenav', ['close']);
-    mockDrawer.mode = 'side';
 
     await TestBed.configureTestingModule({
       imports: [
@@ -29,9 +26,9 @@ describe('SidebarComponent', () => {
     }).compileComponents();
 
     authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
+    router = TestBed.inject(Router);
     fixture = TestBed.createComponent(SidebarComponent);
     component = fixture.componentInstance;
-    component.drawer = mockDrawer;
   });
 
   it('should create', () => {
@@ -44,50 +41,39 @@ describe('SidebarComponent', () => {
     authService.isAdmin.and.returnValue(false);
     fixture.detectChanges();
 
-    const visibleItems = component.navigationItems.filter(item => component.shouldShowItem(item));
-    expect(visibleItems.length).toBe(7); // All except Admin
+    expect(component.menuItems.length).toBe(7); // All except Admin
   });
 
   it('should display all navigation items including Admin for Master_Admin', () => {
     authService.isAdmin.and.returnValue(true);
     fixture.detectChanges();
 
-    const visibleItems = component.navigationItems.filter(item => component.shouldShowItem(item));
-    expect(visibleItems.length).toBe(8); // All items including Admin
+    expect(component.menuItems.length).toBe(8); // All items including Admin
   });
 
   it('should hide Admin menu item for non-admin users', () => {
     authService.isAdmin.and.returnValue(false);
     fixture.detectChanges();
 
-    const adminItem = component.navigationItems.find(item => item.adminOnly);
-    expect(component.shouldShowItem(adminItem!)).toBe(false);
+    const adminItem = component.menuItems.find(item => item.label === 'Admin');
+    expect(adminItem).toBeUndefined();
   });
 
   it('should show Admin menu item for admin users', () => {
     authService.isAdmin.and.returnValue(true);
     fixture.detectChanges();
 
-    const adminItem = component.navigationItems.find(item => item.adminOnly);
-    expect(component.shouldShowItem(adminItem!)).toBe(true);
+    const adminItem = component.menuItems.find(item => item.label === 'Admin');
+    expect(adminItem).toBeDefined();
   });
 
-  it('should close drawer on mobile after navigation', () => {
+  it('should emit navItemClick event when navigation item is clicked', () => {
     authService.isAdmin.and.returnValue(false);
-    mockDrawer.mode = 'over';
     fixture.detectChanges();
 
-    component.onNavItemClick();
-    expect(mockDrawer.close).toHaveBeenCalled();
-  });
-
-  it('should not close drawer on desktop after navigation', () => {
-    authService.isAdmin.and.returnValue(false);
-    mockDrawer.mode = 'side';
-    fixture.detectChanges();
-
-    component.onNavItemClick();
-    expect(mockDrawer.close).not.toHaveBeenCalled();
+    spyOn(component.navItemClick, 'emit');
+    component.onNavItemClicked();
+    expect(component.navItemClick.emit).toHaveBeenCalled();
   });
 
   it('should render logo and app name', () => {
@@ -103,13 +89,57 @@ describe('SidebarComponent', () => {
     authService.isAdmin.and.returnValue(false);
     fixture.detectChanges();
 
-    const expectedRoutes = ['/dashboard', '/api-keys', '/sessions', '/analytics', '/billing', '/webhooks', '/branding'];
-    const actualRoutes = component.navigationItems
-      .filter(item => !item.adminOnly)
-      .map(item => item.route);
+    const expectedRoutes = [
+      { route: '/dashboard', label: 'Dashboard' },
+      { route: '/api-keys', label: 'API Keys' },
+      { route: '/sessions', label: 'Sessions' },
+      { route: '/analytics', label: 'Analytics' },
+      { route: '/billing', label: 'Billing' },
+      { route: '/webhooks', label: 'Webhooks' },
+      { route: '/branding', label: 'Branding' }
+    ];
+    
+    expectedRoutes.forEach(expected => {
+      const menuItem = component.menuItems.find(item => item.label === expected.label);
+      expect(menuItem).toBeDefined();
+      expect(menuItem?.label).toBe(expected.label);
+    });
+  });
 
-    expectedRoutes.forEach(route => {
-      expect(actualRoutes).toContain(route);
+  it('should navigate when menu item is clicked', () => {
+    authService.isAdmin.and.returnValue(false);
+    fixture.detectChanges();
+
+    spyOn(router, 'navigate');
+    spyOn(component.navItemClick, 'emit');
+
+    const dashboardItem = component.menuItems.find(item => item.label === 'Dashboard');
+    dashboardItem?.command!({} as any);
+
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
+    expect(component.navItemClick.emit).toHaveBeenCalled();
+  });
+
+  it('should update active state when route changes', () => {
+    authService.isAdmin.and.returnValue(false);
+    Object.defineProperty(router, 'url', {
+      get: () => '/analytics',
+      configurable: true
+    });
+    fixture.detectChanges();
+
+    component.updateActiveState();
+
+    const analyticsItem = component.menuItems.find(item => item.label === 'Analytics');
+    expect(analyticsItem?.styleClass).toContain('active-menu-item');
+  });
+
+  it('should use PrimeIcons instead of Material Icons', () => {
+    authService.isAdmin.and.returnValue(false);
+    fixture.detectChanges();
+
+    component.menuItems.forEach(item => {
+      expect(item.icon).toMatch(/^pi pi-/);
     });
   });
 });

@@ -2,17 +2,24 @@
   <h2>Subscription Plans</h2>
   
   <div class="plans-grid" *ngIf="plans$ | async as plans; else loading">
-    <mat-card *ngFor="let plan of plans" [class.recommended]="plan.recommended">
-      <mat-chip *ngIf="plan.recommended" color="accent" selected class="recommended-badge">Recommended</mat-chip>
+    <p-card *ngFor="let plan of plans" [styleClass]="plan.recommended ? 'plan-card recommended' : 'plan-card'">
+      <ng-template pTemplate="header">
+        <div class="card-header-content">
+          <p-chip 
+            *ngIf="plan.recommended" 
+            label="Recommended" 
+            styleClass="recommended-badge">
+          </p-chip>
+          <div class="plan-title">
+            <h3>{{ plan.name }}</h3>
+            <p class="plan-subtitle">{{ plan.tier }}</p>
+          </div>
+        </div>
+      </ng-template>
       
-      <mat-card-header>
-        <mat-card-title>{{ plan.name }}</mat-card-title>
-        <mat-card-subtitle>{{ plan.tier }}</mat-card-subtitle>
-      </mat-card-header>
-      
-      <mat-card-content>
+      <ng-template pTemplate="content">
         <div class="pricing">
-          <span class="price">\${{ plan.price_per_month }}</span>
+          <span class="price">${{ plan.price_per_month }}</span>
           <span class="period">/month</span>
         </div>
         
@@ -21,29 +28,30 @@
         </div>
         
         <div class="per-verification">
-          \${{ plan.price_per_verification }} per additional verification
+          ${{ plan.price_per_verification }} per additional verification
         </div>
         
-        <mat-divider></mat-divider>
+        <p-divider></p-divider>
         
         <ul class="features">
           <li *ngFor="let feature of plan.features">
-            <mat-icon>check_circle</mat-icon>
+            <i class="pi pi-check-circle"></i>
             <span>{{ feature }}</span>
           </li>
         </ul>
-      </mat-card-content>
+      </ng-template>
       
-      <mat-card-actions>
-        <button 
-          mat-raised-button 
-          color="primary" 
-          (click)="upgradePlan(plan)"
-          [disabled]="loading$ | async">
-          Upgrade to {{ plan.name }}
-        </button>
-      </mat-card-actions>
-    </mat-card>
+      <ng-template pTemplate="footer">
+        <p-button 
+          label="Upgrade to {{ plan.name }}"
+          severity="primary"
+          [raised]="true"
+          (onClick)="upgradePlan(plan)"
+          [disabled]="(loading$ | async) || false"
+          styleClass="w-full">
+        </p-button>
+      </ng-template>
+    </p-card>
   </div>
 
   <ng-template #loading>

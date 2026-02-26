@@ -1,16 +1,25 @@
-<mat-card class="stat-card">
-  <mat-card-header>
-    <mat-icon [color]="iconColor" class="stat-icon">{{ icon }}</mat-icon>
-    <mat-card-title class="stat-title">{{ title }}</mat-card-title>
-  </mat-card-header>
-  <mat-card-content>
-    <div class="stat-value">{{ value }}</div>
-    <div class="stat-subtitle" *ngIf="subtitle">{{ subtitle }}</div>
-    <div class="stat-trend" *ngIf="trend !== undefined">
-      <mat-icon [class.positive]="trend > 0" [class.negative]="trend < 0">
-        {{ trend > 0 ? 'trending_up' : 'trending_down' }}
-      </mat-icon>
-      <span>{{ trend > 0 ? '+' : '' }}{{ trend }}%</span>
+<p-card styleClass="stat-card">
+  <ng-template pTemplate="header">
+    <div class="card-header">
+      <i [class]="'pi pi-' + icon + ' stat-icon'" [ngClass]="'icon-' + iconColor"></i>
+      <span class="stat-title">{{ title }}</span>
     </div>
-  </mat-card-content>
-</mat-card>
+  </ng-template>
+  <ng-template pTemplate="content">
+    <div *ngIf="loading" class="loading-container">
+      <p-progressSpinner 
+        [style]="{ width: '40px', height: '40px' }"
+        strokeWidth="4">
+      </p-progressSpinner>
+    </div>
+    <div *ngIf="!loading" class="stat-content">
+      <div class="stat-value">{{ value }}</div>
+      <div class="stat-subtitle" *ngIf="subtitle">{{ subtitle }}</div>
+      <div class="stat-trend" *ngIf="trend !== undefined">
+        <i [class]="trend > 0 ? 'pi pi-arrow-up' : 'pi pi-arrow-down'" 
+           [ngClass]="trend > 0 ? 'positive' : 'negative'"></i>
+        <span [ngClass]="trend > 0 ? 'positive' : 'negative'">{{ trend > 0 ? '+' : '' }}{{ trend }}%</span>
+      </div>
+    </div>
+  </ng-template>
+</p-card>

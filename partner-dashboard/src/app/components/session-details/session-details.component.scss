@@ -1,0 +1,187 @@
+.session-details-container {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.content {
+  margin-top: 1rem;
+}
+
+.tab-content {
+  padding: 1rem 0;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: 500;
+  color: var(--text-color-secondary);
+}
+
+.value {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.score-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.score-item:last-child {
+  border-bottom: none;
+}
+
+.score {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.score-item.final {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--surface-border);
+}
+
+.final-score {
+  font-size: 1.5rem;
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timeline-date {
+  color: var(--text-color-secondary);
+}
+
+.timeline-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  color: white;
+  font-size: 1.25rem;
+}
+
+.artifacts-grid {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.empty-state p {
+  margin: 0.5rem 0;
+  color: var(--text-color);
+  font-size: 1.125rem;
+}
+
+.empty-state small {
+  color: var(--text-color-secondary);
+}
+
+.error-state {
+  margin-top: 2rem;
+}
+
+// Status chip styling
+::ng-deep {
+  .status-chip {
+    &.status-success {
+      background-color: #10b981;
+      color: white;
+    }
+
+    &.status-failed {
+      background-color: #ef4444;
+      color: white;
+    }
+
+    &.status-pending {
+      background-color: #f59e0b;
+      color: white;
+    }
+
+    &.status-processing {
+      background-color: #3b82f6;
+      color: white;
+    }
+  }
+
+  .timeline-chip {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .session-details-container {
+    padding: 1rem;
+  }
+
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

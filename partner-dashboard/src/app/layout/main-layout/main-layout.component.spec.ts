@@ -3,6 +3,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterTestingModule } from '@angular/router/testing';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Platform } from '@angular/cdk/platform';
+import { DOCUMENT } from '@angular/common';
 import { of } from 'rxjs';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthService } from '../../core/services/auth.service';
@@ -15,7 +16,9 @@ describe('MainLayoutComponent', () => {
 
   beforeEach(async () => {
     const breakpointObserverSpy = jasmine.createSpyObj('BreakpointObserver', ['observe']);
-    const authServiceSpy = jasmine.createSpyObj('AuthService', ['isAdmin', 'getCurrentUser']);
+    const authServiceSpy = jasmine.createSpyObj('AuthService', ['isAdmin', 'getCurrentUser', 'logout'], {
+      currentUser$: of({ email: 'test@example.com', role: 'Admin' })
+    });
     
     // Create a mock Platform with _document
     const mockPlatform = {
@@ -40,7 +43,8 @@ describe('MainLayoutComponent', () => {
       providers: [
         { provide: BreakpointObserver, useValue: breakpointObserverSpy },
         { provide: AuthService, useValue: authServiceSpy },
-        { provide: Platform, useValue: mockPlatform }
+        { provide: Platform, useValue: mockPlatform },
+        { provide: DOCUMENT, useValue: document }
       ]
     }).compileComponents();
 
@@ -48,6 +52,10 @@ describe('MainLayoutComponent', () => {
     authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
     authService.isAdmin.and.returnValue(false);
     authService.getCurrentUser.and.returnValue(null);
+    authService.logout.and.returnValue(of(undefined));
+    
+    // Set up default breakpoint observer behavior before creating component
+    breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
     
     fixture = TestBed.createComponent(MainLayoutComponent);
     component = fixture.componentInstance;
@@ -60,10 +68,15 @@ describe('MainLayoutComponent', () => {
   });
 
   it('should detect handset breakpoint', (done) => {
-    breakpointObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
-    fixture.detectChanges();
+    // Need to recreate component with handset breakpoint
+    const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
+    handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
+    
+    const handsetFixture = TestBed.createComponent(MainLayoutComponent);
+    const handsetComponent = handsetFixture.componentInstance;
+    handsetFixture.detectChanges();
 
-    component.isHandset$.subscribe(isHandset => {
+    handsetComponent.isHandset$.subscribe(isHandset => {
       expect(isHandset).toBe(true);
       done();
     });
@@ -77,6 +90,36 @@ describe('MainLayoutComponent', () => {
       expect(isHandset).toBe(false);
       done();
     });
+  });
+
+  it('should set sidebar visible to false on handset', () => {
+    // Need to recreate component with handset breakpoint
+    const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
+    handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
+    
+    const handsetFixture = TestBed.createComponent(MainLayoutComponent);
+    const handsetComponent = handsetFixture.componentInstance;
+    handsetFixture.detectChanges();
+    
+    expect(handsetComponent.sidebarVisible()).toBe(false);
+  });
+
+  it('should set sidebar visible to true on desktop', () => {
+    breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
+    fixture.detectChanges();
+    expect(component.sidebarVisible()).toBe(true);
+  });
+
+  it('should toggle sidebar visibility', () => {
+    breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
+    fixture.detectChanges();
+    
+    const initialState = component.sidebarVisible();
+    component.toggleSidebar();
+    expect(component.sidebarVisible()).toBe(!initialState);
+    
+    component.toggleSidebar();
+    expect(component.sidebarVisible()).toBe(initialState);
   });
 
   it('should render sidebar and toolbar', () => {
@@ -94,5 +137,13 @@ describe('MainLayoutComponent', () => {
 
     const compiled = fixture.nativeElement;
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
+  });
+
+  it('should render PrimeNG sidebar', () => {
+    breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement;
+    expect(compiled.querySelector('p-sidebar')).toBeTruthy();
   });
 });

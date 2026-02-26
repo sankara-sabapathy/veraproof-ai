@@ -1,0 +1,61 @@
+﻿{
+    "bundleSize":  {
+                       "chunkCount":  85,
+                       "largestChunk":  {
+                                            "name":  "main-layout.component-N7XH7PSF.css",
+                                            "sizeKB":  0.22
+                                        },
+                       "total":  {
+                                     "megabytes":  2.7,
+                                     "bytes":  2826624,
+                                     "kilobytes":  2760.38
+                                 }
+                   },
+    "description":  "Performance baseline metrics captured before PrimeNG migration",
+    "requirements":  {
+                         "performanceScoreMaintained":  true,
+                         "bundleSizeIncreaseLimit":  "500KB"
+                     },
+    "captureDate":  "2026-02-21T22:45:13Z",
+    "coreWebVitals":  {
+                          "TTI":  {
+                                      "description":  "Time to Interactive",
+                                      "score":  0.37,
+                                      "value":  8601,
+                                      "displayValue":  "8.6Â s"
+                                  },
+                          "FCP":  {
+                                      "description":  "First Contentful Paint",
+                                      "score":  0.02,
+                                      "value":  6508,
+                                      "displayValue":  "6.5Â s"
+                                  },
+                          "CLS":  {
+                                      "description":  "Cumulative Layout Shift",
+                                      "score":  1,
+                                      "value":  0,
+                                      "displayValue":  "0"
+                                  },
+                          "LCP":  {
+                                      "description":  "Largest Contentful Paint",
+                                      "score":  0.01,
+                                      "value":  8601,
+                                      "displayValue":  "8.6Â s"
+                                  },
+                          "TBT":  {
+                                      "description":  "Total Blocking Time",
+                                      "score":  1,
+                                      "value":  62,
+                                      "displayValue":  "60Â ms"
+                                  }
+                      },
+    "lighthouse":  {
+                       "version":  "12.8.2",
+                       "scores":  {
+                                      "accessibility":  1,
+                                      "performance":  0.59,
+                                      "seo":  0.9,
+                                      "bestPractices":  0.96
+                                  }
+                   }
+}

@@ -2,6 +2,12 @@
   padding: 24px;
 }
 
+.card-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+}
+
 .subscription-details {
   display: flex;
   flex-direction: column;
@@ -17,11 +23,16 @@
 
 .label {
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--text-color-secondary);
 }
 
 .value {
   font-weight: 600;
+}
+
+.plan-chip {
+  background-color: var(--primary-color);
+  color: var(--primary-color-text);
 }
 
 .quota-progress {
@@ -33,19 +44,39 @@
   text-align: right;
   margin-top: 8px;
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--text-color-secondary);
+}
+
+// Progress bar color variants
+::ng-deep {
+  .usage-success .p-progressbar-value {
+    background-color: var(--green-500);
+  }
+  
+  .usage-warning .p-progressbar-value {
+    background-color: var(--orange-500);
+  }
+  
+  .usage-danger .p-progressbar-value {
+    background-color: var(--red-500);
+  }
 }
 
 .warning-card {
+  background-color: #fff3e0;
+  margin-top: 16px;
+  border: 1px solid #ffe0b2;
+}
+
+.warning-content {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px;
-  background-color: #fff3e0;
-  margin-top: 16px;
 
-  mat-icon {
+  .warning-icon {
     flex-shrink: 0;
+    font-size: 1.5rem;
+    color: var(--orange-500);
   }
 
   p {
@@ -53,6 +84,14 @@
   }
 }
 
-mat-divider {
-  margin: 16px 0;
+.card-actions {
+  display: flex;
+  gap: 12px;
+  padding: 0.5rem 0;
+}
+
+::ng-deep {
+  p-divider {
+    margin: 16px 0;
+  }
 }

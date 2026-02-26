@@ -1,0 +1,525 @@
+﻿{
+    "summary":  {
+                    "largestChunkSize":  0.22,
+                    "largestChunk":  "main-layout.component-N7XH7PSF.css",
+                    "totalChunks":  85
+                },
+    "chunks":  [
+                   {
+                       "entryPoint":  null,
+                       "name":  "main-layout.component-N7XH7PSF.css",
+                       "bytes":  221,
+                       "kilobytes":  0.22
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "data-table.component-KOCJHXJT.css",
+                       "bytes":  436,
+                       "kilobytes":  0.43
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "loading-spinner.component-G7LYEBUP.css",
+                       "bytes":  207,
+                       "kilobytes":  0.2
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "usage-chart.component-FXXUTLIM.css",
+                       "bytes":  961,
+                       "kilobytes":  0.94
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "outcome-chart.component-MB3NTQWH.css",
+                       "bytes":  1688,
+                       "kilobytes":  1.65
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "api-key-create-dialog.component-WRSXXZMO.css",
+                       "bytes":  4643,
+                       "kilobytes":  4.53
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "login.component-Y57XWGF6.css",
+                       "bytes":  2542,
+                       "kilobytes":  2.48
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "tenant-detail.component-CUXE7DQR.css",
+                       "bytes":  594,
+                       "kilobytes":  0.58
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "api-keys-list.component-TH7B64X6.css",
+                       "bytes":  2942,
+                       "kilobytes":  2.87
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "branding-editor.component-JLFDC6LB.css",
+                       "bytes":  1005,
+                       "kilobytes":  0.98
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "stat-card.component-7OLYIOCB.css",
+                       "bytes":  914,
+                       "kilobytes":  0.89
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "dashboard.component-BSQ3VGSQ.css",
+                       "bytes":  1435,
+                       "kilobytes":  1.4
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "webhook-list.component-P7RZ7ITI.css",
+                       "bytes":  587,
+                       "kilobytes":  0.57
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "branding.component-OX3R6UDB.css",
+                       "bytes":  1240,
+                       "kilobytes":  1.21
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "api-keys.component-7SSLJAB2.css",
+                       "bytes":  659,
+                       "kilobytes":  0.64
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "billing.component-Y2SOUTWE.css",
+                       "bytes":  1496,
+                       "kilobytes":  1.46
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "tenant-list.component-Z3ASMAQ3.css",
+                       "bytes":  615,
+                       "kilobytes":  0.6
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "invoice-list.component-JBYLFQGP.css",
+                       "bytes":  303,
+                       "kilobytes":  0.3
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "sidebar.component-4ZFZJQJS.css",
+                       "bytes":  596,
+                       "kilobytes":  0.58
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "sessions-list.component-LESCFCDD.css",
+                       "bytes":  917,
+                       "kilobytes":  0.9
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "subscription-overview.component-WTZ77DCS.css",
+                       "bytes":  570,
+                       "kilobytes":  0.56
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/primeicons-GEFHGEHP.ttf",
+                       "bytes":  84980,
+                       "kilobytes":  82.99
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/primeicons-DHQU4SEP.svg",
+                       "bytes":  342525,
+                       "kilobytes":  334.5
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/primeicons-P53SE5CV.woff",
+                       "bytes":  85056,
+                       "kilobytes":  83.06
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/primeicons-RSSEDYLY.eot",
+                       "bytes":  85156,
+                       "kilobytes":  83.16
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/primeicons-4GST5W3O.woff2",
+                       "bytes":  35148,
+                       "kilobytes":  34.32
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/hue-RMMBQOAC.png",
+                       "bytes":  293,
+                       "kilobytes":  0.29
+                   },
+                   {
+                       "entryPoint":  "angular:styles/global:styles",
+                       "name":  "styles-QEE6OUZH.css",
+                       "bytes":  264285,
+                       "kilobytes":  258.09
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/color-3LUHUBGQ.png",
+                       "bytes":  10355,
+                       "kilobytes":  10.11
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/Inter-roman.var-WIJJYAE4.woff2",
+                       "bytes":  227180,
+                       "kilobytes":  221.86
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "media/Inter-italic.var-SWFAXF2C.woff2",
+                       "bytes":  245036,
+                       "kilobytes":  239.29
+                   },
+                   {
+                       "entryPoint":  "angular:polyfills:angular:polyfills",
+                       "name":  "polyfills-FFHMD2TL.js",
+                       "bytes":  34519,
+                       "kilobytes":  33.71
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "confirmation-dialog.component-CHWWS4UM.css",
+                       "bytes":  204,
+                       "kilobytes":  0.2
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "webhook-logs.component-PZSCODUH.css",
+                       "bytes":  402,
+                       "kilobytes":  0.39
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "webhook-form.component-UJJQF4OE.css",
+                       "bytes":  503,
+                       "kilobytes":  0.49
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "signup.component-SQYIXCWV.css",
+                       "bytes":  2266,
+                       "kilobytes":  2.21
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "analytics-overview.component-6ZYRXA4R.css",
+                       "bytes":  2708,
+                       "kilobytes":  2.64
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "plan-comparison.component-P2EXA4JP.css",
+                       "bytes":  894,
+                       "kilobytes":  0.87
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "platform-stats.component-SZZFYLWM.css",
+                       "bytes":  526,
+                       "kilobytes":  0.51
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "toolbar.component-GUQ7E5RF.css",
+                       "bytes":  1517,
+                       "kilobytes":  1.48
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "dashboard-overview.component-UNE7HXVM.css",
+                       "bytes":  4357,
+                       "kilobytes":  4.25
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "branding-preview.component-AY5EG4RQ.css",
+                       "bytes":  1338,
+                       "kilobytes":  1.31
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "analytics.component-ZRSYOLZ7.css",
+                       "bytes":  362,
+                       "kilobytes":  0.35
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-B7V5ZQIR.js",
+                       "bytes":  104881,
+                       "kilobytes":  102.42
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-ARN3FDGL.js",
+                       "bytes":  1474,
+                       "kilobytes":  1.44
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-657RBIZI.js",
+                       "bytes":  758,
+                       "kilobytes":  0.74
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-PMBPKACX.js",
+                       "bytes":  29454,
+                       "kilobytes":  28.76
+                   },
+                   {
+                       "entryPoint":  "src/app/features/dashboard/dashboard-overview/dashboard-overview.component.ts",
+                       "name":  "chunk-C3DTSBDT.js",
+                       "bytes":  16377,
+                       "kilobytes":  15.99
+                   },
+                   {
+                       "entryPoint":  "src/app/features/sessions/sessions-list/sessions-list.component.ts",
+                       "name":  "chunk-MV7B6PWO.js",
+                       "bytes":  19728,
+                       "kilobytes":  19.27
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-FQAQCXB5.js",
+                       "bytes":  19660,
+                       "kilobytes":  19.2
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-DZJOJVUA.js",
+                       "bytes":  22523,
+                       "kilobytes":  22
+                   },
+                   {
+                       "entryPoint":  "src/app/features/api-keys/api-keys-list/api-keys-list.component.ts",
+                       "name":  "chunk-JPQ2H2QN.js",
+                       "bytes":  44865,
+                       "kilobytes":  43.81
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-PNPCOWAC.js",
+                       "bytes":  2427,
+                       "kilobytes":  2.37
+                   },
+                   {
+                       "entryPoint":  "src/app/components/signup/signup.component.ts",
+                       "name":  "chunk-RUVP73CS.js",
+                       "bytes":  9297,
+                       "kilobytes":  9.08
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-Y2H2FCO4.js",
+                       "bytes":  16949,
+                       "kilobytes":  16.55
+                   },
+                   {
+                       "entryPoint":  "src/app/features/admin/tenant-list/tenant-list.component.ts",
+                       "name":  "chunk-P7BSGBQH.js",
+                       "bytes":  8420,
+                       "kilobytes":  8.22
+                   },
+                   {
+                       "entryPoint":  "src/app/features/branding/branding-editor/branding-editor.component.ts",
+                       "name":  "chunk-KYZGVI5J.js",
+                       "bytes":  15591,
+                       "kilobytes":  15.23
+                   },
+                   {
+                       "entryPoint":  "src/app/features/billing/subscription-overview/subscription-overview.component.ts",
+                       "name":  "chunk-FQCRV24H.js",
+                       "bytes":  5971,
+                       "kilobytes":  5.83
+                   },
+                   {
+                       "entryPoint":  "src/app/features/webhooks/webhook-list/webhook-list.component.ts",
+                       "name":  "chunk-ZQ6KC6Q4.js",
+                       "bytes":  37720,
+                       "kilobytes":  36.84
+                   },
+                   {
+                       "entryPoint":  "src/main.ts",
+                       "name":  "main-57VGWTMK.js",
+                       "bytes":  111767,
+                       "kilobytes":  109.15
+                   },
+                   {
+                       "entryPoint":  "src/app/components/login/login.component.ts",
+                       "name":  "chunk-FPI4VQ2C.js",
+                       "bytes":  38427,
+                       "kilobytes":  37.53
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-B5BFI2I7.js",
+                       "bytes":  2347,
+                       "kilobytes":  2.29
+                   },
+                   {
+                       "entryPoint":  "src/app/features/admin/tenant-detail/tenant-detail.component.ts",
+                       "name":  "chunk-NLJQGQQC.js",
+                       "bytes":  5924,
+                       "kilobytes":  5.79
+                   },
+                   {
+                       "entryPoint":  "src/app/features/admin/platform-stats/platform-stats.component.ts",
+                       "name":  "chunk-RVMMAEGQ.js",
+                       "bytes":  5437,
+                       "kilobytes":  5.31
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-NRD5GNST.js",
+                       "bytes":  68874,
+                       "kilobytes":  67.26
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-4766V35T.js",
+                       "bytes":  11791,
+                       "kilobytes":  11.51
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-IEF6NMI7.js",
+                       "bytes":  10432,
+                       "kilobytes":  10.19
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-3LCG5GLS.js",
+                       "bytes":  24131,
+                       "kilobytes":  23.57
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-QVE6NAU6.js",
+                       "bytes":  1108,
+                       "kilobytes":  1.08
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "session-create-dialog.component-TREC6HFW.css",
+                       "bytes":  1148,
+                       "kilobytes":  1.12
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "session-details.component-7KSUU4VY.css",
+                       "bytes":  698,
+                       "kilobytes":  0.68
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-NM7T3AHI.js",
+                       "bytes":  224201,
+                       "kilobytes":  218.95
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-MHVIYDZL.js",
+                       "bytes":  77295,
+                       "kilobytes":  75.48
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-EJDQIMOA.js",
+                       "bytes":  144315,
+                       "kilobytes":  140.93
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-D2OIWBKH.js",
+                       "bytes":  3209,
+                       "kilobytes":  3.13
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-PAJFIUVF.js",
+                       "bytes":  73261,
+                       "kilobytes":  71.54
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-JAAJBWHD.js",
+                       "bytes":  7725,
+                       "kilobytes":  7.54
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-D2HVOBUX.js",
+                       "bytes":  40241,
+                       "kilobytes":  39.3
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-VZ24T6DF.js",
+                       "bytes":  7494,
+                       "kilobytes":  7.32
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-REXI7OMF.js",
+                       "bytes":  34177,
+                       "kilobytes":  33.38
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-JPXD3H4D.js",
+                       "bytes":  12839,
+                       "kilobytes":  12.54
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-M2FTS534.js",
+                       "bytes":  14004,
+                       "kilobytes":  13.68
+                   },
+                   {
+                       "entryPoint":  "src/app/features/analytics/analytics-overview/analytics-overview.component.ts",
+                       "name":  "chunk-HWKY2OCY.js",
+                       "bytes":  14560,
+                       "kilobytes":  14.22
+                   },
+                   {
+                       "entryPoint":  "src/app/components/session-details/session-details.component.ts",
+                       "name":  "chunk-TGZMGNT2.js",
+                       "bytes":  4821,
+                       "kilobytes":  4.71
+                   },
+                   {
+                       "entryPoint":  null,
+                       "name":  "chunk-WKTTYOM5.js",
+                       "bytes":  76122,
+                       "kilobytes":  74.34
+                   }
+               ],
+    "totalBundleSize":  {
+                            "megabytes":  2.7,
+                            "bytes":  2826624,
+                            "kilobytes":  2760.38
+                        },
+    "captureDate":  "2026-02-21T22:44:58Z"
+}

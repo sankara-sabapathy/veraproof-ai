@@ -19,12 +19,6 @@
       display: flex;
       gap: 12px;
       align-items: center;
-
-      button {
-        mat-icon {
-          margin-right: 8px;
-        }
-      }
     }
   }
 
@@ -124,10 +118,6 @@
 
     .period-selector {
       margin-bottom: 24px;
-
-      mat-form-field {
-        width: 200px;
-      }
     }
 
     .charts-grid {

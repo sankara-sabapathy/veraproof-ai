@@ -1,39 +1,50 @@
-<h2 mat-dialog-title>{{ isEdit ? 'Edit' : 'Add' }} Webhook</h2>
-
-<mat-dialog-content>
+<div class="webhook-form-dialog">
   <form [formGroup]="form">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Webhook URL</mat-label>
-      <input matInput formControlName="url" placeholder="https://example.com/webhook">
-      <mat-error *ngIf="form.get('url')?.invalid">{{ getErrorMessage('url') }}</mat-error>
-      <mat-hint>The endpoint that will receive webhook notifications</mat-hint>
-    </mat-form-field>
-
     <div class="form-field">
-      <label>Event Types</label>
-      <mat-selection-list formControlName="events">
-        <mat-list-option *ngFor="let event of eventTypes" [value]="event.value">
-          {{ event.label }}
-        </mat-list-option>
-      </mat-selection-list>
-      <mat-hint>Select at least one event type</mat-hint>
+      <span class="p-float-label">
+        <input 
+          pInputText 
+          id="url" 
+          formControlName="url" 
+          [class.ng-invalid]="form.get('url')?.invalid && form.get('url')?.touched"
+          class="full-width">
+        <label for="url">Webhook URL</label>
+      </span>
+      <small class="p-hint">The endpoint that will receive webhook notifications</small>
+      <small *ngIf="form.get('url')?.invalid && form.get('url')?.touched" class="p-error">
+        {{ getErrorMessage('url') }}
+      </small>
     </div>
 
-    <mat-slide-toggle formControlName="enabled" color="primary">
-      Enable webhook
-    </mat-slide-toggle>
+    <div class="form-field">
+      <label class="field-label">Event Types</label>
+      <p-listbox 
+        [options]="eventTypes" 
+        formControlName="events"
+        optionLabel="label" 
+        optionValue="value"
+        [multiple]="true"
+        [checkbox]="true"
+        [filter]="false"
+        [listStyle]="{'max-height':'250px'}"
+        styleClass="full-width">
+      </p-listbox>
+      <small class="p-hint">Select at least one event type</small>
+      <small *ngIf="form.get('events')?.invalid && form.get('events')?.touched" class="p-error">
+        Please select at least one event type
+      </small>
+    </div>
 
-    <mat-expansion-panel class="documentation">
-      <mat-expansion-panel-header>
-        <mat-panel-title>
-          <mat-icon>info</mat-icon>
-          Webhook Payload Documentation
-        </mat-panel-title>
-      </mat-expansion-panel-header>
-      
-      <div class="payload-example">
-        <h4>Example Payload</h4>
-        <pre><code>&#123;
+    <div class="form-field toggle-field">
+      <label for="enabled" class="toggle-label">Enable webhook</label>
+      <p-inputSwitch id="enabled" formControlName="enabled"></p-inputSwitch>
+    </div>
+
+    <p-accordion>
+      <p-accordionTab header="Webhook Payload Documentation">
+        <div class="payload-example">
+          <h4>Example Payload</h4>
+          <pre><code>&#123;
   "event_type": "session.completed",
   "timestamp": "2024-01-15T10:30:00Z",
   "session_id": "sess_abc123",
@@ -46,14 +57,17 @@
     "state": "complete"
   &#125;
 &#125;</code></pre>
-      </div>
-    </mat-expansion-panel>
+        </div>
+      </p-accordionTab>
+    </p-accordion>
   </form>
-</mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button mat-button (click)="onCancel()">Cancel</button>
-  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="form.invalid">
-    {{ isEdit ? 'Update' : 'Create' }}
-  </button>
-</mat-dialog-actions>
+  <div class="dialog-actions">
+    <p-button label="Cancel" [text]="true" (onClick)="onCancel()"></p-button>
+    <p-button 
+      [label]="isEdit ? 'Update' : 'Create'" 
+      (onClick)="onSubmit()" 
+      [disabled]="form.invalid">
+    </p-button>
+  </div>
+</div>

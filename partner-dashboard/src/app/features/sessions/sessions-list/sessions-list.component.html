@@ -1,0 +1,110 @@
+<div class="sessions-list">
+  <div class="header">
+    <h2>Sessions</h2>
+    <p-button 
+      label="Create Session" 
+      icon="pi pi-plus" 
+      (onClick)="createSession()"
+      styleClass="p-button-raised">
+    </p-button>
+  </div>
+
+  <div *ngIf="!loading; else loadingTemplate">
+    <p-card>
+      <div *ngIf="sessions.length > 0; else noSessions">
+        <p-table 
+          [value]="sessions" 
+          [paginator]="true"
+          [rows]="pageSize"
+          [totalRecords]="totalSessions"
+          [rowsPerPageOptions]="[5, 10, 25, 50]"
+          [lazy]="true"
+          [loading]="loading"
+          (onLazyLoad)="onPageChange($event)"
+          [first]="first"
+          styleClass="p-datatable-striped"
+          [tableStyle]="{'min-width': '50rem'}">
+          
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Session ID</th>
+              <th>Created</th>
+              <th>Status</th>
+              <th>Trust Score</th>
+              <th>Actions</th>
+            </tr>
+          </ng-template>
+          
+          <ng-template pTemplate="body" let-session>
+            <tr class="clickable-row" (click)="viewSession(session.session_id)">
+              <td>
+                <span class="session-id">{{ session.session_id }}</span>
+              </td>
+              <td>
+                {{ session.created_at | date:'short' }}
+              </td>
+              <td>
+                <p-chip 
+                  [label]="session.state | uppercase" 
+                  [styleClass]="'status-chip status-' + session.state">
+                </p-chip>
+              </td>
+              <td>
+                <span *ngIf="session.final_trust_score" 
+                      [style.color]="getTrustScoreColor(session.final_trust_score)"
+                      class="trust-score">
+                  {{ session.final_trust_score | number:'1.1-1' }}
+                </span>
+                <span *ngIf="!session.final_trust_score" class="no-score">-</span>
+              </td>
+              <td>
+                <p-button 
+                  icon="pi pi-eye" 
+                  [text]="true"
+                  [rounded]="true"
+                  (onClick)="viewSession(session.session_id); $event.stopPropagation()"
+                  pTooltip="View Details"
+                  tooltipPosition="top">
+                </p-button>
+              </td>
+            </tr>
+          </ng-template>
+          
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="5">
+                <div class="no-sessions">
+                  <i class="pi pi-shield" style="font-size: 3rem; color: #718096;"></i>
+                  <p>No sessions yet</p>
+                  <p class="help-text">Create a test session to get started</p>
+                  <p-button 
+                    label="Create Your First Session" 
+                    icon="pi pi-plus"
+                    (onClick)="createSession()">
+                  </p-button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+      <ng-template #noSessions>
+        <div class="no-sessions">
+          <i class="pi pi-shield" style="font-size: 3rem; color: #718096;"></i>
+          <p>No sessions yet</p>
+          <p class="help-text">Create a test session to get started</p>
+          <p-button 
+            label="Create Your First Session" 
+            icon="pi pi-plus"
+            (onClick)="createSession()">
+          </p-button>
+        </div>
+      </ng-template>
+    </p-card>
+  </div>
+
+  <ng-template #loadingTemplate>
+    <app-loading-spinner message="Loading sessions..."></app-loading-spinner>
+  </ng-template>
+</div>

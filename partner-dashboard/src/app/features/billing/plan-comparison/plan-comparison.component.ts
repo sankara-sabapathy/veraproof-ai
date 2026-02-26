@@ -1,16 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatListModule } from '@angular/material/list';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { ChipModule } from 'primeng/chip';
+import { DividerModule } from 'primeng/divider';
 import { BillingService, SubscriptionPlan } from '../services/billing.service';
 import { BillingStateService } from '../services/billing-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -18,13 +15,10 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   standalone: true,
   imports: [
     CommonModule,
-    MatDialogModule,
-    MatCardModule,
-    MatButtonModule,
-    MatChipsModule,
-    MatDividerModule,
-    MatListModule,
-    MatIconModule,
+    CardModule,
+    ButtonModule,
+    ChipModule,
+    DividerModule,
     LoadingSpinnerComponent
   ],
   templateUrl: './plan-comparison.component.html',
@@ -39,7 +33,7 @@ export class PlanComparisonComponent implements OnInit {
     private billingService: BillingService,
     private billingState: BillingStateService,
     private notification: NotificationService,
-    private dialog: MatDialog
+    private confirmationDialog: ConfirmationDialogService
   ) {}
 
   ngOnInit(): void {
@@ -58,32 +52,30 @@ export class PlanComparisonComponent implements OnInit {
   }
 
   upgradePlan(plan: SubscriptionPlan): void {
-    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      data: {
+      this.confirmationDialog.confirm({
         title: 'Upgrade Subscription',
-        message: `Are you sure you want to upgrade to ${plan.name}? Your new quota will be ${plan.monthly_quota} verifications per month at $${plan.price_per_month}/month.`,
+        message: `Are you sure you want to upgrade to ${plan.name}? Your new quota will be ${plan.monthly_quota} verifications per month at ${plan.price_per_month}/month.`,
         confirmText: 'Upgrade',
+        cancelText: 'Cancel',
         confirmColor: 'primary'
-      }
-    });
+      }).subscribe(confirmed => {
+        if (confirmed) {
+          this.billingState.setLoading(true);
+          this.billingService.upgradeSubscription(plan.plan_id).subscribe({
+            next: (response) => {
+              this.notification.success(`Successfully upgraded to ${plan.name}`);
+              this.loadPlans();
+              this.billingService.getSubscription().subscribe(sub => 
+                this.billingState.setSubscription(sub)
+              );
+            },
+            error: (error) => {
+              this.billingState.setError(error.message);
+              this.notification.error('Failed to upgrade subscription');
+            }
+          });
+        }
+      });
+    }
 
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.billingState.setLoading(true);
-        this.billingService.upgradeSubscription(plan.plan_id).subscribe({
-          next: (response) => {
-            this.notification.success(`Successfully upgraded to ${plan.name}`);
-            this.loadPlans();
-            this.billingService.getSubscription().subscribe(sub => 
-              this.billingState.setSubscription(sub)
-            );
-          },
-          error: (error) => {
-            this.billingState.setError(error.message);
-            this.notification.error('Failed to upgrade subscription');
-          }
-        });
-      }
-    });
-  }
 }

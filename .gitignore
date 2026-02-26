@@ -25,15 +25,15 @@ ENV/
 env/
 .venv
 
-# Deployment configurations with secrets
-backend/deployment-prod.json
-backend/deployment-*.json
-**/deployment-prod.json
-
 # Environment variables
 .env
 .env.local
 .env.*.local
+
+# Keep environment templates
+!.env.development
+!.env.production
+!.env.example
 
 # SSL Certificates (local development)
 *.pem
@@ -111,9 +111,13 @@ VERIFICATION_FIXES.md
 FINAL_SUMMARY.md
 DESKTOP_TEST_INSTRUCTIONS.md
 
-# Scripts folder is kept for local development
-# (scripts/ folder is version controlled)
-
-# Test files
+# Test files (temporary/ad-hoc only - proper test suites should be committed)
 test.html
 test_api.py
+backend/test_config.py
+backend/test_db_connection.py
+backend/test_full_flow.py
+backend/test_session_flow.py
+
+# Scripts folder is kept for local development
+# (scripts/ folder is version controlled)

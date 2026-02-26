@@ -1,50 +1,51 @@
 <div class="invoice-list">
   <h2>Billing History</h2>
 
-  <mat-card *ngIf="invoices$ | async as invoices; else loading">
-    <table mat-table [dataSource]="invoices" class="invoices-table">
-      <ng-container matColumnDef="invoice_number">
-        <th mat-header-cell *matHeaderCellDef>Invoice Number</th>
-        <td mat-cell *matCellDef="let invoice">{{ invoice.invoice_number }}</td>
-      </ng-container>
+  <!-- Template definitions -->
+  <ng-template #dateTemplate let-invoice>
+    {{ invoice.date | date }}
+  </ng-template>
+  
+  <ng-template #amountTemplate let-invoice>
+    ${{ invoice.amount | number:'1.2-2' }}
+  </ng-template>
+  
+  <ng-template #statusTemplate let-invoice>
+    <p-chip 
+      [label]="invoice.status | uppercase" 
+      [styleClass]="'status-chip status-' + invoice.status">
+    </p-chip>
+  </ng-template>
+  
+  <ng-template #actionsTemplate let-invoice>
+    <p-button 
+      icon="pi pi-download" 
+      [text]="true"
+      [rounded]="true"
+      severity="secondary"
+      (onClick)="downloadInvoice(invoice)"
+      pTooltip="Download Invoice">
+    </p-button>
+  </ng-template>
 
-      <ng-container matColumnDef="date">
-        <th mat-header-cell *matHeaderCellDef>Date</th>
-        <td mat-cell *matCellDef="let invoice">{{ invoice.date | date }}</td>
-      </ng-container>
+  <p-card *ngIf="invoices$ | async as invoices; else loading">
+    <ng-container *ngIf="invoices.length > 0; else noData">
+      <app-data-table
+        [columns]="columns"
+        [data]="invoices"
+        [loading]="(loading$ | async) || false"
+        [pageSize]="25"
+        [actionsTemplate]="actionsTemplate">
+      </app-data-table>
+    </ng-container>
 
-      <ng-container matColumnDef="amount">
-        <th mat-header-cell *matHeaderCellDef>Amount</th>
-        <td mat-cell *matCellDef="let invoice">\${{ invoice.amount | number:'1.2-2' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef>Status</th>
-        <td mat-cell *matCellDef="let invoice">
-          <mat-chip [color]="getStatusColor(invoice.status)" selected>
-            {{ invoice.status | uppercase }}
-          </mat-chip>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let invoice">
-          <button mat-icon-button (click)="downloadInvoice(invoice)" matTooltip="Download Invoice">
-            <mat-icon>download</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-
-    <div *ngIf="invoices.length === 0" class="no-data">
-      <mat-icon>receipt</mat-icon>
-      <p>No invoices found</p>
-    </div>
-  </mat-card>
+    <ng-template #noData>
+      <div class="no-data">
+        <i class="pi pi-file" style="font-size: 64px"></i>
+        <p>No invoices found</p>
+      </div>
+    </ng-template>
+  </p-card>
 
   <ng-template #loading>
     <app-loading-spinner message="Loading invoices..."></app-loading-spinner>

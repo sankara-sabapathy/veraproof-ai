@@ -1,145 +1,135 @@
 <div class="api-keys-container">
   <div class="header">
     <h2>API Keys</h2>
-    <button mat-raised-button color="primary" (click)="onCreateKey()">
-      <mat-icon>add</mat-icon>
-      Generate API Key
-    </button>
+    <p-button 
+      label="Generate API Key" 
+      icon="pi pi-plus" 
+      (onClick)="onCreateKey()">
+    </p-button>
   </div>
 
-  <mat-card>
-    <mat-card-content>
-      <!-- Search Field -->
-      <mat-form-field class="search-field" appearance="outline">
-        <mat-label>Search API keys</mat-label>
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput 
-               placeholder="Search by key or environment..." 
-               [(ngModel)]="searchTerm"
-               (ngModelChange)="onSearch($event)">
-        <button mat-icon-button matSuffix *ngIf="searchTerm" (click)="searchTerm = ''; onSearch('')">
-          <mat-icon>clear</mat-icon>
-        </button>
-      </mat-form-field>
+  <p-card>
+    <!-- Search Field -->
+    <div class="search-field">
+      <span class="p-input-icon-left p-input-icon-right">
+        <i class="pi pi-search"></i>
+        <input 
+          pInputText 
+          type="text" 
+          placeholder="Search by key or environment..." 
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onSearch($event)"
+          class="w-full">
+        <i class="pi pi-times clear-icon" 
+           *ngIf="searchTerm" 
+           (click)="searchTerm = ''; onSearch('')"
+           style="cursor: pointer;"></i>
+      </span>
+    </div>
 
-      <!-- Loading Spinner -->
-      <div *ngIf="loading$ | async" class="loading-container">
-        <mat-spinner diameter="50"></mat-spinner>
-        <p>Loading API keys...</p>
-      </div>
+    <!-- Loading Spinner -->
+    <div *ngIf="loading$ | async" class="loading-container">
+      <app-loading-spinner [diameter]="50" message="Loading API keys..."></app-loading-spinner>
+    </div>
 
-      <!-- Data Table -->
-      <div *ngIf="!(loading$ | async)" class="table-container">
-        <table mat-table [dataSource]="dataSource" matSort class="api-keys-table">
-          
-          <!-- Environment Column -->
-          <ng-container matColumnDef="environment">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Environment</th>
-            <td mat-cell *matCellDef="let key">
-              <ng-container *ngTemplateOutlet="environmentTemplate; context: { $implicit: key }"></ng-container>
+    <!-- Data Table -->
+    <div *ngIf="!(loading$ | async)">
+      <p-table 
+        [value]="filteredKeys" 
+        [tableStyle]="{ 'min-width': '50rem' }"
+        styleClass="p-datatable-striped">
+        
+        <!-- Environment Column -->
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Environment</th>
+            <th>API Key</th>
+            <th>Created</th>
+            <th>Usage</th>
+            <th>Last Used</th>
+            <th>Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-key>
+          <tr>
+            <!-- Environment -->
+            <td>
+              <div class="chip-container">
+                <p-chip 
+                  [label]="key.environment | titlecase"
+                  [styleClass]="key.environment === 'sandbox' ? 'chip-sandbox' : 'chip-production'">
+                </p-chip>
+                <p-chip 
+                  *ngIf="isRevoked(key)"
+                  label="Revoked"
+                  styleClass="chip-revoked">
+                </p-chip>
+              </div>
             </td>
-          </ng-container>
 
-          <!-- API Key Column -->
-          <ng-container matColumnDef="api_key">
-            <th mat-header-cell *matHeaderCellDef>API Key</th>
-            <td mat-cell *matCellDef="let key">
-              <ng-container *ngTemplateOutlet="keyValueTemplate; context: { $implicit: key }"></ng-container>
+            <!-- API Key -->
+            <td>
+              <div class="key-value-container">
+                <code class="key-value">{{ getMaskedKey(key.api_key) }}</code>
+                <p-button 
+                  icon="pi pi-copy" 
+                  [text]="true"
+                  [rounded]="true"
+                  size="small"
+                  (onClick)="copyToClipboard(key.api_key)"
+                  pTooltip="Copy to clipboard"
+                  tooltipPosition="top"
+                  [disabled]="isRevoked(key)">
+                </p-button>
+              </div>
             </td>
-          </ng-container>
 
-          <!-- Created Column -->
-          <ng-container matColumnDef="created_at">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
-            <td mat-cell *matCellDef="let key">{{ formatDate(key.created_at) }}</td>
-          </ng-container>
+            <!-- Created -->
+            <td>{{ formatDate(key.created_at) }}</td>
 
-          <!-- Usage Column -->
-          <ng-container matColumnDef="usage">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Usage</th>
-            <td mat-cell *matCellDef="let key">
-              <ng-container *ngTemplateOutlet="usageTemplate; context: { $implicit: key }"></ng-container>
+            <!-- Usage -->
+            <td>
+              <div class="usage-stats">
+                <span class="usage-count">{{ key.total_calls | number }}</span>
+                <span class="usage-label">calls</span>
+              </div>
             </td>
-          </ng-container>
 
-          <!-- Last Used Column -->
-          <ng-container matColumnDef="last_used_at">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Last Used</th>
-            <td mat-cell *matCellDef="let key">{{ formatDate(key.last_used_at) }}</td>
-          </ng-container>
+            <!-- Last Used -->
+            <td>{{ formatDate(key.last_used_at) }}</td>
 
-          <!-- Actions Column -->
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let key">
-              <ng-container *ngTemplateOutlet="actionsTemplate; context: { $implicit: key }"></ng-container>
+            <!-- Actions -->
+            <td>
+              <p-button 
+                icon="pi pi-ellipsis-v" 
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                (onClick)="menu.toggle($event)"
+                [disabled]="isRevoked(key)">
+              </p-button>
+              <p-menu #menu [model]="getMenuItems(key)" [popup]="true"></p-menu>
             </td>
-          </ng-container>
+          </tr>
+        </ng-template>
 
-          <tr mat-header-row *matHeaderRowDef="['environment', 'api_key', 'created_at', 'usage', 'last_used_at', 'actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['environment', 'api_key', 'created_at', 'usage', 'last_used_at', 'actions']"></tr>
-
-          <!-- No Data Row -->
-          <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell no-data" [attr.colspan]="6">
+        <!-- Empty State -->
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="6" class="no-data">
               <div class="no-data-message">
-                <mat-icon>vpn_key</mat-icon>
+                <i class="pi pi-key" style="font-size: 4rem; color: var(--surface-400);"></i>
                 <p>No API keys found</p>
-                <button mat-raised-button color="primary" (click)="onCreateKey()">
-                  Generate Your First API Key
-                </button>
+                <p-button 
+                  label="Generate Your First API Key" 
+                  (onClick)="onCreateKey()">
+                </p-button>
               </div>
             </td>
           </tr>
-        </table>
-      </div>
-    </mat-card-content>
-  </mat-card>
+        </ng-template>
+      </p-table>
+    </div>
+  </p-card>
 </div>
-
-<!-- Templates -->
-<ng-template #environmentTemplate let-key>
-  <mat-chip-set>
-    <mat-chip [class.sandbox]="key.environment === 'sandbox'" 
-              [class.production]="key.environment === 'production'"
-              [class.revoked]="isRevoked(key)">
-      {{ key.environment | titlecase }}
-    </mat-chip>
-    <mat-chip *ngIf="isRevoked(key)" class="revoked-badge">
-      Revoked
-    </mat-chip>
-  </mat-chip-set>
-</ng-template>
-
-<ng-template #keyValueTemplate let-key>
-  <div class="key-value-container">
-    <code class="key-value">{{ getMaskedKey(key.api_key) }}</code>
-    <button mat-icon-button 
-            (click)="copyToClipboard(key.api_key)"
-            matTooltip="Copy to clipboard"
-            [disabled]="isRevoked(key)">
-      <mat-icon>content_copy</mat-icon>
-    </button>
-  </div>
-</ng-template>
-
-<ng-template #usageTemplate let-key>
-  <div class="usage-stats">
-    <span class="usage-count">{{ key.total_calls | number }}</span>
-    <span class="usage-label">calls</span>
-  </div>
-</ng-template>
-
-<ng-template #actionsTemplate let-key>
-  <button mat-icon-button 
-          [matMenuTriggerFor]="menu"
-          [disabled]="isRevoked(key)">
-    <mat-icon>more_vert</mat-icon>
-  </button>
-  <mat-menu #menu="matMenu">
-    <button mat-menu-item (click)="onRevokeKey(key)">
-      <mat-icon color="warn">block</mat-icon>
-      <span>Revoke Key</span>
-    </button>
-  </mat-menu>
-</ng-template>

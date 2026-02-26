@@ -6,26 +6,39 @@
   }
 }
 
-.invoices-table {
-  width: 100%;
-}
-
 .no-data {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px;
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--text-color-secondary, rgba(0, 0, 0, 0.4));
 
-  mat-icon {
-    font-size: 64px;
-    width: 64px;
-    height: 64px;
+  i {
     margin-bottom: 16px;
   }
 
   p {
     font-size: 18px;
+  }
+}
+
+// Status chip styling
+:host ::ng-deep {
+  .status-chip {
+    &.status-paid {
+      background-color: var(--green-100);
+      color: var(--green-700);
+    }
+    
+    &.status-pending {
+      background-color: var(--yellow-100);
+      color: var(--yellow-700);
+    }
+    
+    &.status-overdue {
+      background-color: var(--red-100);
+      color: var(--red-700);
+    }
   }
 }

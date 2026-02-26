@@ -63,14 +63,15 @@
 
   <h2>System Health</h2>
 
-  <mat-card *ngIf="health$ | async as health">
-    <mat-card-content>
+  <p-card *ngIf="health$ | async as health">
+    <ng-template pTemplate="content">
       <div class="health-grid">
         <div class="health-item">
           <span class="label">API Status:</span>
-          <mat-chip [color]="getHealthColor(health.api_status)" selected>
-            {{ health.api_status | uppercase }}
-          </mat-chip>
+          <p-chip 
+            [label]="health.api_status | uppercase" 
+            [styleClass]="'chip-' + health.api_status">
+          </p-chip>
         </div>
         <div class="health-item">
           <span class="label">Avg Response Time:</span>
@@ -89,8 +90,8 @@
           <span class="value">{{ health.last_incident | date:'medium' }}</span>
         </div>
       </div>
-    </mat-card-content>
-  </mat-card>
+    </ng-template>
+  </p-card>
 
   <ng-template #loading>
     <app-loading-spinner message="Loading platform statistics..."></app-loading-spinner>

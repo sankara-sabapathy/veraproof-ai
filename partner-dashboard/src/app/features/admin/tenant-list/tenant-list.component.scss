@@ -7,18 +7,25 @@
 }
 
 .filters {
-  display: flex;
-  gap: 16px;
   margin-bottom: 24px;
-  padding: 16px;
 
-  mat-form-field {
-    flex: 1;
+  .filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+
+    .search-field {
+      flex: 1;
+      
+      input {
+        width: 100%;
+      }
+    }
+
+    .filter-dropdown {
+      min-width: 200px;
+    }
   }
-}
-
-.tenants-table {
-  width: 100%;
 }
 
 .usage-cell {
@@ -27,17 +34,50 @@
   gap: 4px;
   min-width: 150px;
 
-  mat-progress-bar {
-    height: 4px;
+  .usage-text {
+    font-size: 0.875rem;
+  }
+
+  .usage-bar {
+    height: 6px;
   }
 }
 
-.clickable-row {
-  cursor: pointer;
-  transition: background-color 0.2s;
+// Usage severity colors
+::ng-deep {
+  .usage-bar.success .p-progressbar-value {
+    background-color: #22c55e;
+  }
+  
+  .usage-bar.warning .p-progressbar-value {
+    background-color: #f59e0b;
+  }
+  
+  .usage-bar.danger .p-progressbar-value {
+    background-color: #ef4444;
+  }
+}
 
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+.subscription-chip {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+// Status chip colors
+::ng-deep {
+  .status-chip.status-active {
+    background-color: #22c55e;
+    color: white;
+  }
+  
+  .status-chip.status-trial {
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  .status-chip.status-suspended {
+    background-color: #f59e0b;
+    color: white;
   }
 }
 
@@ -47,16 +87,27 @@
   align-items: center;
   justify-content: center;
   padding: 48px;
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--text-color-secondary);
 
-  mat-icon {
-    font-size: 64px;
-    width: 64px;
-    height: 64px;
+  i {
     margin-bottom: 16px;
+    opacity: 0.4;
   }
 
   p {
     font-size: 18px;
+    margin: 0;
+  }
+}
+
+// Override PrimeNG table styles for clickable rows
+::ng-deep {
+  .p-datatable .clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: var(--surface-hover);
+    }
   }
 }

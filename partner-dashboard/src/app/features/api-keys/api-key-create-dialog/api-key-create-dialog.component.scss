@@ -1,192 +1,176 @@
 .dialog-container {
+  padding: 1.5rem;
   min-width: 500px;
   max-width: 600px;
 
-  h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 500;
+  .description {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-color-secondary);
+    line-height: 1.5;
   }
 
-  mat-dialog-content {
-    padding: 24px;
-    min-height: 200px;
-
-    .description {
-      margin: 0 0 24px 0;
-      color: rgba(0, 0, 0, 0.7);
-      line-height: 1.5;
+  .selection-step {
+    .full-width {
+      width: 100%;
+      display: block;
+      margin-bottom: 1rem;
     }
 
-    .selection-step {
-      .full-width {
-        width: 100%;
-      }
-
-      .environment-option {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px 0;
-
-        mat-icon {
-          color: rgba(0, 0, 0, 0.54);
-        }
-
-        .option-title {
-          font-weight: 500;
-          font-size: 14px;
-          color: rgba(0, 0, 0, 0.87);
-        }
-
-        .option-description {
-          font-size: 12px;
-          color: rgba(0, 0, 0, 0.6);
-        }
-      }
-    }
-
-    .generated-step {
+    .environment-option {
       display: flex;
-      flex-direction: column;
-      gap: 24px;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
 
-      .warning-card {
-        background-color: #fff3e0;
-        border-left: 4px solid #ff9800;
-
-        &.danger {
-          background-color: #ffebee;
-          border-left-color: #f44336;
-        }
-
-        mat-card-content {
-          padding: 16px;
-
-          .warning-content {
-            display: flex;
-            gap: 12px;
-
-            mat-icon {
-              flex-shrink: 0;
-            }
-
-            strong {
-              display: block;
-              margin-bottom: 8px;
-              color: rgba(0, 0, 0, 0.87);
-            }
-
-            p {
-              margin: 0;
-              font-size: 14px;
-              color: rgba(0, 0, 0, 0.7);
-              line-height: 1.5;
-            }
-          }
-        }
+      i {
+        color: var(--text-color-secondary);
+        font-size: 1.25rem;
       }
 
-      .credential-section {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+      .option-title {
+        font-weight: 500;
+        font-size: 0.875rem;
+        color: var(--text-color);
+      }
 
-        .credential-label {
-          font-size: 14px;
-          font-weight: 500;
-          color: rgba(0, 0, 0, 0.87);
-        }
+      .option-description {
+        font-size: 0.75rem;
+        color: var(--text-color-secondary);
+      }
+    }
+  }
 
-        .credential-display {
+  .generated-step {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    ::ng-deep .warning-card {
+      background-color: #fff3e0;
+      border-left: 4px solid #ff9800;
+
+      &.danger {
+        background-color: #ffebee;
+        border-left-color: #f44336;
+      }
+
+      .p-card-content {
+        padding: 1rem;
+
+        .warning-content {
           display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 12px;
-          background-color: #f5f5f5;
-          border: 1px solid #e0e0e0;
-          border-radius: 4px;
+          gap: 0.75rem;
 
-          .credential-value {
-            flex: 1;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            color: #424242;
-            word-break: break-all;
+          i {
+            flex-shrink: 0;
+            font-size: 1.5rem;
+            color: #ff9800;
+          }
+
+          strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+          }
+
+          p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-color-secondary);
             line-height: 1.5;
           }
-
-          button {
-            flex-shrink: 0;
-            transition: all 0.2s ease;
-
-            &.copied {
-              mat-icon {
-                color: #4caf50;
-              }
-            }
-
-            mat-icon {
-              font-size: 20px;
-              width: 20px;
-              height: 20px;
-            }
-          }
-        }
-
-        .credential-hint {
-          font-size: 12px;
-          color: rgba(0, 0, 0, 0.6);
-          font-style: italic;
-        }
-      }
-
-      .environment-badge {
-        display: flex;
-        justify-content: center;
-        padding-top: 8px;
-
-        mat-chip-set {
-          mat-chip {
-            font-size: 14px;
-            font-weight: 500;
-            padding: 8px 16px;
-
-            mat-icon {
-              margin-right: 8px;
-            }
-
-            &.sandbox {
-              background-color: #e3f2fd;
-              color: #1976d2;
-            }
-
-            &.production {
-              background-color: #e8f5e9;
-              color: #388e3c;
-            }
-          }
         }
       }
     }
 
-    .close-warning {
-      margin-top: 16px;
+    ::ng-deep .warning-card.danger {
+      .warning-content i {
+        color: #f44336;
+      }
+    }
+
+    .credential-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      .credential-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-color);
+      }
+
+      .credential-display {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background-color: var(--surface-100);
+        border: 1px solid var(--surface-border);
+        border-radius: var(--border-radius);
+
+        .credential-value {
+          flex: 1;
+          font-family: 'Courier New', monospace;
+          font-size: 0.8125rem;
+          color: var(--text-color);
+          word-break: break-all;
+          line-height: 1.5;
+        }
+
+        ::ng-deep .p-button {
+          flex-shrink: 0;
+          transition: all 0.2s ease;
+
+          &.copied {
+            .pi {
+              color: #4caf50;
+            }
+          }
+        }
+      }
+
+      .credential-hint {
+        font-size: 0.75rem;
+        color: var(--text-color-secondary);
+        font-style: italic;
+      }
+    }
+
+    .environment-badge {
+      display: flex;
+      justify-content: center;
+      padding-top: 0.5rem;
+
+      ::ng-deep .p-chip {
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+
+        &.sandbox {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+
+        &.production {
+          background-color: #e8f5e9;
+          color: #388e3c;
+        }
+      }
     }
   }
 
-  mat-dialog-actions {
-    padding: 16px 24px;
-    border-top: 1px solid #e0e0e0;
+  .close-warning {
+    margin-top: 1rem;
+  }
 
-    button {
-      margin-left: 8px;
-
-      .button-spinner {
-        display: inline-block;
-        margin-right: 8px;
-      }
-    }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--surface-border);
   }
 }
 
@@ -195,32 +179,28 @@
   .dialog-container {
     min-width: unset;
     max-width: 100%;
+    padding: 1rem;
 
-    mat-dialog-content {
-      padding: 16px;
+    .generated-step {
+      gap: 1rem;
 
-      .generated-step {
-        gap: 16px;
+      .credential-section {
+        .credential-display {
+          flex-direction: column;
+          align-items: stretch;
 
-        .credential-section {
-          .credential-display {
-            flex-direction: column;
-            align-items: stretch;
-
-            button {
-              align-self: flex-end;
-            }
+          ::ng-deep .p-button {
+            align-self: flex-end;
           }
         }
       }
     }
 
-    mat-dialog-actions {
+    .dialog-actions {
       flex-direction: column;
       align-items: stretch;
 
-      button {
-        margin: 4px 0;
+      ::ng-deep .p-button {
         width: 100%;
       }
     }

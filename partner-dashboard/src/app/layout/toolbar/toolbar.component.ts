@@ -1,12 +1,11 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd, RouterModule } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatSidenav } from '@angular/material/sidenav';
+import { ToolbarModule } from 'primeng/toolbar';
+import { ButtonModule } from 'primeng/button';
+import { MenuModule } from 'primeng/menu';
+import { DividerModule } from 'primeng/divider';
+import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
 import { Observable } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
@@ -22,20 +21,21 @@ interface Breadcrumb {
   imports: [
     CommonModule,
     RouterModule,
-    MatToolbarModule,
-    MatButtonModule,
-    MatIconModule,
-    MatMenuModule,
-    MatDividerModule
+    ToolbarModule,
+    ButtonModule,
+    MenuModule,
+    DividerModule
   ],
   templateUrl: './toolbar.component.html',
   styleUrls: ['./toolbar.component.scss']
 })
 export class ToolbarComponent implements OnInit {
-  @Input() drawer!: MatSidenav;
+  @Input() showMenuButton: boolean | null = false;
+  @Output() menuToggle = new EventEmitter<void>();
   
   userEmail$: Observable<string | null>;
   breadcrumbs$: Observable<Breadcrumb[]>;
+  userMenuItems: MenuItem[] = [];
 
   private routeLabels: { [key: string]: string } = {
     'dashboard': 'Dashboard',
@@ -62,7 +62,20 @@ export class ToolbarComponent implements OnInit {
     );
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    // Initialize user menu items
+    this.userMenuItems = [
+      {
+        label: 'Logout',
+        icon: 'pi pi-sign-out',
+        command: () => this.onLogout()
+      }
+    ];
+  }
+
+  onMenuToggle(): void {
+    this.menuToggle.emit();
+  }
 
   onLogout(): void {
     this.authService.logout().subscribe({

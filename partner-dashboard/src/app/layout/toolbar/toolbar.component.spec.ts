@@ -1,19 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, NavigationEnd } from '@angular/router';
+import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { MatSidenav } from '@angular/material/sidenav';
 import { ToolbarComponent } from './toolbar.component';
 import { AuthService } from '../../core/services/auth.service';
 import { BehaviorSubject, of } from 'rxjs';
-import { filter, map } from 'rxjs/operators';
 
 describe('ToolbarComponent', () => {
   let component: ToolbarComponent;
   let fixture: ComponentFixture<ToolbarComponent>;
   let authService: jasmine.SpyObj<AuthService>;
   let router: Router;
-  let mockDrawer: jasmine.SpyObj<MatSidenav>;
   let currentUserSubject: BehaviorSubject<any>;
 
   beforeEach(async () => {
@@ -22,8 +19,6 @@ describe('ToolbarComponent', () => {
       currentUser$: currentUserSubject.asObservable()
     });
     authServiceSpy.logout.and.returnValue(of(undefined));
-
-    mockDrawer = jasmine.createSpyObj('MatSidenav', ['toggle']);
 
     await TestBed.configureTestingModule({
       imports: [
@@ -40,7 +35,6 @@ describe('ToolbarComponent', () => {
     router = TestBed.inject(Router);
     fixture = TestBed.createComponent(ToolbarComponent);
     component = fixture.componentInstance;
-    component.drawer = mockDrawer;
   });
 
   it('should create', () => {
@@ -57,13 +51,13 @@ describe('ToolbarComponent', () => {
     });
   });
 
-  it('should toggle drawer when menu button clicked', () => {
+  it('should emit menuToggle event when menu button clicked', () => {
     fixture.detectChanges();
+    spyOn(component.menuToggle, 'emit');
 
-    const menuButton = fixture.nativeElement.querySelector('.menu-button');
-    menuButton?.click();
+    component.onMenuToggle();
 
-    expect(mockDrawer.toggle).toHaveBeenCalled();
+    expect(component.menuToggle.emit).toHaveBeenCalled();
   });
 
   it('should call logout and navigate to login', () => {
@@ -79,6 +73,7 @@ describe('ToolbarComponent', () => {
   it('should render user menu button', () => {
     fixture.detectChanges();
 
+    // PrimeNG button uses p-button selector
     const userMenuButton = fixture.nativeElement.querySelector('.user-menu-button');
     expect(userMenuButton).toBeTruthy();
   });
@@ -92,5 +87,38 @@ describe('ToolbarComponent', () => {
     component.onLogout();
 
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
+  });
+
+  it('should initialize user menu items on init', () => {
+    fixture.detectChanges();
+
+    expect(component.userMenuItems).toBeDefined();
+    expect(component.userMenuItems.length).toBeGreaterThan(0);
+    expect(component.userMenuItems[0].label).toBe('Logout');
+    expect(component.userMenuItems[0].icon).toBe('pi pi-sign-out');
+  });
+
+  it('should render PrimeNG toolbar', () => {
+    fixture.detectChanges();
+
+    const toolbar = fixture.nativeElement.querySelector('p-toolbar');
+    expect(toolbar).toBeTruthy();
+  });
+
+  it('should render menu toggle button with PrimeNG icon', () => {
+    fixture.detectChanges();
+
+    const menuButton = fixture.nativeElement.querySelector('.menu-button');
+    expect(menuButton).toBeTruthy();
+  });
+
+  it('should render brand container', () => {
+    fixture.detectChanges();
+
+    const brandContainer = fixture.nativeElement.querySelector('.brand-container');
+    expect(brandContainer).toBeTruthy();
+    
+    const brandText = brandContainer.querySelector('.brand-text');
+    expect(brandText?.textContent).toContain('VeraProof AI');
   });
 });

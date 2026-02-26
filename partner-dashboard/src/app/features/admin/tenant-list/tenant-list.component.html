@@ -1,98 +1,92 @@
 <div class="tenant-list">
   <h2>Tenant Management</h2>
 
-  <mat-card class="filters">
-    <mat-form-field appearance="outline">
-      <mat-label>Search</mat-label>
-      <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearch()" placeholder="Search by email...">
-      <mat-icon matPrefix>search</mat-icon>
-    </mat-form-field>
+  <p-card styleClass="filters">
+    <div class="filter-row">
+      <span class="p-input-icon-left search-field">
+        <i class="pi pi-search"></i>
+        <input 
+          pInputText 
+          type="text" 
+          [(ngModel)]="searchTerm" 
+          (ngModelChange)="onSearch()" 
+          placeholder="Search by email..." />
+      </span>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Subscription Tier</mat-label>
-      <mat-select [(ngModel)]="selectedTier" (selectionChange)="onFilterChange()">
-        <mat-option value="">All</mat-option>
-        <mat-option value="Sandbox">Sandbox</mat-option>
-        <mat-option value="Starter">Starter</mat-option>
-        <mat-option value="Professional">Professional</mat-option>
-        <mat-option value="Enterprise">Enterprise</mat-option>
-      </mat-select>
-    </mat-form-field>
+      <p-dropdown 
+        [(ngModel)]="selectedTier" 
+        [options]="tierOptions" 
+        optionLabel="label" 
+        optionValue="value"
+        (onChange)="onFilterChange()"
+        placeholder="Subscription Tier"
+        styleClass="filter-dropdown">
+      </p-dropdown>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Status</mat-label>
-      <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onFilterChange()">
-        <mat-option value="">All</mat-option>
-        <mat-option value="active">Active</mat-option>
-        <mat-option value="trial">Trial</mat-option>
-        <mat-option value="suspended">Suspended</mat-option>
-      </mat-select>
-    </mat-form-field>
-  </mat-card>
+      <p-dropdown 
+        [(ngModel)]="selectedStatus" 
+        [options]="statusOptions" 
+        optionLabel="label" 
+        optionValue="value"
+        (onChange)="onFilterChange()"
+        placeholder="Status"
+        styleClass="filter-dropdown">
+      </p-dropdown>
+    </div>
+  </p-card>
 
-  <mat-card *ngIf="tenants$ | async as tenants; else loading">
-    <table mat-table [dataSource]="tenants" class="tenants-table">
-      <ng-container matColumnDef="email">
-        <th mat-header-cell *matHeaderCellDef>Email</th>
-        <td mat-cell *matCellDef="let tenant">{{ tenant.email }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="subscription_tier">
-        <th mat-header-cell *matHeaderCellDef>Subscription</th>
-        <td mat-cell *matCellDef="let tenant">
-          <mat-chip color="primary" selected>{{ tenant.subscription_tier }}</mat-chip>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="usage">
-        <th mat-header-cell *matHeaderCellDef>Usage</th>
-        <td mat-cell *matCellDef="let tenant">
-          <div class="usage-cell">
-            <span>{{ tenant.current_usage | number }} / {{ tenant.monthly_quota | number }}</span>
-            <mat-progress-bar 
-              mode="determinate" 
-              [value]="getUsagePercentage(tenant)"
-              [color]="getUsagePercentage(tenant) >= 80 ? 'warn' : 'primary'">
-            </mat-progress-bar>
-          </div>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef>Status</th>
-        <td mat-cell *matCellDef="let tenant">
-          <mat-chip [color]="getStatusColor(tenant.status)" selected>
-            {{ tenant.status | uppercase }}
-          </mat-chip>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="created_at">
-        <th mat-header-cell *matHeaderCellDef>Created</th>
-        <td mat-cell *matCellDef="let tenant">{{ tenant.created_at | date }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let tenant">
-          <button mat-icon-button (click)="viewTenant(tenant)" matTooltip="View Details">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="clickable-row" 
-          (click)="viewTenant(row)"></tr>
-    </table>
+  <p-card *ngIf="!loading; else loadingTemplate">
+    <app-data-table
+      [columns]="columns"
+      [data]="tenants"
+      [totalItems]="totalItems"
+      [loading]="loading"
+      [pageSize]="25"
+      [actionsTemplate]="actionsTemplate"
+      (rowClick)="viewTenant($event)">
+    </app-data-table>
 
     <div *ngIf="tenants.length === 0" class="no-data">
-      <mat-icon>business</mat-icon>
+      <i class="pi pi-building" style="font-size: 4rem"></i>
       <p>No tenants found</p>
     </div>
-  </mat-card>
+  </p-card>
 
-  <ng-template #loading>
+  <ng-template #loadingTemplate>
     <app-loading-spinner message="Loading tenants..."></app-loading-spinner>
+  </ng-template>
+
+  <!-- Column Templates -->
+  <ng-template #subscriptionTemplate let-tenant>
+    <p-chip [label]="tenant.subscription_tier" styleClass="subscription-chip"></p-chip>
+  </ng-template>
+
+  <ng-template #usageTemplate let-tenant>
+    <div class="usage-cell">
+      <span class="usage-text">{{ tenant.current_usage | number }} / {{ tenant.monthly_quota | number }}</span>
+      <p-progressBar 
+        [value]="getUsagePercentage(tenant)"
+        [showValue]="false"
+        [styleClass]="'usage-bar ' + getUsageSeverity(getUsagePercentage(tenant))">
+      </p-progressBar>
+    </div>
+  </ng-template>
+
+  <ng-template #statusTemplate let-tenant>
+    <p-chip 
+      [label]="tenant.status | uppercase" 
+      [styleClass]="'status-chip status-' + tenant.status">
+    </p-chip>
+  </ng-template>
+
+  <ng-template #actionsTemplate let-tenant>
+    <p-button 
+      icon="pi pi-eye" 
+      [text]="true" 
+      [rounded]="true"
+      severity="secondary"
+      (onClick)="viewTenant(tenant)"
+      pTooltip="View Details">
+    </p-button>
   </ng-template>
 </div>

@@ -1,7 +1,6 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatIconModule } from '@angular/material/icon';
+import { CardModule } from 'primeng/card';
 import { BrandingConfig } from '../services/branding.service';
 
 @Component({
@@ -9,8 +8,7 @@ import { BrandingConfig } from '../services/branding.service';
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatIconModule
+    CardModule
   ],
   templateUrl: './branding-preview.component.html',
   styleUrls: ['./branding-preview.component.scss']
