@@ -528,8 +528,10 @@ jobs:
             --query 'containerServices[0].url' \
             --output text)
           
-          echo "Backend API URL: https://$API_URL"
-          echo "url=https://$API_URL" >> $GITHUB_OUTPUT
+          API_URL=${API_URL%/} # Remove trailing slash to prevent //api/...
+          
+          echo "Backend API URL: $API_URL"
+          echo "url=$API_URL" >> $GITHUB_OUTPUT
       
       - name: Update environment file with backend URL
         run: |
@@ -666,6 +668,8 @@ jobs:
             --query 'containerServices[0].url' \
             --output text)
           
+          API_URL=${API_URL%/} # Remove trailing slash to prevent //health
+          
           # Get Dashboard URL from CloudFormation
           DASHBOARD_URL=$(aws cloudformation describe-stacks \
             --stack-name Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }} \
@@ -680,7 +684,7 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='VerificationURL${{ steps.stage.outputs.stage }}'].OutputValue" \
             --output text)
           
-          echo "api-url=https://$API_URL" >> $GITHUB_OUTPUT
+          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
           echo "dashboard-url=$DASHBOARD_URL" >> $GITHUB_OUTPUT
           echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
       
