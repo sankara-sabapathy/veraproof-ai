@@ -120,3 +120,7 @@ backend/test_session_flow.py
 
 # Scripts folder is kept for local development
 # (scripts/ folder is version controlled)
+
+# Agent context
+.agent/
+.agents/

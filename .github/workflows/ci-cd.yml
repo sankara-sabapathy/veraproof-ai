@@ -592,19 +592,36 @@ jobs:
           echo "Deploying verification interface to S3..."
           
           if [ -d "verification-interface" ]; then
-            # Upload all files except index.html and README with long cache
+            cd verification-interface
+            
+            # Generate config.js from template
+            echo "Generating config.js with production values..."
+            sed -e "s|{{API_URL}}|${{ steps.api-url.outputs.url }}|g" \
+                -e "s|{{ENVIRONMENT}}|production|g" \
+                -e "s|{{VERSION}}|${{ github.sha }}|g" \
+                config.template.js > config.js
+            
+            echo "Generated config.js:"
+            cat config.js
+            
+            cd ..
+            
+            # Upload all files except index.html, config.js, config.template.js and README with long cache
             aws s3 sync verification-interface \
               s3://${{ needs.deploy-infrastructure.outputs.verification-bucket }}/ \
               --delete \
               --cache-control "public, max-age=31536000, immutable" \
               --exclude "index.html" \
+              --exclude "config.js" \
+              --exclude "config.template.js" \
               --exclude "README.md"
             
-            # Upload index.html with no-cache
+            # Upload index.html and config.js with no-cache (to force frequent re-fetching of these entrypoints)
             aws s3 sync verification-interface \
               s3://${{ needs.deploy-infrastructure.outputs.verification-bucket }}/ \
               --cache-control "no-cache, no-store, must-revalidate" \
-              --include "index.html"
+              --include "index.html" \
+              --include "config.js"
             
             echo "✓ Verification interface deployed to S3"
           else
