@@ -35,8 +35,15 @@ def setup_telemetry(app_name: str = "veraproof-backend"):
     Safely degrades to standard JSON stdout if exporting fails.
     """
     try:
-        # Define Service Name for Grafana
-        resource = Resource.create({"service.name": app_name})
+        app_name = os.getenv("OTEL_SERVICE_NAME", app_name)
+        environment = os.getenv("ENVIRONMENT", "development")
+        
+        # Define required Resource attributes for Grafana Cloud
+        resource = Resource.create({
+            "service.name": app_name,
+            "service.namespace": "veraproof",
+            "deployment.environment": environment
+        })
         
         # Instantiate Global Tracer Provider
         provider = TracerProvider(resource=resource)
