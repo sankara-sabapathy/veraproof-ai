@@ -128,4 +128,5 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_id ON api_keys(tenant_id);
 
 -- Test tenant
 INSERT INTO tenants (email, subscription_tier, monthly_quota, current_usage)
-VALUES ('test@veraproof.ai', 'Sandbox', 3, 0);
+VALUES ('test@veraproof.ai', 'Sandbox', 3, 0)
+ON CONFLICT (email) DO NOTHING;

@@ -28,6 +28,10 @@ class TenantDatabaseManager:
                 timeout=5.0  # 5 second timeout
             )
             logger.info("Database connection pool created")
+            
+            # Auto-initialize database schema
+            await self.initialize_schema()
+            
         except asyncio.TimeoutError:
             logger.error("Database connection timed out")
             if settings.environment == "development":
@@ -42,6 +46,35 @@ class TenantDatabaseManager:
                 self.pool = None
             else:
                 raise
+                
+    async def initialize_schema(self):
+        """Initialize database schema from init.sql in production"""
+        if settings.environment.lower() not in ["prod", "production", "staging"]:
+            return
+            
+        if not self.pool:
+            return
+            
+        try:
+            import os
+            # Get path to init.sql relative to database.py
+            sql_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db", "init.sql")
+            
+            if not os.path.exists(sql_path):
+                logger.warning(f"Database initialization script not found at {sql_path}")
+                return
+                
+            with open(sql_path, "r") as f:
+                init_script = f.read()
+                
+            # Execute the script to ensure tables exist
+            async with self.pool.acquire() as conn:
+                await conn.execute(init_script)
+            logger.info("Successfully executed database initialization script (init.sql)")
+            
+        except Exception as e:
+            logger.error(f"Failed to execute database initialization script: {e}")
+            raise
     
     async def disconnect(self):
         """Close database connection pool"""
