@@ -307,13 +307,6 @@ jobs:
           echo "raw_password=$DB_PASSWORD" >> $GITHUB_OUTPUT
           echo "endpoint=$DB_ENDPOINT" >> $GITHUB_OUTPUT
 
-      - name: Initialize Database
-        env:
-          PGPASSWORD: ${{ steps.db-creds.outputs.raw_password }}
-        run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          psql -h ${{ steps.db-creds.outputs.endpoint }} -U veraproof_admin -d veraproof -f backend/db/init.sql
-      
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       
