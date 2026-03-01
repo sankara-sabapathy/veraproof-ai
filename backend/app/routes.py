@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect, UploadFile, File
 from typing import Optional
 import logging
+from opentelemetry import trace
 
 from app.models import (
     CreateSessionRequest, CreateSessionResponse, LoginRequest, SignupRequest,
@@ -68,8 +69,16 @@ async def get_tenant_from_api_key(authorization: str = Header(...)) -> str:
     
     try:
         tenant_id, environment = await api_key_manager.validate_key(api_key)
+        
+        # Inject tenant_id into the active OTel trace span for global filtering
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("tenant.id", tenant_id)
+            span.set_attribute("tenant.environment", environment)
+            
         return tenant_id
     except ValueError:
+        logger.warning("Failed authentication via API Key")
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -83,8 +92,17 @@ async def get_tenant_from_jwt(authorization: str = Header(...)) -> str:
     
     try:
         payload = await local_auth_manager.verify_jwt(token)
-        return payload["tenant_id"]
+        tenant_id = payload["tenant_id"]
+        
+        # Inject tenant_id into the active OTel trace span
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("tenant.id", tenant_id)
+            span.set_attribute("auth.type", "jwt")
+            
+        return tenant_id
     except Exception:
+        logger.warning("Failed authentication via JWT Token")
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
@@ -124,10 +142,12 @@ async def create_session_dashboard(
     """Create new verification session from dashboard (JWT authentication)"""
     # Check rate limits
     if not await rate_limiter.check_api_rate_limit(tenant_id):
+        logger.warning("API Rate limit exceeded", extra={"tenant_id": tenant_id})
         raise HTTPException(status_code=429, detail="API rate limit exceeded")
     
     # Check quota
     if not await quota_manager.check_quota(tenant_id):
+        logger.warning("Usage quota exceeded", extra={"tenant_id": tenant_id})
         raise HTTPException(status_code=429, detail="Usage quota exceeded")
     
     # Ensure tenant exists in database
@@ -140,6 +160,7 @@ async def create_session_dashboard(
         return_url=request.return_url
     )
     
+    logger.info("Dashboard verification session created", extra={"session_id": session['session_id'], "tenant_id": tenant_id})
     return CreateSessionResponse(**session)
 
 

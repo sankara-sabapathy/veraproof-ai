@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import uuid
 import logging
+import json
+from opentelemetry import trace
 from app.config import settings
 from app.database import db_manager
 from app.models import SessionState
@@ -27,6 +29,12 @@ class SessionManager:
         created_at = datetime.utcnow()
         expires_at = created_at + timedelta(minutes=settings.session_expiration_minutes)
         
+        # Inject standard trace parameters into this session transaction natively
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("session.id", session_id)
+            span.set_attribute("session.expires_in_minutes", settings.session_expiration_minutes)
+        
         query = """
             INSERT INTO sessions (
                 session_id, tenant_id, created_at, expires_at,
@@ -35,7 +43,6 @@ class SessionManager:
             RETURNING session_id, created_at, expires_at
         """
         
-        import json
         try:
             result = await db_manager.fetch_one(
                 query,
@@ -48,7 +55,7 @@ class SessionManager:
                 json.dumps(metadata) if metadata else '{}'
             )
         except Exception as e:
-            logger.error(f"Failed to insert session into database: {e}")
+            logger.error(f"Failed to insert session into database: {e}", extra={"session_id": session_id})
             result = None
         
         # Store in memory as fallback if database unavailable
@@ -72,10 +79,10 @@ class SessionManager:
         
         if result is None:
             # Database unavailable, use in-memory storage
-            logger.warning(f"Database unavailable, storing session {session_id} in memory")
+            logger.warning(f"Database unavailable, storing session in memory", extra={"session_id": session_id, "fallback": True})
             self.in_memory_sessions[session_id] = session_data
         
-        logger.info(f"Session created: {session_id} for tenant: {tenant_id}")
+        logger.info(f"Verification session created successfully", extra={"session_id": session_id, "tenant_id": tenant_id, "state": SessionState.IDLE.value})
         
         # Generate session URL
         session_url = f"{settings.frontend_verification_url}?session_id={session_id}"
@@ -98,11 +105,11 @@ class SessionManager:
         # Fallback to in-memory storage if database unavailable
         if session is None and session_id in self.in_memory_sessions:
             session = self.in_memory_sessions[session_id]
-            logger.debug(f"Session retrieved from memory: {session_id}")
+            logger.debug(f"Session retrieved from memory rather than Postgres DB", extra={"session_id": session_id, "memory_fallback": True})
         elif session:
-            logger.debug(f"Session retrieved from database: {session_id}")
+            logger.debug(f"Session retrieved from database smoothly", extra={"session_id": session_id})
         else:
-            logger.warning(f"Session not found: {session_id}")
+            logger.warning(f"Session completely missing from all datastores", extra={"session_id": session_id})
         
         return session
     
@@ -119,7 +126,11 @@ class SessionManager:
         """
         
         await db_manager.execute_query(query, state.value, session_id)
-        logger.info(f"Session {session_id} state updated to: {state.value}")
+        logger.info(f"Session execution phase transition recorded", extra={"session_id": session_id, "new_state": state.value})
+        
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.add_event("session_state_transition", {"session.state": state.value})
     
     async def extend_expiration(self, session_id: str):
         """Extend session expiration by 10 minutes"""
@@ -134,7 +145,7 @@ class SessionManager:
         """
         
         await db_manager.execute_query(query, new_expiration, session_id)
-        logger.info(f"Session {session_id} expiration extended to: {new_expiration}")
+        logger.info(f"Session expiration securely extended", extra={"session_id": session_id, "new_expiration": new_expiration})
     
     async def update_session_results(
         self,
@@ -169,7 +180,12 @@ class SessionManager:
             session_id
         )
         
-        logger.info(f"Session {session_id} results updated")
+        logger.info(f"Session analytics recorded & completed", extra={
+            "session_id": session_id, 
+            "final_score": final_trust_score, 
+            "tier_1": tier_1_score,
+            "correlation": correlation_value
+        })
     
     async def store_artifact_keys(
         self,
@@ -196,7 +212,11 @@ class SessionManager:
             session_id
         )
         
-        logger.info(f"Artifact keys stored for session: {session_id}")
+        logger.info("Artifact keys synced to session", extra={
+            "session_id": session_id,
+            "has_video": video_s3_key is not None,
+            "has_imu": imu_data_s3_key is not None
+        })
     
     async def cleanup_expired_sessions(self):
         """Background task to clean up expired sessions"""
@@ -211,7 +231,7 @@ class SessionManager:
             SessionState.COMPLETE.value
         )
         
-        logger.info(f"Expired sessions cleaned up: {result}")
+        logger.info(f"Bulk expired session purges successfully executed", extra={"rows_deleted": result, "scheduled_job": True})
     
     async def get_sessions_by_tenant(
         self,
@@ -236,7 +256,7 @@ class SessionManager:
         
         # Return empty list if database unavailable (graceful degradation)
         if sessions is None:
-            logger.warning(f"Database unavailable, returning empty sessions list for tenant: {tenant_id}")
+            logger.warning(f"Database unavailable during session indexing query", extra={"tenant_id": tenant_id, "fallback": "empty_list"})
             return []
         
         return sessions

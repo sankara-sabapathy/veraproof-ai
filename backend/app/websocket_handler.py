@@ -4,6 +4,7 @@ import json
 import logging
 import asyncio
 from datetime import datetime
+from opentelemetry import trace
 
 from app.session_manager import session_manager
 from app.models import SessionState, IMUData
@@ -33,7 +34,13 @@ class VerificationWebSocket:
             "start_time": datetime.utcnow()
         }
         
-        logger.info(f"WebSocket connected for session: {session_id}")
+        # Add correlation IDs to OpenTelemetry active spans
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("session.id", session_id)
+            span.set_attribute("websocket.action", "connect")
+            
+        logger.info(f"WebSocket securely connected", extra={"session_id": session_id})
         
         # Extend session expiration when verification begins
         await session_manager.extend_expiration(session_id)
@@ -43,7 +50,7 @@ class VerificationWebSocket:
         if session_id in self.active_connections:
             del self.active_connections[session_id]
         
-        logger.info(f"WebSocket disconnected for session: {session_id}")
+        logger.info(f"WebSocket client disconnected", extra={"session_id": session_id})
     
     async def send_message(self, session_id: str, message: Dict):
         """Send message to client"""
@@ -90,7 +97,7 @@ class VerificationWebSocket:
     async def handle_video_chunk(self, session_id: str, chunk_data: bytes):
         """Handle incoming video chunk"""
         if session_id not in self.session_data:
-            logger.error(f"Session data not found: {session_id}")
+            logger.error(f"Failed to find session data", extra={"session_id": session_id})
             return
         
         self.session_data[session_id]["video_chunks"].append({
@@ -98,17 +105,17 @@ class VerificationWebSocket:
             "timestamp": datetime.utcnow().timestamp()
         })
         
-        logger.debug(f"Video chunk received for session: {session_id}")
+        logger.debug(f"Video chunk received and buffered", extra={"session_id": session_id, "chunk_size": len(chunk_data)})
     
     async def handle_imu_batch(self, session_id: str, imu_data: List[Dict]):
         """Handle incoming IMU data batch"""
         if session_id not in self.session_data:
-            logger.error(f"Session data not found: {session_id}")
+            logger.error(f"Failed to find session data", extra={"session_id": session_id})
             return
         
         # Safety check for None or empty data
         if not imu_data:
-            logger.warning(f"Empty or None IMU data received for session: {session_id}")
+            logger.warning(f"Empty or None IMU payload detected", extra={"session_id": session_id})
             return
         
         # Store IMU data
@@ -123,7 +130,11 @@ class VerificationWebSocket:
                 if gamma_value is not None and gamma_value != 0:
                     self.session_data[session_id]["gyro_gamma"].append(gamma_value)
         
-        logger.info(f"IMU batch received for session: {session_id}, count: {len(imu_data)}, total gyro: {len(self.session_data[session_id]['gyro_gamma'])}")
+        logger.info(f"IMU sensor batch processed", extra={
+            "session_id": session_id, 
+            "samples_received": len(imu_data), 
+            "total_gyro_pool": len(self.session_data[session_id]['gyro_gamma'])
+        })
     
     def get_session_data(self, session_id: str) -> Optional[Dict]:
         """Get stored session data"""
@@ -134,14 +145,14 @@ class VerificationWebSocket:
         if session_id in self.session_data:
             del self.session_data[session_id]
         
-        logger.info(f"Session data cleared: {session_id}")
+        logger.info(f"Session state cleared from RAM", extra={"session_id": session_id})
     
     async def handle_message(self, session_id: str, message: Dict):
         """Handle incoming WebSocket message"""
         msg_type = message.get("type")
         payload = message.get("payload")
         
-        logger.info(f"WebSocket message received: type={msg_type}, session={session_id}")
+        logger.debug(f"Handling websocket event payload", extra={"session_id": session_id, "msg_type": msg_type})
         
         if msg_type == "video_chunk":
             # Video chunk is sent as binary, handled separately
@@ -150,7 +161,7 @@ class VerificationWebSocket:
             await self.handle_imu_batch(session_id, payload)
         elif msg_type == "phase_complete":
             phase = payload.get("phase")
-            logger.info(f"Phase complete: {phase} for session: {session_id}")
+            logger.info(f"Verification phase completed successfully", extra={"session_id": session_id, "phase_id": phase})
             
             # Trigger next phase or analysis
             if phase == "baseline":
@@ -162,7 +173,7 @@ class VerificationWebSocket:
                 await session_manager.update_session_state(session_id, SessionState.ANALYZING)
                 await self.perform_verification(session_id)
         else:
-            logger.warning(f"Unknown message type: {msg_type}")
+            logger.warning(f"Unknown websocket instruction blocked", extra={"msg_type": msg_type, "session_id": session_id})
     
     async def perform_verification(self, session_id: str):
         """Perform verification analysis"""
@@ -171,7 +182,7 @@ class VerificationWebSocket:
             
             session_data = self.session_data.get(session_id)
             if not session_data:
-                logger.error(f"No session data for verification: {session_id}")
+                logger.error(f"Failed to extract session verification data", extra={"session_id": session_id})
                 await self.send_message(session_id, {
                     "type": "error",
                     "payload": {"message": "Verification failed: No data collected"}
@@ -181,7 +192,15 @@ class VerificationWebSocket:
             gyro_gamma = session_data.get("gyro_gamma", [])
             optical_flow_x = session_data.get("optical_flow_data", [])
             
-            logger.info(f"Performing verification: {len(gyro_gamma)} gyro samples, {len(optical_flow_x)} optical flow samples")
+            logger.info(f"AI Sensor Fusion initialized", extra={
+                "session_id": session_id,
+                "gyro_samples": len(gyro_gamma),
+                "optical_flow_samples": len(optical_flow_x)
+            })
+            
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                span.set_attribute("ai.gyro_samples", len(gyro_gamma))
             
             # For now, use mock optical flow data (will be computed from video in full implementation)
             if len(optical_flow_x) == 0:
@@ -224,19 +243,23 @@ class VerificationWebSocket:
                     }
                 })
                 
-                logger.info(f"Verification complete for {session_id}: correlation={correlation:.3f}, authentic={is_authentic}")
+                logger.info(f"AI Verification concluded", extra={
+                    "session_id": session_id,
+                    "correlation": correlation,
+                    "is_authentic": is_authentic
+                })
                 
                 # Upload artifacts to S3 after verification
                 await self.upload_session_artifacts(session_id)
             else:
-                logger.warning(f"Insufficient data for verification: {len(gyro_gamma)} gyro, {len(optical_flow_x)} optical flow")
+                logger.warning(f"Verification aborted (Insufficient matrix samples)", extra={"session_id": session_id, "gyro_samples": len(gyro_gamma)})
                 await self.send_message(session_id, {
                     "type": "error",
                     "payload": {"message": "Insufficient sensor data collected"}
                 })
                 
         except Exception as e:
-            logger.error(f"Verification error: {e}", exc_info=True)
+            logger.error(f"Verification AI execution crashed: {e}", exc_info=True, extra={"session_id": session_id})
             await self.send_message(session_id, {
                 "type": "error",
                 "payload": {"message": f"Verification failed: {str(e)}"}
@@ -250,13 +273,13 @@ class VerificationWebSocket:
             
             session_data = self.session_data.get(session_id)
             if not session_data:
-                logger.warning(f"No session data to upload for: {session_id}")
+                logger.warning(f"Missing S3 artifact payload data", extra={"session_id": session_id})
                 return
             
             # Get session to get tenant_id
             session = await session_manager.get_session(session_id)
             if not session:
-                logger.error(f"Session not found for artifact upload: {session_id}")
+                logger.error(f"Cannot identify tenant to store target S3 credentials", extra={"session_id": session_id})
                 return
             
             tenant_id = session['tenant_id']
@@ -269,9 +292,9 @@ class VerificationWebSocket:
                     video_data = b''.join([chunk['data'] for chunk in session_data['video_chunks']])
                     video_key = f"{tenant_id}/sessions/{session_id}/video.webm"
                     await storage_manager.upload_file(video_key, video_data, 'video/webm')
-                    logger.info(f"Video uploaded to S3: {video_key}, size: {len(video_data)} bytes")
+                    logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "video", "bytes": len(video_data)})
                 except Exception as e:
-                    logger.error(f"Failed to upload video: {e}")
+                    logger.error(f"S3 Interfacing crash formatting WebM file: {e}", extra={"session_id": session_id})
             
             # Upload IMU data if available
             if session_data.get('imu_data'):
@@ -279,9 +302,9 @@ class VerificationWebSocket:
                     imu_json = json.dumps(session_data['imu_data'], indent=2)
                     imu_key = f"{tenant_id}/sessions/{session_id}/imu_data.json"
                     await storage_manager.upload_file(imu_key, imu_json.encode(), 'application/json')
-                    logger.info(f"IMU data uploaded to S3: {imu_key}, samples: {len(session_data['imu_data'])}")
+                    logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "imu", "length_samples": len(session_data['imu_data'])})
                 except Exception as e:
-                    logger.error(f"Failed to upload IMU data: {e}")
+                    logger.error(f"S3 Interfacing crash formatting IMU JSON file: {e}", extra={"session_id": session_id})
             
             # Update session with S3 keys
             if video_key or imu_key:
@@ -290,14 +313,13 @@ class VerificationWebSocket:
                     video_s3_key=video_key,
                     imu_data_s3_key=imu_key
                 )
-                logger.info(f"Artifact keys stored for session: {session_id}")
+                logger.info(f"S3 metadata keys reconciled effectively", extra={"session_id": session_id})
             
             # Clear in-memory data to free up memory
             self.clear_session_data(session_id)
-            logger.info(f"Session data cleared from memory: {session_id}")
             
         except Exception as e:
-            logger.error(f"Error uploading session artifacts: {e}", exc_info=True)
+            logger.error(f"S3 global artifact engine thread failed: {e}", exc_info=True, extra={"session_id": session_id})
 
 
 # Global WebSocket handler instance

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
 from jose import JWTError, jwt
 import hashlib
+from opentelemetry import trace
 from app.config import settings
 import uuid
 import logging
@@ -65,9 +66,13 @@ class LocalAuthManager:
                 datetime.utcnow().date(),
                 (datetime.utcnow() + timedelta(days=30)).date()
             )
-            logger.info(f"Tenant record created in database: {tenant_id}")
+            logger.info("Tenant record created in database", extra={"tenant_id": tenant_id, "email": email})
+            
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                span.set_attribute("tenant.id", tenant_id)
         except Exception as e:
-            logger.error(f"Failed to create tenant record: {e}")
+            logger.error(f"Failed to create tenant record: {e}", extra={"tenant_id": tenant_id})
             raise ValueError(f"Failed to create tenant: {e}")
         
         # Create user record in database
@@ -86,9 +91,13 @@ class LocalAuthManager:
                 'Admin',
                 datetime.utcnow()
             )
-            logger.info(f"User created in database: {email} with tenant_id: {tenant_id}")
+            logger.info("User created in database", extra={"user_id": user_id, "tenant_id": tenant_id, "email": email})
+            
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                span.set_attribute("user.id", user_id)
         except Exception as e:
-            logger.error(f"Failed to create user record: {e}")
+            logger.error(f"Failed to create user record: {e}", extra={"email": email})
             raise ValueError(f"Failed to create user: {e}")
         
         # Cache in memory
@@ -131,10 +140,16 @@ class LocalAuthManager:
                 }
                 # Cache it
                 self.users[email] = user
-                logger.info(f"User loaded from database: {email}")
+                logger.info("User loaded from database", extra={"user_id": user["user_id"], "tenant_id": user["tenant_id"]})
         
         if not user or not self.verify_password(password, user["password_hash"]):
+            logger.warning("Invalid credentials attempted", extra={"email": email})
             raise ValueError("Invalid credentials")
+            
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("user.id", user["user_id"])
+            span.set_attribute("tenant.id", user["tenant_id"])
         
         # Generate access token
         access_token = self.create_access_token({
@@ -259,7 +274,12 @@ class APIKeyManager:
         }
         
         self.api_keys[api_key] = key_data
-        logger.info(f"API key generated for tenant {tenant_id}: {api_key}")
+        logger.info("API key generated", extra={"tenant_id": tenant_id, "key_id": key_id, "environment": environment})
+        
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("tenant.id", tenant_id)
+            span.set_attribute("api_key.id", key_id)
         
         return {
             "key_id": key_id,
@@ -272,7 +292,13 @@ class APIKeyManager:
         key_data = self.api_keys.get(api_key)
         
         if not key_data or key_data.get("revoked_at"):
+            logger.warning("Invalid or revoked API key validation attempt")
             raise ValueError("Invalid or revoked API key")
+            
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("tenant.id", key_data["tenant_id"])
+            span.set_attribute("api_key.environment", key_data["environment"])
         
         return key_data["tenant_id"], key_data["environment"]
     
@@ -281,9 +307,14 @@ class APIKeyManager:
         for api_key, key_data in self.api_keys.items():
             if key_data["key_id"] == key_id:
                 key_data["revoked_at"] = datetime.utcnow().isoformat()
-                logger.info(f"API key revoked: {key_id}")
+                logger.info("API key revoked", extra={"key_id": key_id, "tenant_id": key_data["tenant_id"]})
+                
+                span = trace.get_current_span()
+                if span and span.is_recording():
+                    span.set_attribute("api_key.action", "revoke")
                 return
         
+        logger.warning("Attempted to revoke non-existent API key", extra={"key_id": key_id})
         raise ValueError("API key not found")
 
 

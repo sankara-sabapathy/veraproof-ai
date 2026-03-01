@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users Table (for local authentication)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -12,11 +12,11 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
 
 -- Tenants Table
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
     tenant_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_at TIMESTAMP DEFAULT NOW(),
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE tenants (
 );
 
 -- API Keys Table
-CREATE TABLE api_keys (
+CREATE TABLE IF NOT EXISTS api_keys (
     key_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     api_key VARCHAR(255) UNIQUE NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE api_keys (
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 
 -- Sessions Table
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     session_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW(),
@@ -65,7 +65,7 @@ CREATE TABLE sessions (
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 
 -- Branding Configuration Table
-CREATE TABLE branding_configs (
+CREATE TABLE IF NOT EXISTS branding_configs (
     tenant_id UUID PRIMARY KEY REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     logo_url VARCHAR(500),
     primary_color VARCHAR(7),
@@ -77,7 +77,7 @@ CREATE TABLE branding_configs (
 ALTER TABLE branding_configs ENABLE ROW LEVEL SECURITY;
 
 -- Usage Logs Table
-CREATE TABLE usage_logs (
+CREATE TABLE IF NOT EXISTS usage_logs (
     log_id BIGSERIAL PRIMARY KEY,
     tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     session_id UUID REFERENCES sessions(session_id) ON DELETE CASCADE,
@@ -92,7 +92,7 @@ CREATE TABLE usage_logs (
 ALTER TABLE usage_logs ENABLE ROW LEVEL SECURITY;
 
 -- Webhook Delivery Logs
-CREATE TABLE webhook_logs (
+CREATE TABLE IF NOT EXISTS webhook_logs (
     log_id BIGSERIAL PRIMARY KEY,
     tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     session_id UUID REFERENCES sessions(session_id) ON DELETE CASCADE,
@@ -107,7 +107,7 @@ CREATE TABLE webhook_logs (
 ALTER TABLE webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Invoices Table
-CREATE TABLE invoices (
+CREATE TABLE IF NOT EXISTS invoices (
     invoice_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
     razorpay_payment_id VARCHAR(255),
@@ -121,10 +121,10 @@ CREATE TABLE invoices (
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 
 -- Indexes
-CREATE INDEX idx_sessions_tenant_id ON sessions(tenant_id);
-CREATE INDEX idx_sessions_created_at ON sessions(created_at);
-CREATE INDEX idx_usage_logs_tenant_timestamp ON usage_logs(tenant_id, timestamp);
-CREATE INDEX idx_api_keys_tenant_id ON api_keys(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_tenant_id ON sessions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_timestamp ON usage_logs(tenant_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_id ON api_keys(tenant_id);
 
 -- Test tenant
 INSERT INTO tenants (email, subscription_tier, monthly_quota, current_usage)

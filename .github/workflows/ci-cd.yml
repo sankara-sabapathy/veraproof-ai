@@ -301,7 +301,13 @@ jobs:
           echo "::add-mask::$DB_PASSWORD"
           echo "::add-mask::$ENCODED_PASSWORD"
           echo "password=$ENCODED_PASSWORD" >> $GITHUB_OUTPUT
+          echo "raw_password=$DB_PASSWORD" >> $GITHUB_OUTPUT
           echo "endpoint=$DB_ENDPOINT" >> $GITHUB_OUTPUT
+
+      - name: Initialize Database
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD="${{ steps.db-creds.outputs.raw_password }}" psql -h ${{ steps.db-creds.outputs.endpoint }} -U veraproof_admin -d veraproof -f backend/db/init.sql
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -379,6 +385,23 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --query 'containerServices[0].url' \
             --output text)
+            
+          # Strip trailing slash from API_URL
+          API_URL=${API_URL%/}
+          
+          # Fetch Grafana OpenTelemetry Tokens from AWS Systems Manager Parameter Store
+          echo "Fetching OpenTelemetry credentials from SSM..."
+          OTLP_ENDPOINT=$(aws ssm get-parameter \
+            --name "/veraproof/${{ steps.stage.outputs.stage }}/grafana/otlp_endpoint" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text || echo "")
+            
+          OTLP_HEADERS=$(aws ssm get-parameter \
+            --name "/veraproof/${{ steps.stage.outputs.stage }}/grafana/otlp_headers" \
+            --with-decryption \
+            --query "Parameter.Value" \
+            --output text || echo "")
           
           cat > deployment.json <<EOF
           {
@@ -413,7 +436,9 @@ jobs:
                   "SIGNED_URL_EXPIRATION_SECONDS": "3600",
                   "USE_MOCK_SAGEMAKER": "true",
                   "USE_MOCK_RAZORPAY": "true",
-                  "USE_LOCAL_AUTH": "true"
+                  "USE_LOCAL_AUTH": "true",
+                  "OTEL_EXPORTER_OTLP_ENDPOINT": "$OTLP_ENDPOINT",
+                  "OTEL_EXPORTER_OTLP_HEADERS": "$OTLP_HEADERS"
                 }
               }
             },
