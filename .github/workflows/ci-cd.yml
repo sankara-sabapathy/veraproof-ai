@@ -83,6 +83,9 @@ jobs:
           USE_MOCK_SAGEMAKER: true
           USE_MOCK_RAZORPAY: true
           USE_LOCAL_AUTH: true
+          OTEL_EXPORTER_OTLP_ENDPOINT: ""
+          OTEL_EXPORTER_OTLP_HEADERS: ""
+          OTEL_SERVICE_NAME: "veraproof-backend-test"
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
@@ -438,7 +441,8 @@ jobs:
                   "USE_MOCK_RAZORPAY": "true",
                   "USE_LOCAL_AUTH": "true",
                   "OTEL_EXPORTER_OTLP_ENDPOINT": "$OTLP_ENDPOINT",
-                  "OTEL_EXPORTER_OTLP_HEADERS": "$OTLP_HEADERS"
+                  "OTEL_EXPORTER_OTLP_HEADERS": "$OTLP_HEADERS",
+                  "OTEL_SERVICE_NAME": "veraproof-backend-${{ steps.stage.outputs.stage }}"
                 }
               }
             },
