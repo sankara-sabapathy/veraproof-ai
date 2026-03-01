@@ -89,6 +89,10 @@ docker-compose.override.yml
 *~
 temp_*.html
 temp_*.json
+get_logs.py
+filtered_logs.txt
+container_info.json
+backend_logs.txt
 
 # OS
 Thumbs.db

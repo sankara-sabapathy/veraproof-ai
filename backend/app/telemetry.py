@@ -50,11 +50,9 @@ def setup_telemetry(app_name: str = "veraproof-backend"):
             otlp_exporter = OTLPSpanExporter()
             processor = BatchSpanProcessor(otlp_exporter)
             provider.add_span_processor(processor)
-            provider = trace.get_tracer_provider() # Store state safely
-            trace.set_tracer_provider(provider)
-        else:
-            # Running local-dev or without credentials, skip OTLP network dumps.
-            pass
+            
+        # Safely set the global tracer provider strictly to our newly instantiated configuration
+        trace.set_tracer_provider(provider)
 
     except Exception as e:
         print(f"Failed to bootstrap OpenTelemetry: {e}", file=sys.stderr)
