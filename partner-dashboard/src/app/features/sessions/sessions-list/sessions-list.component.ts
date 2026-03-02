@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
 import { ChipModule } from 'primeng/chip';
 import { TooltipModule } from 'primeng/tooltip';
 import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
@@ -11,6 +10,10 @@ import { SessionService } from '../services/session.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { SessionCreateDialogComponent } from '../session-create-dialog/session-create-dialog.component';
+import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { ColDef, ValueFormatterParams } from 'ag-grid-community';
+import { StatusRendererComponent } from '../../../shared/components/data-table/renderers/status-renderer.component';
+import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
 
 interface Session {
   session_id: string;
@@ -30,23 +33,21 @@ interface Session {
     RouterModule,
     CardModule,
     ButtonModule,
-    TableModule,
     ChipModule,
     TooltipModule,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    DataTableComponent
   ],
-  providers: [DialogService],
+  providers: [DialogService, DatePipe],
   templateUrl: './sessions-list.component.html',
   styleUrls: ['./sessions-list.component.scss']
 })
 export class SessionsListComponent implements OnInit {
   sessions: Session[] = [];
   loading = false;
-  
-  // Pagination
-  pageSize = 10;
-  first = 0;
   totalSessions = 0;
+
+  columns: ColDef[] = [];
 
   private dialogRef: DynamicDialogRef | undefined;
 
@@ -54,8 +55,51 @@ export class SessionsListComponent implements OnInit {
     private sessionService: SessionService,
     private notification: NotificationService,
     private router: Router,
-    private dialogService: DialogService
-  ) {}
+    private dialogService: DialogService,
+    private datePipe: DatePipe
+  ) {
+    this.columns = [
+      { field: 'session_id', headerName: 'Session ID', flex: 2 },
+      {
+        field: 'created_at',
+        headerName: 'Created',
+        valueFormatter: (params: ValueFormatterParams) => this.datePipe.transform(params.value, 'short') || ''
+      },
+      {
+        field: 'state',
+        headerName: 'Status',
+        cellRenderer: StatusRendererComponent
+      },
+      {
+        field: 'final_trust_score',
+        headerName: 'Trust Score',
+        cellRenderer: (params: any) => {
+          if (!params.value) return '<span style="color: #64748b">-</span>';
+          const score = params.value;
+          let color = '#f44336';
+          if (score >= 80) color = '#4caf50';
+          else if (score >= 50) color = '#ff9800';
+          return `<span style="color: ${color}; font-weight: 500;">${score.toFixed(1)}</span>`;
+        }
+      },
+      {
+        headerName: 'Actions',
+        sortable: false,
+        filter: false,
+        width: 100,
+        cellRenderer: ActionRendererComponent,
+        cellRendererParams: {
+          actions: (data: any) => [
+            {
+              icon: 'pi pi-eye',
+              tooltip: 'View Details',
+              actionCallback: (rowData: any) => this.viewSession(rowData.session_id)
+            }
+          ]
+        }
+      }
+    ];
+  }
 
   ngOnInit(): void {
     this.loadSessions();
@@ -63,8 +107,8 @@ export class SessionsListComponent implements OnInit {
 
   loadSessions(): void {
     this.loading = true;
-    const offset = this.first;
-    this.sessionService.getSessions(this.pageSize, offset).subscribe({
+    // We fetch a larger chunk to allow AG Grid to handle pagination natively
+    this.sessionService.getSessions(1000, 0).subscribe({
       next: (response) => {
         this.sessions = response.sessions;
         this.totalSessions = response.total;
@@ -76,12 +120,6 @@ export class SessionsListComponent implements OnInit {
         console.error('Error loading sessions:', error);
       }
     });
-  }
-
-  onPageChange(event: any): void {
-    this.first = event.first;
-    this.pageSize = event.rows;
-    this.loadSessions();
   }
 
   createSession(): void {
@@ -101,11 +139,5 @@ export class SessionsListComponent implements OnInit {
 
   viewSession(sessionId: string): void {
     this.router.navigate(['/sessions', sessionId]);
-  }
-
-  getTrustScoreColor(score: number): string {
-    if (score >= 80) return '#4caf50';
-    if (score >= 50) return '#ff9800';
-    return '#f44336';
   }
 }

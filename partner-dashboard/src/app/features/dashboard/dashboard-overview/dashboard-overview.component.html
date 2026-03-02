@@ -2,18 +2,9 @@
   <div class="header">
     <h2>Dashboard</h2>
     <div class="quick-actions">
-      <p-button 
-        label="Create Session" 
-        icon="pi pi-plus" 
-        severity="primary"
-        [raised]="true"
-        (onClick)="createSession()">
+      <p-button label="Create Session" icon="pi pi-plus" severity="primary" [raised]="true" (onClick)="createSession()">
       </p-button>
-      <p-button 
-        label="Get API Key" 
-        icon="pi pi-key"
-        [raised]="true"
-        (onClick)="generateApiKey()">
+      <p-button label="Get API Key" icon="pi pi-key" [raised]="true" (onClick)="generateApiKey()">
       </p-button>
     </div>
   </div>
@@ -21,39 +12,24 @@
   <div *ngIf="dashboardData && !loading; else loadingTemplate">
     <!-- Stats Cards -->
     <div class="stats-grid">
-      <app-stat-card
-        title="Sessions Today"
-        [value]="dashboardData.stats.sessions_today"
-        icon="today"
+      <app-stat-card title="Sessions Today" [value]="dashboardData.stats.sessions_today" icon="today"
         iconColor="primary">
       </app-stat-card>
 
-      <app-stat-card
-        title="Sessions This Week"
-        [value]="dashboardData.stats.sessions_this_week"
-        icon="date_range"
+      <app-stat-card title="Sessions This Week" [value]="dashboardData.stats.sessions_this_week" icon="date_range"
         iconColor="primary">
       </app-stat-card>
 
-      <app-stat-card
-        title="Sessions This Month"
-        [value]="dashboardData.stats.sessions_this_month"
-        icon="calendar_month"
+      <app-stat-card title="Sessions This Month" [value]="dashboardData.stats.sessions_this_month" icon="calendar_month"
         iconColor="accent">
       </app-stat-card>
 
-      <app-stat-card
-        title="Success Rate"
-        [value]="(dashboardData.stats.success_rate | number:'1.1-1') + '%'"
-        icon="check_circle"
-        iconColor="primary">
+      <app-stat-card title="Success Rate" [value]="(dashboardData.stats.success_rate | number:'1.1-1') + '%'"
+        icon="check_circle" iconColor="primary">
       </app-stat-card>
 
-      <app-stat-card
-        title="Avg Trust Score"
-        [value]="dashboardData.stats.average_trust_score | number:'1.1-1'"
-        icon="stars"
-        iconColor="accent">
+      <app-stat-card title="Avg Trust Score" [value]="dashboardData.stats.average_trust_score | number:'1.1-1'"
+        icon="stars" iconColor="accent">
       </app-stat-card>
     </div>
 
@@ -74,9 +50,7 @@
             {{ dashboardData.quota.usage_percentage | number:'1.0-1' }}% used
           </div>
         </div>
-        <p-progressBar 
-          [value]="dashboardData.quota.usage_percentage"
-          [showValue]="false">
+        <p-progressBar [value]="dashboardData.quota.usage_percentage" [showValue]="false">
         </p-progressBar>
         <div *ngIf="dashboardData.quota.usage_percentage >= 80" class="quota-warning">
           <i class="pi pi-exclamation-triangle"></i>
@@ -111,79 +85,13 @@
       <ng-template pTemplate="header">
         <div class="card-header-with-action">
           <div class="card-header">Recent Sessions</div>
-          <p-button 
-            label="View All" 
-            [text]="true"
-            routerLink="/sessions">
+          <p-button label="View All" [text]="true" routerLink="/sessions">
           </p-button>
         </div>
       </ng-template>
       <ng-template pTemplate="content">
-        <p-table 
-          [value]="dashboardData.recentSessions" 
-          styleClass="sessions-table"
-          [tableStyle]="{ 'min-width': '100%' }">
-          
-          <ng-template pTemplate="header">
-            <tr>
-              <th>Session ID</th>
-              <th>Created</th>
-              <th>Status</th>
-              <th>Trust Score</th>
-              <th>Actions</th>
-            </tr>
-          </ng-template>
-          
-          <ng-template pTemplate="body" let-session>
-            <tr class="clickable-row" (click)="viewSession(session.session_id)">
-              <td>
-                <span class="session-id">{{ session.session_id }}</span>
-              </td>
-              <td>{{ session.created_at | date:'short' }}</td>
-              <td>
-                <p-chip 
-                  [label]="session.state | uppercase"
-                  [styleClass]="session.state === 'complete' ? 'chip-primary' : 'chip-accent'">
-                </p-chip>
-              </td>
-              <td>
-                <span *ngIf="session.final_trust_score" 
-                      [style.color]="getTrustScoreColor(session.final_trust_score) === 'primary' ? '#4caf50' : getTrustScoreColor(session.final_trust_score) === 'accent' ? '#ff9800' : '#f44336'">
-                  {{ session.final_trust_score | number:'1.1-1' }}
-                </span>
-                <span *ngIf="!session.final_trust_score">-</span>
-              </td>
-              <td>
-                <p-button 
-                  icon="pi pi-eye" 
-                  [text]="true"
-                  [rounded]="true"
-                  pTooltip="View Details"
-                  (onClick)="viewSession(session.session_id); $event.stopPropagation()">
-                </p-button>
-              </td>
-            </tr>
-          </ng-template>
-          
-          <ng-template pTemplate="emptymessage">
-            <tr>
-              <td colspan="5">
-                <div class="no-sessions">
-                  <i class="pi pi-shield" style="font-size: 80px"></i>
-                  <p>No sessions yet</p>
-                  <p class="help-text">Create a test session to get started</p>
-                  <p-button 
-                    label="Create Your First Session" 
-                    icon="pi pi-plus"
-                    severity="primary"
-                    [raised]="true"
-                    (onClick)="createSession()">
-                  </p-button>
-                </div>
-              </td>
-            </tr>
-          </ng-template>
-        </p-table>
+        <app-data-table [columns]="columns" [data]="dashboardData.recentSessions" [loading]="false">
+        </app-data-table>
       </ng-template>
     </p-card>
   </div>

@@ -5,45 +5,22 @@
     <div class="filter-row">
       <span class="p-input-icon-left search-field">
         <i class="pi pi-search"></i>
-        <input 
-          pInputText 
-          type="text" 
-          [(ngModel)]="searchTerm" 
-          (ngModelChange)="onSearch()" 
+        <input pInputText type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearch()"
           placeholder="Search by email..." />
       </span>
 
-      <p-dropdown 
-        [(ngModel)]="selectedTier" 
-        [options]="tierOptions" 
-        optionLabel="label" 
-        optionValue="value"
-        (onChange)="onFilterChange()"
-        placeholder="Subscription Tier"
-        styleClass="filter-dropdown">
+      <p-dropdown [(ngModel)]="selectedTier" [options]="tierOptions" optionLabel="label" optionValue="value"
+        (onChange)="onFilterChange()" placeholder="Subscription Tier" styleClass="filter-dropdown">
       </p-dropdown>
 
-      <p-dropdown 
-        [(ngModel)]="selectedStatus" 
-        [options]="statusOptions" 
-        optionLabel="label" 
-        optionValue="value"
-        (onChange)="onFilterChange()"
-        placeholder="Status"
-        styleClass="filter-dropdown">
+      <p-dropdown [(ngModel)]="selectedStatus" [options]="statusOptions" optionLabel="label" optionValue="value"
+        (onChange)="onFilterChange()" placeholder="Status" styleClass="filter-dropdown">
       </p-dropdown>
     </div>
   </p-card>
 
   <p-card *ngIf="!loading; else loadingTemplate">
-    <app-data-table
-      [columns]="columns"
-      [data]="tenants"
-      [totalItems]="totalItems"
-      [loading]="loading"
-      [pageSize]="25"
-      [actionsTemplate]="actionsTemplate"
-      (rowClick)="viewTenant($event)">
+    <app-data-table [columns]="columns" [data]="tenants" [loading]="loading">
     </app-data-table>
 
     <div *ngIf="tenants.length === 0" class="no-data">
@@ -54,39 +31,5 @@
 
   <ng-template #loadingTemplate>
     <app-loading-spinner message="Loading tenants..."></app-loading-spinner>
-  </ng-template>
-
-  <!-- Column Templates -->
-  <ng-template #subscriptionTemplate let-tenant>
-    <p-chip [label]="tenant.subscription_tier" styleClass="subscription-chip"></p-chip>
-  </ng-template>
-
-  <ng-template #usageTemplate let-tenant>
-    <div class="usage-cell">
-      <span class="usage-text">{{ tenant.current_usage | number }} / {{ tenant.monthly_quota | number }}</span>
-      <p-progressBar 
-        [value]="getUsagePercentage(tenant)"
-        [showValue]="false"
-        [styleClass]="'usage-bar ' + getUsageSeverity(getUsagePercentage(tenant))">
-      </p-progressBar>
-    </div>
-  </ng-template>
-
-  <ng-template #statusTemplate let-tenant>
-    <p-chip 
-      [label]="tenant.status | uppercase" 
-      [styleClass]="'status-chip status-' + tenant.status">
-    </p-chip>
-  </ng-template>
-
-  <ng-template #actionsTemplate let-tenant>
-    <p-button 
-      icon="pi pi-eye" 
-      [text]="true" 
-      [rounded]="true"
-      severity="secondary"
-      (onClick)="viewTenant(tenant)"
-      pTooltip="View Details">
-    </p-button>
   </ng-template>
 </div>

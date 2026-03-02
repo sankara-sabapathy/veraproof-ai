@@ -75,6 +75,8 @@ class LocalAuthManager:
             logger.error(f"Failed to create tenant record: {e}", extra={"tenant_id": tenant_id})
             raise ValueError(f"Failed to create tenant: {e}")
         
+        role = "Master_Admin" if email.lower() == "superuser@veraproof.ai" else "Admin"
+        
         # Create user record in database
         try:
             user_query = """
@@ -88,7 +90,7 @@ class LocalAuthManager:
                 tenant_id,
                 email,
                 password_hash,
-                'Admin',
+                role,
                 datetime.utcnow()
             )
             logger.info("User created in database", extra={"user_id": user_id, "tenant_id": tenant_id, "email": email})
@@ -106,7 +108,7 @@ class LocalAuthManager:
             "tenant_id": tenant_id,
             "email": email,
             "password_hash": password_hash,
-            "role": "Admin",
+            "role": role,
             "created_at": datetime.utcnow().isoformat()
         }
         self.users[email] = user
@@ -115,7 +117,7 @@ class LocalAuthManager:
             "user_id": user_id,
             "tenant_id": tenant_id,
             "email": email,
-            "role": "Admin"
+            "role": role
         }
     
     async def login(self, email: str, password: str) -> Dict:
@@ -254,26 +256,44 @@ class LocalAuthManager:
 
 
 class APIKeyManager:
-    """API key manager for development"""
-    
-    def __init__(self):
-        self.api_keys: Dict[str, Dict] = {}
+    """API key manager interfacing directly with Postges via db_manager"""
     
     async def generate_key(self, tenant_id: str, environment: str) -> Dict:
-        """Generate new API key (simplified - no secret needed)"""
+        """Generate new API key. Store hashed secret in DB, return raw key once."""
+        from app.database import db_manager
+        
+        # Enforce quota: Max 5 active keys
+        quota_query = "SELECT COUNT(*) FROM api_keys WHERE tenant_id = $1 AND revoked_at IS NULL"
+        active_keys_count = await db_manager.fetch_val(quota_query, tenant_id)
+        if active_keys_count and active_keys_count >= 5:
+            raise ValueError("Maximum limit of 5 active API keys reached")
+
         key_id = str(uuid.uuid4())
-        api_key = f"vp_{environment}_{uuid.uuid4().hex}"
+        raw_token = f"vp_{environment}_{uuid.uuid4().hex}"
         
-        key_data = {
-            "key_id": key_id,
-            "tenant_id": tenant_id,
-            "api_key": api_key,
-            "environment": environment,
-            "created_at": datetime.utcnow().isoformat(),
-            "revoked_at": None
-        }
+        # Securely hash the secret token before storing
+        hashed_secret = hashlib.sha256(raw_token.encode()).hexdigest()
         
-        self.api_keys[api_key] = key_data
+        # Create a masked label for display purposes
+        display_label = f"vp_{environment}_...{raw_token[-4:]}"
+        
+        created_at = datetime.utcnow()
+        
+        insert_query = """
+            INSERT INTO api_keys (key_id, tenant_id, api_key, api_secret, environment, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        """
+        
+        await db_manager.execute_query(
+            insert_query,
+            key_id,
+            tenant_id,
+            display_label,
+            hashed_secret,
+            environment,
+            created_at
+        )
+        
         logger.info("API key generated", extra={"tenant_id": tenant_id, "key_id": key_id, "environment": environment})
         
         span = trace.get_current_span()
@@ -281,41 +301,58 @@ class APIKeyManager:
             span.set_attribute("tenant.id", tenant_id)
             span.set_attribute("api_key.id", key_id)
         
+        # Return the actual raw token ONLY once
         return {
             "key_id": key_id,
-            "api_key": api_key,
+            "api_key": raw_token,
             "environment": environment
         }
     
-    async def validate_key(self, api_key: str) -> Tuple[str, str]:
-        """Validate API key and return (tenant_id, environment)"""
-        key_data = self.api_keys.get(api_key)
+    async def validate_key(self, raw_token: str) -> Tuple[str, str]:
+        """Validate API key via hashed token against DB and return (tenant_id, environment)"""
+        from app.database import db_manager
         
-        if not key_data or key_data.get("revoked_at"):
+        hashed_secret = hashlib.sha256(raw_token.encode()).hexdigest()
+        
+        query = """
+            SELECT tenant_id, environment 
+            FROM api_keys 
+            WHERE api_secret = $1 AND revoked_at IS NULL
+        """
+        
+        key_data = await db_manager.fetch_one(query, hashed_secret)
+        
+        if not key_data:
             logger.warning("Invalid or revoked API key validation attempt")
             raise ValueError("Invalid or revoked API key")
             
         span = trace.get_current_span()
         if span and span.is_recording():
-            span.set_attribute("tenant.id", key_data["tenant_id"])
+            span.set_attribute("tenant.id", str(key_data["tenant_id"]))
             span.set_attribute("api_key.environment", key_data["environment"])
         
-        return key_data["tenant_id"], key_data["environment"]
+        return str(key_data["tenant_id"]), key_data["environment"]
     
     async def revoke_key(self, key_id: str):
-        """Revoke API key"""
-        for api_key, key_data in self.api_keys.items():
-            if key_data["key_id"] == key_id:
-                key_data["revoked_at"] = datetime.utcnow().isoformat()
-                logger.info("API key revoked", extra={"key_id": key_id, "tenant_id": key_data["tenant_id"]})
-                
-                span = trace.get_current_span()
-                if span and span.is_recording():
-                    span.set_attribute("api_key.action", "revoke")
-                return
+        """Revoke API key in DB"""
+        from app.database import db_manager
         
-        logger.warning("Attempted to revoke non-existent API key", extra={"key_id": key_id})
-        raise ValueError("API key not found")
+        query = """
+            UPDATE api_keys 
+            SET revoked_at = $1 
+            WHERE key_id = $2 AND revoked_at IS NULL
+            RETURNING tenant_id
+        """
+        result = await db_manager.fetch_one(query, datetime.utcnow(), key_id)
+        
+        if result:
+            logger.info("API key revoked", extra={"key_id": key_id, "tenant_id": str(result["tenant_id"])})
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                span.set_attribute("api_key.action", "revoke")
+        else:
+            logger.warning("Attempted to revoke non-existent or already revoked API key", extra={"key_id": key_id})
+            raise ValueError("API key not found or already revoked")
 
 
 # Global instances

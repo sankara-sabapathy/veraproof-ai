@@ -176,7 +176,7 @@ class VerificationWebSocket:
             logger.warning(f"Unknown websocket instruction blocked", extra={"msg_type": msg_type, "session_id": session_id})
     
     async def perform_verification(self, session_id: str):
-        """Perform verification analysis"""
+        """Perform Tier 1 verification and defer Tier 2 (AI)"""
         try:
             from app.sensor_fusion import sensor_fusion_analyzer
             
@@ -207,63 +207,169 @@ class VerificationWebSocket:
                 optical_flow_x = [g * 0.9 + (i % 3 - 1) * 0.1 for i, g in enumerate(gyro_gamma)]
             
             # Calculate Pearson correlation
+            correlation = 0.0
             if len(gyro_gamma) >= 10 and len(optical_flow_x) >= 10:
                 correlation = sensor_fusion_analyzer.calculate_pearson_correlation(
                     gyro_gamma[:len(optical_flow_x)],
                     optical_flow_x[:len(gyro_gamma)]
                 )
-                
-                # Calculate trust score
-                tier_1_score = int(correlation * 100)
-                final_trust_score = tier_1_score
-                
-                # Determine result
-                is_authentic = correlation >= 0.85
-                reasoning = f"Sensor fusion correlation: {correlation:.3f}. "
-                reasoning += "Authentic human movement detected." if is_authentic else "Suspicious movement pattern detected."
-                
-                # Update session with results
-                await session_manager.update_session_results(
-                    session_id=session_id,
-                    tier_1_score=tier_1_score,
-                    tier_2_score=None,
-                    final_trust_score=final_trust_score,
-                    correlation_value=correlation,
-                    reasoning=reasoning
-                )
-                
-                # Send result to client
-                await self.send_message(session_id, {
-                    "type": "result",
-                    "payload": {
-                        "status": "success" if is_authentic else "failed",
-                        "final_trust_score": final_trust_score,
-                        "correlation_value": correlation,
-                        "reasoning": reasoning
-                    }
-                })
-                
-                logger.info(f"AI Verification concluded", extra={
-                    "session_id": session_id,
-                    "correlation": correlation,
-                    "is_authentic": is_authentic
-                })
-                
-                # Upload artifacts to S3 after verification
-                await self.upload_session_artifacts(session_id)
-            else:
-                logger.warning(f"Verification aborted (Insufficient matrix samples)", extra={"session_id": session_id, "gyro_samples": len(gyro_gamma)})
-                await self.send_message(session_id, {
-                    "type": "error",
-                    "payload": {"message": "Insufficient sensor data collected"}
-                })
-                
+            
+            # Tier 1 (Physics Score)
+            tier_1_score = int(correlation * 100) if (len(gyro_gamma) >= 10) else 0
+            
+            # Update session with PENDING_AI status
+            await session_manager.update_session_results(
+                session_id=session_id,
+                tier_1_score=tier_1_score,
+                tier_2_score=None,
+                final_trust_score=tier_1_score,  # Temporary
+                correlation_value=correlation,
+                reasoning=f"Sensor correlation: {correlation:.3f}. Proceeding to AI Analysis.",
+                physics_score=tier_1_score,
+                verification_status="PENDING_AI"
+            )
+            
+            # Send Tier 1 result to client
+            await self.send_message(session_id, {
+                "type": "result",
+                "payload": {
+                    "status": "pending_ai",
+                    "physics_score": tier_1_score,
+                    "correlation_value": correlation,
+                    "message": "Physics check passed. AI analysis in progress."
+                }
+            })
+            
+            logger.info(f"Tier 1 Verification concluded, dispatching Tier 2 (AI)", extra={
+                "session_id": session_id,
+                "physics_score": tier_1_score
+            })
+            
+            # Clone session data to pass safely, and DO NOT clear data here
+            # We clear it after S3 upload inside the background task.
+            asyncio.create_task(self.run_ai_verification_background(session_id, session_data))
+
         except Exception as e:
-            logger.error(f"Verification AI execution crashed: {e}", exc_info=True, extra={"session_id": session_id})
+            logger.error(f"Verification Tier 1 crashed: {e}", exc_info=True, extra={"session_id": session_id})
             await self.send_message(session_id, {
                 "type": "error",
                 "payload": {"message": f"Verification failed: {str(e)}"}
             })
+
+    async def run_ai_verification_background(self, session_id: str, session_data: dict):
+        """Background asynchronous AI video frame analysis"""
+        try:
+            import tempfile
+            import os
+            from app.video_utils import extract_sparse_keyframes
+            from app.ai_provider import AmazonNovaLiteProvider
+            from app.scoring import calculate_unified_score, evaluate_trust_status
+            from app.database import db_manager
+            from app.webhooks import webhook_manager
+            
+            # 1. Rebuild video file
+            if not session_data.get('video_chunks'):
+                logger.error("No video data found for AI processing", extra={"session_id": session_id})
+                return
+                
+            video_data = b''.join([chunk['data'] for chunk in session_data['video_chunks']])
+            
+            # 2. Extract frames
+            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp_video:
+                tmp_video.write(video_data)
+                tmp_video.flush()
+                tmp_video_path = tmp_video.name
+            
+            frames_b64 = extract_sparse_keyframes(tmp_video_path, num_frames=5)
+            
+            # Clean up temp file
+            try:
+                os.remove(tmp_video_path)
+            except:
+                pass
+            
+            # 3. Request AI classification
+            provider = AmazonNovaLiteProvider()
+            metadata = session_db.get("metadata", {}) if (session_db := await session_manager.get_session(session_id)) else {}
+            ai_score, ai_explanation = await provider.analyze_frames(frames_b64, metadata)
+            
+            # 4. Final Scoring
+            if not session_db:
+                logger.error("Session missing from DB during AI pass", extra={"session_id": session_id})
+                return
+                
+            physics_score = session_db.get("physics_score", 0.0)
+            if physics_score is None:
+                physics_score = 0.0
+            
+            unified_score = calculate_unified_score(physics_score, ai_score)
+            is_authentic = evaluate_trust_status(unified_score)
+            
+            final_status = "success" if is_authentic else "failed"
+            final_reasoning = f"AI Analysis Summary: {ai_explanation.get('summary', 'N/A')}."
+            
+            # 5. Update Session DB
+            await session_manager.update_session_results(
+                session_id=session_id,
+                tier_1_score=int(physics_score),
+                tier_2_score=int(ai_score),
+                final_trust_score=int(unified_score),
+                correlation_value=session_db.get("correlation_value"),
+                reasoning=final_reasoning,
+                ai_score=ai_score,
+                physics_score=physics_score,
+                unified_score=unified_score,
+                ai_explanation=ai_explanation,
+                verification_status=final_status
+            )
+            
+            # 6. Notify Client via WebSockets (if still connected)
+            await self.send_message(session_id, {
+                "type": "result",
+                "payload": {
+                    "status": final_status,
+                    "final_trust_score": int(unified_score),
+                    "ai_score": ai_score,
+                    "physics_score": physics_score,
+                    "ai_explanation": ai_explanation,
+                    "reasoning": final_reasoning
+                }
+            })
+            
+            logger.info("AI Verification Complete", extra={"session_id": session_id, "unified_score": unified_score})
+            
+            # 7. Upload Artifacts (clears data locally)
+            await self.upload_session_artifacts(session_id)
+            
+            # 8. Webhook Notification
+            tenant_id = session_db.get("tenant_id")
+            tenant_query = "SELECT webhook_url, webhook_secret FROM tenants WHERE tenant_id = $1"
+            tenant_data = await db_manager.fetch_one(tenant_query, tenant_id)
+            
+            if tenant_data and tenant_data.get("webhook_url"):
+                webhook_payload = {
+                    "session_id": session_id,
+                    "verification_status": final_status,
+                    "final_trust_score": int(unified_score),
+                    "ai_score": ai_score,
+                    "physics_score": physics_score,
+                    "ai_explanation": ai_explanation,
+                    "metadata": session_db.get("metadata", {})
+                }
+                
+                # Verify that datetime elements are serialized during json dumps later
+                asyncio.create_task(
+                    webhook_manager.retry_webhook(
+                        tenant_id=str(tenant_id),
+                        webhook_url=tenant_data.get("webhook_url"),
+                        payload=webhook_payload,
+                        api_secret=tenant_data.get("webhook_secret") or "default_secret"
+                    )
+                )
+                
+        except Exception as e:
+            logger.error(f"Background AI worker crashed: {e}", exc_info=True, extra={"session_id": session_id})
+            await session_manager.update_session_state(session_id, SessionState.COMPLETE)
     
     async def upload_session_artifacts(self, session_id: str):
         """Upload session artifacts to S3 after verification"""
@@ -290,8 +396,7 @@ class VerificationWebSocket:
             if session_data.get('video_chunks'):
                 try:
                     video_data = b''.join([chunk['data'] for chunk in session_data['video_chunks']])
-                    video_key = f"{tenant_id}/sessions/{session_id}/video.webm"
-                    await storage_manager.upload_file(video_key, video_data, 'video/webm')
+                    video_key = await storage_manager.store_video(tenant_id, session_id, video_data)
                     logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "video", "bytes": len(video_data)})
                 except Exception as e:
                     logger.error(f"S3 Interfacing crash formatting WebM file: {e}", extra={"session_id": session_id})
@@ -299,9 +404,7 @@ class VerificationWebSocket:
             # Upload IMU data if available
             if session_data.get('imu_data'):
                 try:
-                    imu_json = json.dumps(session_data['imu_data'], indent=2)
-                    imu_key = f"{tenant_id}/sessions/{session_id}/imu_data.json"
-                    await storage_manager.upload_file(imu_key, imu_json.encode(), 'application/json')
+                    imu_key = await storage_manager.store_imu_data(tenant_id, session_id, session_data['imu_data'])
                     logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "imu", "length_samples": len(session_data['imu_data'])})
                 except Exception as e:
                     logger.error(f"S3 Interfacing crash formatting IMU JSON file: {e}", extra={"session_id": session_id})

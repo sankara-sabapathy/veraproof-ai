@@ -23,9 +23,10 @@ import { ToolbarComponent } from '../toolbar/toolbar.component';
 })
 export class MainLayoutComponent implements OnInit {
   isHandset$: Observable<boolean>;
-  sidebarVisible = signal<boolean>(true); // Start with sidebar open
+  sidebarVisible: boolean;
 
   constructor(private breakpointObserver: BreakpointObserver) {
+    this.sidebarVisible = !this.breakpointObserver.isMatched([Breakpoints.Handset, Breakpoints.Tablet]);
     this.isHandset$ = this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.Tablet])
       .pipe(
         map(result => result.matches),
@@ -33,17 +34,17 @@ export class MainLayoutComponent implements OnInit {
       );
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void { }
 
   toggleSidebar(): void {
-    this.sidebarVisible.update(visible => !visible);
+    this.sidebarVisible = !this.sidebarVisible;
   }
 
   onSidebarNavClick(): void {
     // Close mobile sidebar after navigation
     this.isHandset$.pipe(take(1)).subscribe(isHandset => {
       if (isHandset) {
-        this.sidebarVisible.set(false);
+        this.sidebarVisible = false;
       }
     });
   }

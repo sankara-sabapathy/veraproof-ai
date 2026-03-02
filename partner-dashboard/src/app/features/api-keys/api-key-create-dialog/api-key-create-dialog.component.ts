@@ -83,7 +83,7 @@ export class ApiKeyCreateDialogComponent implements OnInit {
       next: (response) => {
         this.generatedKey = response;
         this.loading = false;
-        
+
         // Add the new key to state (without the secret)
         const newKey: ApiKey = {
           key_id: response.key_id,
@@ -95,13 +95,28 @@ export class ApiKeyCreateDialogComponent implements OnInit {
           revoked_at: null
         };
         this.stateService.addKey(newKey);
-        
+
         this.notificationService.success('API key generated successfully');
       },
       error: (error) => {
         this.loading = false;
-        const errorMessage = error.message || 'Unable to generate API key. Please try again.';
+
+        // Extract specific error details, prioritizing the detail message we send from backend's ValueError
+        let errorMessage = 'Unable to generate API key. Please try again.';
+        if (error.error && error.error.detail) {
+          errorMessage = error.error.detail;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
         this.notificationService.error(errorMessage);
+
+        // Let the user know specifically about the 5 key limit if they hit it so they can go clean up old ones
+        if (errorMessage.includes('limit of 5 active')) {
+          setTimeout(() => {
+            this.onClose();
+          }, 2000);
+        }
       }
     });
   }

@@ -1,11 +1,6 @@
 /* Angular Material Theme */
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-/* PrimeNG Theme */
-@import 'primeng/resources/themes/lara-light-blue/theme.css';
-@import 'primeng/resources/primeng.css';
-@import 'primeicons/primeicons.css';
-
 /* Global Styles */
 * {
   margin: 0;
@@ -27,7 +22,8 @@
   --border-color: #e2e8f0;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
 }
@@ -71,12 +67,12 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
-.p-datatable .p-datatable-thead > tr > th {
+.p-datatable .p-datatable-thead>tr>th {
   padding: 1rem 1.5rem;
   font-weight: 600;
 }
 
-.p-datatable .p-datatable-tbody > tr > td {
+.p-datatable .p-datatable-tbody>tr>td {
   padding: 1rem 1.5rem;
 }
 
@@ -122,6 +118,10 @@ body {
 .p-inputnumber,
 .p-inputtextarea {
   width: 100%;
+}
+
+.p-inputtext {
+  padding: 0.75rem;
 }
 
 /* Button spacing */
@@ -334,8 +334,13 @@ h3 {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Mobile responsive adjustments */
@@ -343,18 +348,18 @@ h3 {
   .p-card .p-card-body {
     padding: 1rem;
   }
-  
+
   .p-datatable .p-datatable-header,
-  .p-datatable .p-datatable-thead > tr > th,
-  .p-datatable .p-datatable-tbody > tr > td {
+  .p-datatable .p-datatable-thead>tr>th,
+  .p-datatable .p-datatable-tbody>tr>td {
     padding: 0.75rem 1rem;
   }
-  
+
   .p-dialog .p-dialog-header,
   .p-dialog .p-dialog-content {
     padding: 1rem;
   }
-  
+
   .p-toolbar {
     padding: 0.75rem 1rem;
   }

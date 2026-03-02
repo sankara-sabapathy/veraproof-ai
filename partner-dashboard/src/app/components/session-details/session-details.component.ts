@@ -1,7 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { CardModule } from 'primeng/card';
 import { ChipModule } from 'primeng/chip';
 import { ButtonModule } from 'primeng/button';
@@ -13,17 +14,20 @@ import { environment } from '../../../environments/environment';
 interface SessionDetail {
   session_id: string;
   created_at: string;
-  status: string;
-  tier_1_score: number;
+  state: string; // backend uses 'state', not 'status'
+  tier_1_score?: number;
   tier_2_score?: number;
-  final_trust_score: number;
-  correlation_value: number;
+  final_trust_score?: number;
+  correlation_value?: number;
+  ai_score?: number;
+  physics_score?: number;
+  unified_score?: number;
+  ai_explanation?: any;
+  reasoning?: string;
   metadata: any;
-  artifacts: {
-    video_url?: string;
-    imu_data_url?: string;
-    optical_flow_url?: string;
-  };
+  video_s3_key?: string;
+  imu_data_s3_key?: string;
+  optical_flow_s3_key?: string;
 }
 
 interface TimelineEvent {
@@ -48,19 +52,32 @@ interface TimelineEvent {
   templateUrl: './session-details.component.html',
   styleUrls: ['./session-details.component.scss']
 })
-export class SessionDetailsComponent implements OnInit {
+export class SessionDetailsComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private http = inject(HttpClient);
+  private sanitizer = inject(DomSanitizer);
 
   session: SessionDetail | null = null;
   loading = true;
   timelineEvents: TimelineEvent[] = [];
 
+  videoUrl: SafeUrl | null = null;
+  videoLoading = false;
+  videoError = false;
+
+  private pollingInterval: any;
+
   ngOnInit(): void {
     const sessionId = this.route.snapshot.paramMap.get('id');
     if (sessionId) {
       this.loadSession(sessionId);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
     }
   }
 
@@ -70,6 +87,24 @@ export class SessionDetailsComponent implements OnInit {
         next: (data) => {
           this.session = data;
           this.buildTimeline(data);
+
+          if (data.state === 'pending_ai') {
+            if (!this.pollingInterval) {
+              this.pollingInterval = setInterval(() => {
+                this.loadSession(sessionId);
+              }, 3000);
+            }
+          } else {
+            if (this.pollingInterval) {
+              clearInterval(this.pollingInterval);
+              this.pollingInterval = null;
+            }
+          }
+
+          if (data.video_s3_key) {
+            this.loadVideoArtifact();
+          }
+
           this.loading = false;
         },
         error: (err) => {
@@ -86,43 +121,52 @@ export class SessionDetailsComponent implements OnInit {
         date: session.created_at,
         icon: 'pi pi-plus-circle',
         color: '#3b82f6'
-      },
-      {
+      }
+    ];
+
+    if (session.tier_1_score !== null && session.tier_1_score !== undefined) {
+      this.timelineEvents.push({
         status: 'Tier 1: Sensor Fusion Analysis',
         date: session.created_at,
         icon: 'pi pi-chart-line',
         color: session.tier_1_score >= 85 ? '#10b981' : '#f59e0b'
-      }
-    ];
+      });
+    }
 
-    if (session.tier_2_score) {
+    if (session.ai_score !== null && session.ai_score !== undefined) {
       this.timelineEvents.push({
         status: 'Tier 2: AI Forensics',
         date: session.created_at,
         icon: 'pi pi-eye',
-        color: session.tier_2_score >= 85 ? '#10b981' : '#f59e0b'
+        color: session.ai_score >= 85 ? '#10b981' : '#f59e0b'
       });
     }
 
-    this.timelineEvents.push({
-      status: `Verification ${session.status === 'success' ? 'Passed' : 'Failed'}`,
-      date: session.created_at,
-      icon: session.status === 'success' ? 'pi pi-check-circle' : 'pi pi-times-circle',
-      color: session.status === 'success' ? '#10b981' : '#ef4444'
-    });
+    if (session.state === 'complete' || session.state === 'success' || session.state === 'failed') {
+      const isSuccess = session.state === 'success' || session.state === 'complete' || (session.unified_score && session.unified_score >= 85);
+      this.timelineEvents.push({
+        status: `Verification ${isSuccess ? 'Passed' : 'Failed'}`,
+        date: session.created_at,
+        icon: isSuccess ? 'pi pi-check-circle' : 'pi pi-times-circle',
+        color: isSuccess ? '#10b981' : '#ef4444'
+      });
+    }
   }
 
-  getStatusClass(status: string): string {
+  getStatusClass(state: string): string {
     const statusMap: { [key: string]: string } = {
+      'complete': 'status-chip status-success',
       'success': 'status-chip status-success',
       'failed': 'status-chip status-failed',
-      'pending': 'status-chip status-pending',
-      'processing': 'status-chip status-processing'
+      'idle': 'status-chip status-pending',
+      'processing': 'status-chip status-processing',
+      'pending_ai': 'status-chip status-processing'
     };
-    return statusMap[status] || 'status-chip';
+    return statusMap[state] || 'status-chip';
   }
 
-  getScoreColor(score: number): string {
+  getScoreColor(score: number | undefined | null): string {
+    if (score === null || score === undefined) return '#94a3b8'; // gray for pending
     if (score >= 85) return '#10b981'; // green
     if (score >= 50) return '#f59e0b'; // orange
     return '#ef4444'; // red
@@ -130,14 +174,57 @@ export class SessionDetailsComponent implements OnInit {
 
   hasArtifacts(): boolean {
     return !!(
-      this.session?.artifacts.video_url ||
-      this.session?.artifacts.imu_data_url ||
-      this.session?.artifacts.optical_flow_url
+      this.session?.video_s3_key ||
+      this.session?.imu_data_s3_key ||
+      this.session?.optical_flow_s3_key
     );
   }
 
-  downloadArtifact(url: string, type: string): void {
-    window.open(url, '_blank');
+  loadVideoArtifact(): void {
+    if (!this.session?.session_id) return;
+    this.videoLoading = true;
+
+    this.http.get<{ url: string }>(`${environment.apiUrl}/api/v1/sessions/${this.session.session_id}/video`)
+      .subscribe({
+        next: (response) => {
+          if (response.url) {
+            this.videoUrl = this.sanitizer.bypassSecurityTrustUrl(response.url);
+          }
+          this.videoLoading = false;
+        },
+        error: (err) => {
+          console.error('Failed to load video artifact URL:', err);
+          this.videoError = true;
+          this.videoLoading = false;
+        }
+      });
+  }
+
+  downloadArtifact(type: string): void {
+    if (!this.session) return;
+
+    // Map artifact type to endpoint path
+    const endpointMap: { [key: string]: string } = {
+      'video': 'video',
+      'imu': 'imu-data',
+      'flow': 'optical-flow'
+    };
+
+    const endpoint = endpointMap[type];
+    if (!endpoint) return;
+
+    this.http.get<{ url: string }>(`${environment.apiUrl}/api/v1/sessions/${this.session.session_id}/${endpoint}`)
+      .subscribe({
+        next: (response) => {
+          if (response.url) {
+            window.open(response.url, '_blank');
+          }
+        },
+        error: (err) => {
+          console.error(`Failed to get signed URL for ${type}:`, err);
+          alert(`Failed to download ${type} artifact. Check console for details.`);
+        }
+      });
   }
 
   goBack(): void {

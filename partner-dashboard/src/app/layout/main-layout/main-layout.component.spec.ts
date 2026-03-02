@@ -19,7 +19,7 @@ describe('MainLayoutComponent', () => {
     const authServiceSpy = jasmine.createSpyObj('AuthService', ['isAdmin', 'getCurrentUser', 'logout'], {
       currentUser$: of({ email: 'test@example.com', role: 'Admin' })
     });
-    
+
     // Create a mock Platform with _document
     const mockPlatform = {
       isBrowser: true,
@@ -53,10 +53,10 @@ describe('MainLayoutComponent', () => {
     authService.isAdmin.and.returnValue(false);
     authService.getCurrentUser.and.returnValue(null);
     authService.logout.and.returnValue(of(undefined));
-    
+
     // Set up default breakpoint observer behavior before creating component
     breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
-    
+
     fixture = TestBed.createComponent(MainLayoutComponent);
     component = fixture.componentInstance;
   });
@@ -71,7 +71,7 @@ describe('MainLayoutComponent', () => {
     // Need to recreate component with handset breakpoint
     const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
     handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
-    
+
     const handsetFixture = TestBed.createComponent(MainLayoutComponent);
     const handsetComponent = handsetFixture.componentInstance;
     handsetFixture.detectChanges();
@@ -96,31 +96,31 @@ describe('MainLayoutComponent', () => {
     // Need to recreate component with handset breakpoint
     const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
     handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
-    
+
     const handsetFixture = TestBed.createComponent(MainLayoutComponent);
     const handsetComponent = handsetFixture.componentInstance;
     handsetFixture.detectChanges();
-    
+
     // Sidebar starts visible even on handset (user can toggle it)
-    expect(handsetComponent.sidebarVisible()).toBe(true);
+    expect(handsetComponent.sidebarVisible).toBe(true);
   });
 
   it('should set sidebar visible to true on desktop', () => {
     breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
     fixture.detectChanges();
-    expect(component.sidebarVisible()).toBe(true);
+    expect(component.sidebarVisible).toBe(true);
   });
 
   it('should toggle sidebar visibility', () => {
     breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
     fixture.detectChanges();
-    
-    const initialState = component.sidebarVisible();
+
+    const initialState = component.sidebarVisible;
     component.toggleSidebar();
-    expect(component.sidebarVisible()).toBe(!initialState);
-    
+    expect(component.sidebarVisible).toBe(!initialState);
+
     component.toggleSidebar();
-    expect(component.sidebarVisible()).toBe(initialState);
+    expect(component.sidebarVisible).toBe(initialState);
   });
 
   it('should render sidebar and toolbar', () => {
@@ -144,7 +144,7 @@ describe('MainLayoutComponent', () => {
     // Need to recreate component with handset breakpoint
     const handsetObserver = TestBed.inject(BreakpointObserver) as jasmine.SpyObj<BreakpointObserver>;
     handsetObserver.observe.and.returnValue(of({ matches: true, breakpoints: {} }));
-    
+
     const handsetFixture = TestBed.createComponent(MainLayoutComponent);
     handsetFixture.detectChanges();
 

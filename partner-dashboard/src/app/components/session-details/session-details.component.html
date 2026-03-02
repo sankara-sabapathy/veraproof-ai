@@ -1,11 +1,7 @@
 <div class="session-details-container">
   <div class="header">
     <div class="header-content">
-      <p-button 
-        icon="pi pi-arrow-left" 
-        [text]="true"
-        (onClick)="goBack()"
-        label="Back to Sessions">
+      <p-button icon="pi pi-arrow-left" [text]="true" (onClick)="goBack()" label="Back to Sessions">
       </p-button>
       <h1>Session Details</h1>
     </div>
@@ -32,35 +28,53 @@
               </div>
               <div class="detail-row">
                 <span class="label">Status:</span>
-                <p-chip 
-                  [label]="session.status | uppercase" 
-                  [styleClass]="getStatusClass(session.status)">
+                <p-chip [label]="session.state | uppercase" [styleClass]="getStatusClass(session.state)">
                 </p-chip>
               </div>
             </p-card>
 
             <p-card header="Trust Scores">
               <div class="score-item">
-                <span class="label">Tier 1 (Sensor Fusion):</span>
-                <span class="score" [style.color]="getScoreColor(session.tier_1_score)">
-                  {{ session.tier_1_score }}/100
+                <span class="label">Tier 1 (Physics Gateway):</span>
+                <span class="score"
+                  [style.color]="getScoreColor(session.physics_score != null ? session.physics_score : session.tier_1_score)">
+                  {{ (session.physics_score != null ? session.physics_score : session.tier_1_score) != null ?
+                  (session.physics_score != null ? session.physics_score : session.tier_1_score) + '/100' : 'N/A' }}
                 </span>
               </div>
-              <div class="score-item" *ngIf="session.tier_2_score">
-                <span class="label">Tier 2 (AI Forensics):</span>
-                <span class="score" [style.color]="getScoreColor(session.tier_2_score)">
-                  {{ session.tier_2_score }}/100
+              <div class="score-item" *ngIf="session.ai_score != null">
+                <span class="label">Tier 2 (AI Analysis):</span>
+                <span class="score" [style.color]="getScoreColor(session.ai_score)">
+                  {{ session.ai_score }}/100
                 </span>
               </div>
               <div class="score-item final">
                 <span class="label">Final Trust Score:</span>
-                <span class="score final-score" [style.color]="getScoreColor(session.final_trust_score)">
-                  {{ session.final_trust_score }}/100
+                <span class="score final-score"
+                  [style.color]="getScoreColor(session.unified_score != null ? session.unified_score : session.final_trust_score)">
+                  {{ (session.unified_score != null ? session.unified_score : session.final_trust_score) != null ?
+                  (session.unified_score != null ? session.unified_score : session.final_trust_score) + '/100' : 'N/A'
+                  }}
                 </span>
               </div>
               <div class="score-item">
                 <span class="label">Pearson Correlation:</span>
-                <span class="score">{{ session.correlation_value.toFixed(3) }}</span>
+                <span class="score">{{ session.correlation_value != null ? session.correlation_value.toFixed(3) : 'N/A'
+                  }}</span>
+              </div>
+            </p-card>
+
+            <p-card header="AI Forensics Analysis" *ngIf="session.reasoning || session.ai_explanation"
+              [style]="{'margin-top': '1.5rem'}">
+              <div class="ai-explanation">
+                <p *ngIf="session.reasoning" style="margin-bottom: 0.5rem; line-height: 1.5; color: #475569;">
+                  <strong>Pipeline Reasoning:</strong> {{ session.reasoning }}
+                </p>
+                <div *ngIf="session.ai_explanation?.summary" class="ai-summary">
+                  <p style="margin-bottom: 0.5rem; line-height: 1.5; color: #475569;">
+                    <strong>Deep AI Summary:</strong> {{ session.ai_explanation.summary }}
+                  </p>
+                </div>
               </div>
             </p-card>
           </div>
@@ -74,9 +88,7 @@
             <p-timeline [value]="timelineEvents" align="alternate">
               <ng-template pTemplate="content" let-event>
                 <div class="timeline-content">
-                  <p-chip 
-                    [label]="event.status" 
-                    [styleClass]="'timeline-chip ' + event.color">
+                  <p-chip [label]="event.status" [styleClass]="'timeline-chip ' + event.color">
                   </p-chip>
                   <small class="timeline-date">{{ event.date | date:'short' }}</small>
                 </div>
@@ -91,31 +103,46 @@
         </div>
       </p-tabPanel>
 
+      <!-- Video Tab -->
+      <p-tabPanel header="Video Evidence" leftIcon="pi pi-video" *ngIf="session.video_s3_key">
+        <div class="tab-content">
+          <p-card header="Verification Recording">
+            <div *ngIf="videoLoading" class="loading-container" style="padding: 2rem; text-align: center;">
+              <p-progressSpinner></p-progressSpinner>
+              <p style="margin-top: 1rem; color: #64748b;">Loading secure video stream...</p>
+            </div>
+            <div *ngIf="videoError" class="error-state" style="padding: 2rem; text-align: center;">
+              <i class="pi pi-exclamation-circle" style="font-size: 2rem; color: #ef4444;"></i>
+              <p style="margin-top: 1rem; color: #64748b;">
+                The video recording is unavailable. This can happen if the storage was reset
+                after the session was created.
+              </p>
+              <p-button label="Retry" icon="pi pi-refresh" [text]="true"
+                (onClick)="videoError = false; loadVideoArtifact()">
+              </p-button>
+            </div>
+            <div *ngIf="videoUrl && !videoLoading" class="video-container"
+              style="text-align: center; border-radius: 8px; overflow: hidden; background: #000;">
+              <video [src]="videoUrl" controls
+                style="max-width: 100%; max-height: 500px; display: block; margin: 0 auto;"></video>
+            </div>
+          </p-card>
+        </div>
+      </p-tabPanel>
+
       <!-- Artifacts Tab -->
       <p-tabPanel header="Artifacts" leftIcon="pi pi-download">
         <div class="tab-content">
           <p-card header="Session Artifacts">
             <div *ngIf="hasArtifacts(); else noArtifacts" class="artifacts-grid">
-              <p-button 
-                *ngIf="session.artifacts.video_url"
-                label="Download Video" 
-                icon="pi pi-video"
-                severity="secondary"
-                (onClick)="downloadArtifact(session.artifacts.video_url, 'video')">
+              <p-button *ngIf="session.video_s3_key" label="Download Video" icon="pi pi-video" severity="secondary"
+                (onClick)="downloadArtifact('video')">
               </p-button>
-              <p-button 
-                *ngIf="session.artifacts.imu_data_url"
-                label="Download IMU Data" 
-                icon="pi pi-chart-line"
-                severity="secondary"
-                (onClick)="downloadArtifact(session.artifacts.imu_data_url, 'imu')">
+              <p-button *ngIf="session.imu_data_s3_key" label="Download IMU Data" icon="pi pi-chart-line"
+                severity="secondary" (onClick)="downloadArtifact('imu')">
               </p-button>
-              <p-button 
-                *ngIf="session.artifacts.optical_flow_url"
-                label="Download Optical Flow" 
-                icon="pi pi-image"
-                severity="secondary"
-                (onClick)="downloadArtifact(session.artifacts.optical_flow_url, 'flow')">
+              <p-button *ngIf="session.optical_flow_s3_key" label="Download Optical Flow" icon="pi pi-image"
+                severity="secondary" (onClick)="downloadArtifact('flow')">
               </p-button>
             </div>
             <ng-template #noArtifacts>
@@ -136,10 +163,7 @@
       <div class="empty-state">
         <i class="pi pi-exclamation-triangle" style="font-size: 3rem; color: #f59e0b;"></i>
         <p>Session not found</p>
-        <p-button 
-          label="Back to Sessions" 
-          icon="pi pi-arrow-left"
-          (onClick)="goBack()">
+        <p-button label="Back to Sessions" icon="pi pi-arrow-left" (onClick)="goBack()">
         </p-button>
       </div>
     </p-card>

@@ -5,7 +5,7 @@
  */
 
 window.VERAPROOF_CONFIG = {
-  apiUrl: 'http://localhost:8100',  // Backend HTTP endpoint for local dev
+  apiUrl: '',  // Leave empty to enable dynamic host resolution for local dev
   environment: 'development',
   version: 'local-dev'
 };

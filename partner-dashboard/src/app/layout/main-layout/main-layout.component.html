@@ -1,6 +1,6 @@
 <div class="layout-container">
   <!-- Desktop: Toggleable sidebar -->
-  <aside class="layout-sidebar" *ngIf="!(isHandset$ | async) && sidebarVisible()">
+  <aside class="layout-sidebar" *ngIf="!(isHandset$ | async) && sidebarVisible">
     <app-sidebar (navItemClick)="onSidebarNavClick()"></app-sidebar>
   </aside>
   

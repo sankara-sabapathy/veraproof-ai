@@ -93,3 +93,5 @@ async def health():
 
 # Include API routes
 app.include_router(router)
+from app.admin import router as admin_router
+app.include_router(admin_router)

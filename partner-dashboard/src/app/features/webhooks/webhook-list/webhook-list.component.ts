@@ -4,9 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
 import { ChipModule } from 'primeng/chip';
-import { InputSwitchModule } from 'primeng/inputswitch';
 import { TooltipModule } from 'primeng/tooltip';
 import { WebhooksService, Webhook } from '../services/webhooks.service';
 import { WebhooksStateService } from '../services/webhooks-state.service';
@@ -14,6 +12,10 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { WebhookFormComponent } from '../webhook-form/webhook-form.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { ColDef } from 'ag-grid-community';
+import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
+import { SwitchRendererComponent } from '../../../shared/components/data-table/renderers/switch-renderer.component';
 
 @Component({
   selector: 'app-webhook-list',
@@ -23,9 +25,8 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
     FormsModule,
     CardModule,
     ButtonModule,
-    TableModule,
+    DataTableComponent,
     ChipModule,
-    InputSwitchModule,
     TooltipModule,
     LoadingSpinnerComponent
   ],
@@ -38,13 +39,92 @@ export class WebhookListComponent implements OnInit {
   loading$ = this.webhooksState.loading$;
   dialogRef: DynamicDialogRef | undefined;
 
+  columns: ColDef[] = [];
+
   constructor(
     private webhooksService: WebhooksService,
     private webhooksState: WebhooksStateService,
     private notification: NotificationService,
     private dialogService: DialogService,
     private confirmationDialog: ConfirmationDialogService
-  ) {}
+  ) {
+    this.columns = [
+      {
+        field: 'url',
+        headerName: 'URL',
+        flex: 2,
+        cellRenderer: (params: any) => {
+          let html = `<span style="font-family: monospace; font-size: 13px;">${params.value}</span>`;
+          if (!params.data.enabled) {
+            html += ` <div class="p-chip p-component chip-warn" style="margin-left:8px;"><span class="p-chip-text" style="font-size:11px;">Disabled</span></div>`;
+          }
+          return `<div style="display:flex; align-items:center;">${html}</div>`;
+        }
+      },
+      {
+        field: 'enabled',
+        headerName: 'Status',
+        width: 120,
+        cellRenderer: SwitchRendererComponent,
+        cellRendererParams: {
+          toggleCallback: (data: Webhook, checked: boolean) => this.toggleWebhookDirectly(data, checked)
+        }
+      },
+      {
+        field: 'events',
+        headerName: 'Events',
+        flex: 1.5,
+        cellRenderer: (params: any) => {
+          if (!params.value || !Array.isArray(params.value)) return '';
+          const chips = params.value.map((evt: string) => `<div class="p-chip p-component event-chip" style="margin-right:4px;"><span class="p-chip-text" style="font-size:11px;">${evt}</span></div>`).join('');
+          return `<div style="display:flex; flex-wrap:wrap; align-items:center; height:100%;">${chips}</div>`;
+        }
+      },
+      {
+        headerName: 'Statistics',
+        width: 150,
+        valueGetter: (params) => params.data,
+        cellRenderer: (params: any) => {
+          const d = params.value;
+          return `<div style="display:flex;gap:12px;font-weight:500;align-items:center;height:100%;">
+             <span style="color:#059669;">✓ ${d?.success_count || 0}</span>
+             <span style="color:#dc2626;">✗ ${d?.failure_count || 0}</span>
+           </div>`;
+        }
+      },
+      {
+        headerName: 'Actions',
+        sortable: false,
+        filter: false,
+        width: 180,
+        cellRenderer: ActionRendererComponent,
+        cellRendererParams: {
+          actions: [
+            {
+              icon: 'pi pi-play',
+              tooltip: 'Test Webhook',
+              actionCallback: (rowData: Webhook) => this.testWebhook(rowData)
+            },
+            {
+              icon: 'pi pi-history',
+              tooltip: 'View Logs',
+              actionCallback: (rowData: Webhook) => this.viewLogs(rowData)
+            },
+            {
+              icon: 'pi pi-pencil',
+              tooltip: 'Edit',
+              actionCallback: (rowData: Webhook) => this.openEditDialog(rowData)
+            },
+            {
+              icon: 'pi pi-trash',
+              tooltip: 'Delete',
+              actionCallback: (rowData: Webhook) => this.deleteWebhook(rowData)
+            }
+          ]
+        }
+      }
+    ];
+  }
 
   ngOnInit(): void {
     this.loadWebhooks();
@@ -85,6 +165,26 @@ export class WebhookListComponent implements OnInit {
     this.dialogRef.onClose.subscribe(result => {
       if (result) {
         this.loadWebhooks();
+      }
+    });
+  }
+
+  toggleWebhookDirectly(webhook: Webhook, checked: boolean): void {
+    // Overridden toggle callback for switch renderer 
+    const config = {
+      url: webhook.url,
+      enabled: checked,
+      events: webhook.events
+    };
+
+    this.webhooksService.updateWebhook(webhook.webhook_id, config).subscribe({
+      next: () => {
+        this.notification.success(`Webhook ${config.enabled ? 'enabled' : 'disabled'}`);
+        this.loadWebhooks();
+      },
+      error: () => {
+        this.notification.error('Failed to update webhook');
+        this.loadWebhooks(); // Refresh to rollback
       }
     });
   }

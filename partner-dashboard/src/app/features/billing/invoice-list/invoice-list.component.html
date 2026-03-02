@@ -1,41 +1,9 @@
 <div class="invoice-list">
   <h2>Billing History</h2>
 
-  <!-- Template definitions -->
-  <ng-template #dateTemplate let-invoice>
-    {{ invoice.date | date }}
-  </ng-template>
-  
-  <ng-template #amountTemplate let-invoice>
-    ${{ invoice.amount | number:'1.2-2' }}
-  </ng-template>
-  
-  <ng-template #statusTemplate let-invoice>
-    <p-chip 
-      [label]="invoice.status | uppercase" 
-      [styleClass]="'status-chip status-' + invoice.status">
-    </p-chip>
-  </ng-template>
-  
-  <ng-template #actionsTemplate let-invoice>
-    <p-button 
-      icon="pi pi-download" 
-      [text]="true"
-      [rounded]="true"
-      severity="secondary"
-      (onClick)="downloadInvoice(invoice)"
-      pTooltip="Download Invoice">
-    </p-button>
-  </ng-template>
-
   <p-card *ngIf="invoices$ | async as invoices; else loading">
     <ng-container *ngIf="invoices.length > 0; else noData">
-      <app-data-table
-        [columns]="columns"
-        [data]="invoices"
-        [loading]="(loading$ | async) || false"
-        [pageSize]="25"
-        [actionsTemplate]="actionsTemplate">
+      <app-data-table [columns]="columns" [data]="invoices" [loading]="(loading$ | async) || false">
       </app-data-table>
     </ng-container>
 

@@ -18,13 +18,13 @@ export class WSManager {
    */
   getDefaultApiUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
+
     // Production: Use environment variable or derive from current host
     if (window.VERAPROOF_API_URL) {
       // API URL injected during build/deployment
       return window.VERAPROOF_API_URL.replace('https:', 'wss:').replace('http:', 'ws:');
     }
-    
+
     // Development: localhost detection
     let host;
     if (window.location.hostname === 'localhost' && window.location.protocol === 'https:') {
@@ -32,7 +32,7 @@ export class WSManager {
       host = 'localhost:8443';
     } else if (window.location.hostname === 'localhost') {
       // HTTP localhost - connect to HTTP backend
-      host = 'localhost:8000';
+      host = 'localhost:8100';
     } else if (window.location.port === '3443') {
       // HTTPS verification interface - connect to HTTPS backend
       host = `${window.location.hostname}:8443`;
@@ -44,7 +44,7 @@ export class WSManager {
       // Fallback: same host as current page
       host = window.location.host;
     }
-    
+
     return `${protocol}//${host}`;
   }
 
@@ -54,9 +54,9 @@ export class WSManager {
   async connect() {
     return new Promise((resolve, reject) => {
       const wsUrl = `${this.apiUrl}/api/v1/ws/verify/${this.sessionId}`;
-      
+
       console.log('Connecting to WebSocket:', wsUrl);
-      
+
       try {
         this.ws = new WebSocket(wsUrl);
 
@@ -117,7 +117,7 @@ export class WSManager {
     console.log(`Reconnecting... Attempt ${this.reconnectAttempts}`);
 
     await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
-    
+
     try {
       await this.connect();
     } catch (error) {
@@ -140,7 +140,7 @@ export class WSManager {
           size: arrayBuffer.byteLength,
           timestamp: Date.now()
         });
-        
+
         // Send metadata first, then binary data
         this.ws.send(message);
         this.ws.send(arrayBuffer);

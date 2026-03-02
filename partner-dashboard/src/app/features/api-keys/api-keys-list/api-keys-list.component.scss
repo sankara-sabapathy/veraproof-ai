@@ -21,13 +21,19 @@
     max-width: 500px;
     margin-bottom: 16px;
 
+    .p-input-icon-left {
+      width: 100%;
+    }
+
     .w-full {
       width: 100%;
+      padding-left: 2.5rem !important;
+      padding-right: 2.5rem !important;
     }
 
     .clear-icon {
       color: var(--text-color-secondary);
-      
+
       &:hover {
         color: var(--text-color);
       }
@@ -49,24 +55,37 @@
   }
 
   :host ::ng-deep {
+
+    .p-chip.chip-sandbox,
     .chip-sandbox {
-      background-color: #e3f2fd;
-      color: #1976d2;
+      background-color: #e3f2fd !important;
+      color: #1976d2 !important;
+      padding: 0.35rem 0.75rem !important;
+      border-radius: 1rem !important;
+      min-width: max-content !important;
     }
 
+    .p-chip.chip-production,
     .chip-production {
-      background-color: #e8f5e9;
-      color: #388e3c;
+      background-color: #e8f5e9 !important;
+      color: #388e3c !important;
+      padding: 0.35rem 0.75rem !important;
+      border-radius: 1rem !important;
+      min-width: max-content !important;
     }
 
+    .p-chip.chip-revoked,
     .chip-revoked {
-      background-color: #ffebee;
-      color: #d32f2f;
+      background-color: #ffebee !important;
+      color: #d32f2f !important;
+      padding: 0.35rem 0.75rem !important;
+      border-radius: 1rem !important;
+      min-width: max-content !important;
     }
 
     .menu-item-danger {
       color: var(--red-500);
-      
+
       .p-menuitem-icon {
         color: var(--red-500);
       }
@@ -135,7 +154,7 @@
 
       :host ::ng-deep p-button {
         width: 100%;
-        
+
         button {
           width: 100%;
         }
@@ -149,7 +168,8 @@
     :host ::ng-deep .p-datatable {
       font-size: 12px;
 
-      th, td {
+      th,
+      td {
         padding: 8px 4px;
       }
     }

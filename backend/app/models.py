@@ -14,6 +14,7 @@ class SessionState(str, Enum):
 
 
 class VerificationStatus(str, Enum):
+    PENDING_AI = "pending_ai"
     SUCCESS = "success"
     FAILED = "failed"
     TIMEOUT = "timeout"
@@ -45,6 +46,10 @@ class VerificationResult(BaseModel):
     final_trust_score: int
     correlation_value: float
     reasoning: str
+    ai_score: Optional[float] = None
+    physics_score: Optional[float] = None
+    unified_score: Optional[float] = None
+    ai_explanation: Optional[Dict[str, Any]] = None
     timestamp: datetime
 
 
@@ -53,6 +58,11 @@ class WebhookPayload(BaseModel):
     tier_1_score: int
     tier_2_score: Optional[int]
     final_trust_score: int
+    correlation_value: Optional[float] = None
+    ai_score: Optional[float] = None
+    physics_score: Optional[float] = None
+    unified_score: Optional[float] = None
+    ai_explanation: Optional[Dict[str, Any]] = None
     verification_status: str
     timestamp: datetime
     metadata: Dict[str, Any]

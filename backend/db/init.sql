@@ -57,6 +57,11 @@ CREATE TABLE IF NOT EXISTS sessions (
     final_trust_score INTEGER,
     correlation_value FLOAT,
     reasoning TEXT,
+    ai_score FLOAT,
+    physics_score FLOAT,
+    unified_score FLOAT,
+    ai_explanation JSONB,
+    verification_status VARCHAR(50),
     video_s3_key VARCHAR(500),
     imu_data_s3_key VARCHAR(500),
     optical_flow_s3_key VARCHAR(500)

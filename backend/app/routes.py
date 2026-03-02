@@ -106,6 +106,47 @@ async def get_tenant_from_jwt(authorization: str = Header(...)) -> str:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+# Dependency to extract tenant_id and role from either API key or JWT token
+async def get_tenant_and_role_from_any_auth(authorization: str = Header(...)) -> tuple[str, str]:
+    """Extract (tenant_id, role) from either API key or JWT token"""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    
+    token_or_key = authorization.replace("Bearer ", "")
+    
+    # Try JWT first
+    try:
+        payload = await local_auth_manager.verify_jwt(token_or_key)
+        tenant_id = payload["tenant_id"]
+        role = payload.get("role", "Admin") # Default to Admin if not specified
+        
+        # Inject tenant_id into the active OTel trace span
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("tenant.id", tenant_id)
+            span.set_attribute("auth.type", "jwt")
+            
+        return tenant_id, role
+    except Exception:
+        pass # Not a valid JWT, try API key
+        
+    # Try API key
+    try:
+        tenant_id, environment = await api_key_manager.validate_key(token_or_key)
+        role = "API_Key" # Surrogate role for API keys
+        
+        # Inject tenant_id into the active OTel trace span for global filtering
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("tenant.id", tenant_id)
+            span.set_attribute("tenant.environment", environment)
+            
+        return tenant_id, role
+    except ValueError:
+        logger.warning("Failed authentication via both JWT and API Key")
+        raise HTTPException(status_code=401, detail="Invalid token or API key")
+
+
 # Session Management Endpoints
 @router.post("/sessions/create", response_model=CreateSessionResponse)
 async def create_session(
@@ -167,16 +208,17 @@ async def create_session_dashboard(
 @router.get("/sessions/{session_id}")
 async def get_session(
     session_id: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
 ):
     """Get session details"""
+    tenant_id, role = auth_data
     session = await session_manager.get_session(session_id)
     
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # Verify tenant ownership
-    if session['tenant_id'] != tenant_id:
+    # Verify tenant ownership, unless user is Master_Admin
+    if str(session['tenant_id']) != str(tenant_id) and role != "Master_Admin":
         raise HTTPException(status_code=403, detail="Access denied")
     
     return session
@@ -185,15 +227,16 @@ async def get_session(
 @router.get("/sessions/{session_id}/results")
 async def get_session_results(
     session_id: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
 ):
     """Get verification results"""
+    tenant_id, role = auth_data
     session = await session_manager.get_session(session_id)
     
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    if session['tenant_id'] != tenant_id:
+    if str(session['tenant_id']) != str(tenant_id) and role != "Master_Admin":
         raise HTTPException(status_code=403, detail="Access denied")
     
     return {
@@ -211,55 +254,79 @@ async def get_session_results(
 @router.get("/sessions/{session_id}/video")
 async def get_video_artifact(
     session_id: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
 ):
     """Get video artifact signed URL"""
+    tenant_id, role = auth_data
     session = await session_manager.get_session(session_id)
     
-    if not session or session['tenant_id'] != tenant_id:
+    if not session or (str(session['tenant_id']) != str(tenant_id) and role != "Master_Admin"):
         raise HTTPException(status_code=404, detail="Session not found")
     
     if not session['video_s3_key']:
         raise HTTPException(status_code=404, detail="Video artifact not found")
     
-    signed_url = await storage_manager.generate_signed_url(session['video_s3_key'])
-    return {"url": signed_url}
+    try:
+        signed_url = await storage_manager.generate_signed_url(session['video_s3_key'])
+        return {"url": signed_url}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="Video artifact record exists but the file is missing from storage. "
+                   "This may happen after a storage reset."
+        )
 
 
 @router.get("/sessions/{session_id}/imu-data")
 async def get_imu_artifact(
     session_id: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
 ):
     """Get IMU data artifact signed URL"""
+    tenant_id, role = auth_data
     session = await session_manager.get_session(session_id)
     
-    if not session or session['tenant_id'] != tenant_id:
+    if not session or (str(session['tenant_id']) != str(tenant_id) and role != "Master_Admin"):
         raise HTTPException(status_code=404, detail="Session not found")
     
     if not session['imu_data_s3_key']:
         raise HTTPException(status_code=404, detail="IMU data artifact not found")
     
-    signed_url = await storage_manager.generate_signed_url(session['imu_data_s3_key'])
-    return {"url": signed_url}
+    try:
+        signed_url = await storage_manager.generate_signed_url(session['imu_data_s3_key'])
+        return {"url": signed_url}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="IMU data artifact record exists but the file is missing from storage. "
+                   "This may happen after a storage reset."
+        )
 
 
 @router.get("/sessions/{session_id}/optical-flow")
 async def get_optical_flow_artifact(
     session_id: str,
-    tenant_id: str = Depends(get_tenant_from_api_key)
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
 ):
     """Get optical flow artifact signed URL"""
+    tenant_id, role = auth_data
     session = await session_manager.get_session(session_id)
     
-    if not session or session['tenant_id'] != tenant_id:
+    if not session or (str(session['tenant_id']) != str(tenant_id) and role != "Master_Admin"):
         raise HTTPException(status_code=404, detail="Session not found")
     
     if not session['optical_flow_s3_key']:
         raise HTTPException(status_code=404, detail="Optical flow artifact not found")
     
-    signed_url = await storage_manager.generate_signed_url(session['optical_flow_s3_key'])
-    return {"url": signed_url}
+    try:
+        signed_url = await storage_manager.generate_signed_url(session['optical_flow_s3_key'])
+        return {"url": signed_url}
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail="Optical flow artifact record exists but the file is missing from storage. "
+                   "This may happen after a storage reset."
+        )
 
 
 # Authentication Endpoints
@@ -322,19 +389,26 @@ async def generate_api_key(
 @router.get("/api-keys")
 async def list_api_keys(tenant_id: str = Depends(get_tenant_from_jwt)):
     """List API keys for tenant"""
-    # Get all keys for this tenant from in-memory store
+    query = """
+        SELECT key_id, api_key, environment, created_at, revoked_at 
+        FROM api_keys
+        WHERE tenant_id = $1
+        ORDER BY created_at DESC
+    """
+    
+    records = await db_manager.fetch_all(query, tenant_id)
+    
     keys = []
-    for api_key, key_data in api_key_manager.api_keys.items():
-        if key_data["tenant_id"] == tenant_id:
-            keys.append({
-                "key_id": key_data["key_id"],
-                "api_key": api_key,
-                "environment": key_data["environment"],
-                "created_at": key_data["created_at"],
-                "last_used_at": None,  # TODO: Track usage
-                "total_calls": 0,  # TODO: Track usage
-                "revoked_at": key_data.get("revoked_at")
-            })
+    for record in records:
+        keys.append({
+            "key_id": str(record["key_id"]),
+            "api_key": record["api_key"],
+            "environment": record["environment"],
+            "created_at": record["created_at"].isoformat() if record["created_at"] else None,
+            "last_used_at": None,  # TODO: Track usage
+            "total_calls": 0,  # TODO: Track usage
+            "revoked_at": record["revoked_at"].isoformat() if record["revoked_at"] else None
+        })
     return keys
 
 

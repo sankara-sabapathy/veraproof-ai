@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <!-- Configuration - loaded before other scripts -->
     <script src="config.js"></script>
 </head>
+
 <body>
     <div id="app">
         <!-- Landing Page -->
@@ -17,12 +19,12 @@
                     <h1 class="brand-title">VeraProof AI</h1>
                     <p class="brand-tagline">Physics-First Fraud Detection</p>
                 </div>
-                
+
                 <div class="hero-section">
                     <h2>Verify Your Identity</h2>
                     <p>Secure video verification using advanced sensor fusion technology</p>
                 </div>
-                
+
                 <div class="features">
                     <div class="feature">
                         <span class="icon">🔒</span>
@@ -40,9 +42,9 @@
                         <p>Physics-based detection</p>
                     </div>
                 </div>
-                
+
                 <button id="start-verification-btn" class="btn-primary">Start Verification</button>
-                
+
                 <div class="footer-links">
                     <a href="#" id="partner-login-link">Partner Login</a>
                 </div>
@@ -66,21 +68,28 @@
         <div id="verification-page" class="page">
             <div class="container">
                 <div id="branding-logo" class="branding-logo hidden"></div>
-                
+
                 <div class="video-container">
+                    <div id="recording-indicator" class="recording-indicator hidden">
+                        <span class="red-dot"></span>
+                        <span id="recording-time">15s</span>
+                    </div>
+                    <div id="countdown-overlay" class="countdown-overlay hidden">
+                        <span id="countdown-timer">5</span>
+                    </div>
                     <video id="video-preview" autoplay playsinline muted></video>
                     <canvas id="video-canvas" class="hidden"></canvas>
                 </div>
-                
+
                 <div class="instructions">
                     <h2 id="phase-title">Preparing...</h2>
                     <p id="phase-instruction">Please wait while we set up your verification</p>
                 </div>
-                
+
                 <div class="progress-bar">
                     <div id="progress-fill" class="progress-fill"></div>
                 </div>
-                
+
                 <div id="status-message" class="status-message"></div>
             </div>
         </div>
@@ -113,4 +122,5 @@
 
     <script type="module" src="js/main.js?v=9"></script>
 </body>
+
 </html>

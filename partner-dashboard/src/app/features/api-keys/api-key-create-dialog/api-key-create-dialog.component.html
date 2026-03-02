@@ -2,27 +2,23 @@
   <!-- Step 1: Environment Selection (shown before generation) -->
   <div *ngIf="!hasGeneratedKey" class="selection-step">
     <p class="description">
-      Select the environment for your new API key. Sandbox keys are for testing, 
+      Select the environment for your new API key. Sandbox keys are for testing,
       while production keys are for live verification sessions.
     </p>
 
     <form [formGroup]="createForm">
-      <span class="p-float-label full-width">
-        <p-dropdown 
-          formControlName="environment"
-          [options]="environmentOptions"
-          optionLabel="label"
-          optionValue="value"
-          inputId="environment"
-          styleClass="full-width">
+      <div class="form-field">
+        <label for="environment" class="field-label">Environment</label>
+        <p-dropdown formControlName="environment" [options]="environmentOptions" optionLabel="label" optionValue="value"
+          inputId="environment" styleClass="full-width" appendTo="body">
           <ng-template pTemplate="selectedItem" let-option>
-            <div class="environment-option" *ngIf="option">
+            <div class="environment-option" [ngClass]="'type-' + option.value" *ngIf="option">
               <i [class]="option.icon"></i>
               <span>{{ option.label }}</span>
             </div>
           </ng-template>
           <ng-template pTemplate="item" let-option>
-            <div class="environment-option">
+            <div class="environment-option" [ngClass]="'type-' + option.value">
               <i [class]="option.icon"></i>
               <div>
                 <div class="option-title">{{ option.label }}</div>
@@ -31,8 +27,7 @@
             </div>
           </ng-template>
         </p-dropdown>
-        <label for="environment">Environment</label>
-      </span>
+      </div>
     </form>
   </div>
 
@@ -46,7 +41,7 @@
           <div>
             <strong>API Key Generated Successfully</strong>
             <p>
-              Copy your API key and store it securely. You'll need this key to authenticate 
+              Copy your API key and store it securely. You'll need this key to authenticate
               your API requests when creating verification sessions.
             </p>
           </div>
@@ -59,13 +54,8 @@
       <label class="credential-label">API Key</label>
       <div class="credential-display">
         <code class="credential-value">{{ generatedKey?.api_key }}</code>
-        <p-button 
-          icon="{{ keyCopied ? 'pi pi-check' : 'pi pi-copy' }}"
-          [text]="true"
-          [rounded]="true"
-          (onClick)="copyToClipboard(generatedKey!.api_key)"
-          [class.copied]="keyCopied"
-          pTooltip="Copy to clipboard">
+        <p-button icon="{{ keyCopied ? 'pi pi-check' : 'pi pi-copy' }}" [text]="true" [rounded]="true"
+          (onClick)="copyToClipboard(generatedKey!.api_key)" [class.copied]="keyCopied" pTooltip="Copy to clipboard">
         </p-button>
       </div>
       <span class="credential-hint">Use this key in the Authorization header: Bearer YOUR_API_KEY</span>
@@ -73,8 +63,7 @@
 
     <!-- Environment Badge -->
     <div class="environment-badge">
-      <p-chip 
-        [label]="(generatedKey?.environment | titlecase) || ''"
+      <p-chip [label]="(generatedKey?.environment | titlecase) || ''"
         [icon]="generatedKey?.environment === 'sandbox' ? 'pi pi-flask' : 'pi pi-check-circle'"
         [styleClass]="generatedKey?.environment === 'sandbox' ? 'sandbox' : 'production'">
       </p-chip>
@@ -102,43 +91,24 @@
   <div class="dialog-actions">
     <!-- Actions before generation -->
     <ng-container *ngIf="!hasGeneratedKey">
-      <p-button 
-        label="Cancel" 
-        severity="secondary"
-        [text]="true"
-        (onClick)="onClose()" 
-        [disabled]="loading">
+      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="onClose()" [disabled]="loading">
       </p-button>
-      <p-button 
-        label="Generate" 
-        severity="primary"
-        (onClick)="onGenerate()"
-        [disabled]="loading || createForm.invalid"
+      <p-button label="Generate" severity="primary" (onClick)="onGenerate()" [disabled]="loading || createForm.invalid"
         [loading]="loading">
       </p-button>
     </ng-container>
 
     <!-- Actions after generation -->
     <ng-container *ngIf="hasGeneratedKey && !showCloseWarning">
-      <p-button 
-        label="Done" 
-        severity="primary"
-        (onClick)="onClose()">
+      <p-button label="Done" severity="primary" (onClick)="onClose()">
       </p-button>
     </ng-container>
 
     <!-- Actions for close warning -->
     <ng-container *ngIf="showCloseWarning">
-      <p-button 
-        label="Go Back" 
-        severity="secondary"
-        [text]="true"
-        (onClick)="cancelClose()">
+      <p-button label="Go Back" severity="secondary" [text]="true" (onClick)="cancelClose()">
       </p-button>
-      <p-button 
-        label="Close Anyway" 
-        severity="danger"
-        (onClick)="confirmClose()">
+      <p-button label="Close Anyway" severity="danger" (onClick)="confirmClose()">
       </p-button>
     </ng-container>
   </div>

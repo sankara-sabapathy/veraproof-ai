@@ -74,7 +74,7 @@ class VerificationApp {
 
       // Perform initial device compatibility check (without requesting permissions yet)
       const initialCheck = await this.performInitialCheck();
-      
+
       if (!initialCheck.canProceed) {
         this.ui.showDeviceStatus(initialCheck.result);
         return;
@@ -82,7 +82,7 @@ class VerificationApp {
 
       // Show button to request permissions
       this.ui.showPermissionButton(() => this.requestPermissionsAndContinue());
-      
+
     } catch (error) {
       console.error('Verification error:', error);
       this.ui.showError({ message: error.message });
@@ -148,7 +148,7 @@ class VerificationApp {
 
       // Permissions granted, continue
       this.ui.showStatusMessage('Permissions granted! Starting verification...', 'success');
-      
+
       // Wait a moment
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -178,10 +178,10 @@ class VerificationApp {
 
       // Initialize WebSocket manager
       this.wsManager = new WSManager(this.sessionId);
-      
+
       // Test backend connection first (for self-signed cert acceptance)
       await this.testBackendConnection();
-      
+
       await this.wsManager.connect();
 
       // Initialize challenge controller
@@ -191,10 +191,10 @@ class VerificationApp {
       this.setupEventHandlers();
     } catch (error) {
       console.error('Component initialization error:', error);
-      
+
       // Check if it's a certificate/connection error
       if (error.message.includes('WebSocket') || error.message.includes('certificate')) {
-        this.ui.showError({ 
+        this.ui.showError({
           message: 'Connection failed. Please ensure you have accepted the security certificate. Click "Try Again" and accept any certificate warnings.',
           showRetry: true
         });
@@ -214,24 +214,24 @@ class VerificationApp {
       console.log('Production environment detected, skipping certificate check');
       return;
     }
-    
+
     const apiUrl = this.wsManager.apiUrl;
     const healthUrl = `${apiUrl.replace('wss:', 'https:').replace('ws:', 'http:')}/health`;
-    
+
     try {
-      const response = await fetch(healthUrl, { 
+      const response = await fetch(healthUrl, {
         mode: 'cors',
         credentials: 'omit'
       });
-      
+
       if (!response.ok) {
         throw new Error('Backend health check failed');
       }
-      
+
       console.log('Backend connection test successful');
     } catch (error) {
       console.error('Backend connection test failed:', error);
-      
+
       // Only redirect to cert helper in local development
       if (window.location.hostname === 'localhost' || window.location.port === '3443') {
         const params = new URLSearchParams(window.location.search);
@@ -325,18 +325,59 @@ class VerificationApp {
       // Wait a moment for UI to settle
       await new Promise(resolve => setTimeout(resolve, 500));
 
+      this.ui.showInstructions({
+        title: 'Get Ready',
+        instruction: 'You are about to capture a 15-second verification video. Starting in...'
+      });
+
+      // Show countdown
+      const countdownOverlay = document.getElementById('countdown-overlay');
+      const countdownTimer = document.getElementById('countdown-timer');
+      countdownOverlay.classList.remove('hidden');
+
+      for (let i = 5; i > 0; i--) {
+        countdownTimer.textContent = i;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      countdownOverlay.classList.add('hidden');
+
       // Start video recording
       this.videoCapture.start();
 
       // Start IMU collection
       this.imuCollector.start();
 
-      // Start challenge sequence
-      this.challengeController.startChallenge();
+      // Start global 15-second recording timer UI
+      this.startRecordingTimer(15);
+
+      // Start challenge sequence after 3 seconds of buffer recording
+      setTimeout(() => {
+        this.challengeController.startChallenge();
+      }, 3000);
+
     } catch (error) {
       console.error('Verification run error:', error);
       this.ui.showError({ message: error.message });
     }
+  }
+
+  startRecordingTimer(totalSeconds) {
+    const indicator = document.getElementById('recording-indicator');
+    const timeDisplay = document.getElementById('recording-time');
+    if (indicator) indicator.classList.remove('hidden');
+
+    let timeLeft = totalSeconds;
+    if (timeDisplay) timeDisplay.textContent = `${timeLeft}s`;
+
+    this.recordingInterval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft >= 0) {
+        if (timeDisplay) timeDisplay.textContent = `${timeLeft}s`;
+      } else {
+        clearInterval(this.recordingInterval);
+      }
+    }, 1000);
   }
 
   /**
@@ -381,6 +422,13 @@ class VerificationApp {
     if (this.imuCollector) {
       this.imuCollector.stop();
     }
+
+    if (this.recordingInterval) {
+      clearInterval(this.recordingInterval);
+    }
+
+    const indicator = document.getElementById('recording-indicator');
+    if (indicator) indicator.classList.add('hidden');
   }
 
   /**

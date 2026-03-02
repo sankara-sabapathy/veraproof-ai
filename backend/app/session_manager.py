@@ -154,9 +154,19 @@ class SessionManager:
         tier_2_score: Optional[int],
         final_trust_score: int,
         correlation_value: float,
-        reasoning: str
+        reasoning: str,
+        ai_score: float = None,
+        physics_score: float = None,
+        unified_score: float = None,
+        ai_explanation: dict = None,
+        verification_status: str = None
     ):
         """Update session with verification results"""
+        
+        # Determine status if not provided
+        if verification_status is None:
+            verification_status = SessionState.COMPLETE.value
+
         query = """
             UPDATE sessions
             SET 
@@ -165,8 +175,13 @@ class SessionManager:
                 final_trust_score = $3,
                 correlation_value = $4,
                 reasoning = $5,
-                state = $6
-            WHERE session_id = $7
+                ai_score = $6,
+                physics_score = $7,
+                unified_score = $8,
+                ai_explanation = $9::jsonb,
+                verification_status = $10,
+                state = $10
+            WHERE session_id = $11
         """
         
         await db_manager.execute_query(
@@ -176,7 +191,11 @@ class SessionManager:
             final_trust_score,
             correlation_value,
             reasoning,
-            SessionState.COMPLETE.value,
+            ai_score,
+            physics_score,
+            unified_score,
+            json.dumps(ai_explanation) if ai_explanation else None,
+            verification_status,
             session_id
         )
         

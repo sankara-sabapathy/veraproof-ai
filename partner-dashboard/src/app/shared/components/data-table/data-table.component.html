@@ -1,83 +1,20 @@
-<div class="table-container">
-  <div class="search-field">
-    <span class="p-input-icon-left">
-      <i class="pi pi-search"></i>
-      <input 
-        pInputText 
-        type="text" 
-        placeholder="Search..." 
-        [(ngModel)]="searchTerm" 
+<div class="data-table-container">
+  <div class="table-toolbar">
+    <div class="search-wrapper">
+      <i class="pi pi-search search-icon"></i>
+      <input type="text" class="search-input" placeholder="Search across all columns..." [(ngModel)]="searchTerm"
         (ngModelChange)="onSearchChange()" />
-    </span>
+    </div>
   </div>
-  
-  <div class="table-wrapper">
-    <p-table 
-      [value]="data" 
-      [columns]="columns"
-      [paginator]="true" 
-      [rows]="rows"
-      [first]="first"
-      [totalRecords]="totalItems"
-      [rowsPerPageOptions]="[10, 25, 50, 100]"
-      [loading]="loading"
-      [resizableColumns]="resizableColumns"
-      [reorderableColumns]="reorderableColumns"
-      [(selection)]="selectedRows"
-      [selectionMode]="selectionMode"
-      (onSort)="onSortChange($event)"
-      (onPage)="onPageChange($event)"
-      (onRowSelect)="onRowSelect($event)"
-      (onRowUnselect)="onRowUnselect($event)"
-      styleClass="p-datatable-striped">
-      
-      <ng-template pTemplate="header" let-columns>
-        <tr>
-          <th *ngIf="selectionMode" style="width: 3rem">
-            <p-tableHeaderCheckbox *ngIf="selectionMode === 'multiple'"></p-tableHeaderCheckbox>
-          </th>
-          <th *ngFor="let col of columns" 
-              [pSortableColumn]="col.sortable !== false ? col.key : null">
-            {{ col.label }}
-            <p-sortIcon *ngIf="col.sortable !== false" [field]="col.key"></p-sortIcon>
-          </th>
-          <th *ngIf="hasActions">Actions</th>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="body" let-row let-columns="columns" let-expanded="expanded">
-        <tr [pSelectableRow]="row" (click)="onRowClick(row)" class="clickable-row">
-          <td *ngIf="selectionMode">
-            <p-tableCheckbox [value]="row" *ngIf="selectionMode === 'multiple'"></p-tableCheckbox>
-            <p-tableRadioButton [value]="row" *ngIf="selectionMode === 'single'"></p-tableRadioButton>
-          </td>
-          <td *ngFor="let col of columns">
-            <ng-container *ngIf="col.template; else defaultCell">
-              <ng-container *ngTemplateOutlet="col.template; context: { $implicit: row }"></ng-container>
-            </ng-container>
-            <ng-template #defaultCell>{{ row[col.key] }}</ng-template>
-          </td>
-          <td *ngIf="hasActions">
-            <ng-container *ngIf="actionsTemplate" [ngTemplateOutlet]="actionsTemplate" [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-          </td>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="rowexpansion" let-row *ngIf="expansionTemplate">
-        <tr>
-          <td [attr.colspan]="columns.length + (selectionMode ? 1 : 0) + (hasActions ? 1 : 0)">
-            <ng-container *ngIf="expansionTemplate" [ngTemplateOutlet]="expansionTemplate" [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
-          </td>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td [attr.colspan]="columns.length + (selectionMode ? 1 : 0) + (hasActions ? 1 : 0)">
-            No records found
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
+
+  <div class="grid-wrapper">
+    <ag-grid-angular [theme]="gridTheme" [rowData]="data" [columnDefs]="columns" [defaultColDef]="defaultColDef"
+      [rowSelection]="rowSelection" [pagination]="true" [paginationPageSize]="pageSize"
+      [paginationPageSizeSelector]="paginationPageSizeSelector" [domLayout]="domLayout" [animateRows]="true"
+      [suppressCellFocus]="true" [loading]="loading"
+      [overlayNoRowsTemplate]="'<div class=&quot;no-rows-overlay&quot;><i class=&quot;pi pi-inbox&quot; style=&quot;font-size:40px;color:#94a3b8;margin-bottom:12px;&quot;></i><p style=&quot;color:#64748b;font-size:14px;&quot;>No data available</p></div>'"
+      (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)"
+      (selectionChanged)="onSelectionChanged($event)">
+    </ag-grid-angular>
   </div>
 </div>

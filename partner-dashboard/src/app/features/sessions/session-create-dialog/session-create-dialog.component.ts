@@ -30,7 +30,7 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
 
         <form [formGroup]="createForm">
           <div class="field">
-            <span class="p-float-label">
+            <span class="p-float-label full-width">
               <input 
                 pInputText 
                 id="return_url"
@@ -43,7 +43,7 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
           </div>
 
           <div class="field">
-            <span class="p-float-label">
+            <span class="p-float-label full-width">
               <input 
                 pInputText 
                 id="user_id"
@@ -224,6 +224,7 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
       display: flex;
       justify-content: flex-end;
       gap: 0.5rem;
+      margin-top: 1.5rem;
       padding-top: 1rem;
       border-top: 1px solid var(--surface-border);
     }

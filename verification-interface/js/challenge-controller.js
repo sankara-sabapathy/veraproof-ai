@@ -25,8 +25,8 @@ export class ChallengeController {
     this.emitPhaseChange({
       phase: 'baseline',
       title: 'Hold Still',
-      instruction: 'Keep your phone steady for 1 second',
-      duration: 1000
+      instruction: 'Keep your phone steady to establish a baseline',
+      duration: 3000
     });
 
     const timer = setTimeout(() => {
@@ -36,8 +36,8 @@ export class ChallengeController {
         payload: { phase: 'baseline' }
       }));
       this.startPan();
-    }, 1000);
-    
+    }, 3000);
+
     this.phaseTimers.push(timer);
   }
 
@@ -50,7 +50,7 @@ export class ChallengeController {
       phase: 'pan',
       title: 'Tilt Right',
       instruction: 'Slowly tilt your phone to the right',
-      duration: 2000
+      duration: 3000
     });
 
     const timer = setTimeout(() => {
@@ -60,8 +60,8 @@ export class ChallengeController {
         payload: { phase: 'pan' }
       }));
       this.startReturn();
-    }, 2000);
-    
+    }, 3000);
+
     this.phaseTimers.push(timer);
   }
 
@@ -74,7 +74,7 @@ export class ChallengeController {
       phase: 'return',
       title: 'Return to Center',
       instruction: 'Slowly return your phone to the center position',
-      duration: 2000
+      duration: 3000
     });
 
     const timer = setTimeout(() => {
@@ -83,9 +83,23 @@ export class ChallengeController {
         type: 'phase_complete',
         payload: { phase: 'return' }
       }));
-      this.completeChallenge();
-    }, 2000);
-    
+
+      // Wait for the remainder of the 15-second recording clip before concluding
+      this.currentPhase = 'holding';
+      this.emitPhaseChange({
+        phase: 'analyzing', // Use analyzing for UI progress bar
+        title: 'Hold Still',
+        instruction: 'Capturing final baseline for AI forensics...',
+        duration: 3000
+      });
+
+      const holdingTimer = setTimeout(() => {
+        this.completeChallenge();
+      }, 3000);
+      this.phaseTimers.push(holdingTimer);
+
+    }, 3000);
+
     this.phaseTimers.push(timer);
   }
 

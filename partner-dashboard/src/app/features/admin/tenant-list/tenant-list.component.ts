@@ -1,5 +1,5 @@
-import { Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -13,7 +13,10 @@ import { AdminService, TenantSummary } from '../services/admin.service';
 import { AdminStateService } from '../services/admin-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { DataTableComponent, TableColumn } from '../../../shared/components/data-table/data-table.component';
+import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { ColDef, ValueFormatterParams } from 'ag-grid-community';
+import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
+import { StatusRendererComponent } from '../../../shared/components/data-table/renderers/status-renderer.component';
 
 interface DropdownOption {
   label: string;
@@ -36,28 +39,24 @@ interface DropdownOption {
     LoadingSpinnerComponent,
     DataTableComponent
   ],
+  providers: [DatePipe],
   templateUrl: './tenant-list.component.html',
   styleUrls: ['./tenant-list.component.scss']
 })
 export class TenantListComponent implements OnInit {
-  @ViewChild('subscriptionTemplate', { static: true }) subscriptionTemplate!: TemplateRef<any>;
-  @ViewChild('usageTemplate', { static: true }) usageTemplate!: TemplateRef<any>;
-  @ViewChild('statusTemplate', { static: true }) statusTemplate!: TemplateRef<any>;
-  @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
-
   tenants$ = this.adminState.tenants$;
   loading$ = this.adminState.loading$;
   pagination$ = this.adminState.pagination$;
-  
-  columns: TableColumn[] = [];
+
+  columns: ColDef[] = [];
   tenants: TenantSummary[] = [];
   loading = false;
   totalItems = 0;
-  
+
   searchTerm = '';
   selectedTier = '';
   selectedStatus = '';
-  
+
   tierOptions: DropdownOption[] = [
     { label: 'All', value: '' },
     { label: 'Sandbox', value: 'Sandbox' },
@@ -65,7 +64,7 @@ export class TenantListComponent implements OnInit {
     { label: 'Professional', value: 'Professional' },
     { label: 'Enterprise', value: 'Enterprise' }
   ];
-  
+
   statusOptions: DropdownOption[] = [
     { label: 'All', value: '' },
     { label: 'Active', value: 'active' },
@@ -77,34 +76,79 @@ export class TenantListComponent implements OnInit {
     private adminService: AdminService,
     private adminState: AdminStateService,
     private notification: NotificationService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private datePipe: DatePipe
+  ) {
+    this.columns = [
+      { field: 'email', headerName: 'Email' },
+      {
+        field: 'subscription_tier',
+        headerName: 'Subscription',
+        cellRenderer: (params: any) => {
+          return `<div class="p-chip p-component"><span class="p-chip-text" style="font-size:12px; font-weight:600;">${params.value || ''}</span></div>`;
+        }
+      },
+      {
+        headerName: 'Usage',
+        valueGetter: (params) => params.data,
+        cellRenderer: (params: any) => {
+          const tenant = params.value;
+          if (!tenant) return '';
+          const percentage = (tenant.current_usage / tenant.monthly_quota) * 100;
+          let color = '#4caf50'; // success
+          if (percentage >= 90) color = '#f44336'; // danger
+          else if (percentage >= 80) color = '#ff9800'; // warning
+
+          return `<div style="display:flex; flex-direction:column; justify-content:center; height:100%; gap:4px; font-size:12px;">
+                    <div>${tenant.current_usage.toLocaleString()} / ${tenant.monthly_quota.toLocaleString()}</div>
+                    <div style="background-color:#e2e8f0; height:6px; border-radius:3px; overflow:hidden; width:100%;">
+                      <div style="background-color:${color}; height:100%; width:${Math.min(100, percentage)}%;"></div>
+                    </div>
+                  </div>`;
+        }
+      },
+      {
+        field: 'status',
+        headerName: 'Status',
+        cellRenderer: StatusRendererComponent
+      },
+      {
+        field: 'created_at',
+        headerName: 'Created',
+        valueFormatter: (params: ValueFormatterParams) => this.datePipe.transform(params.value, 'short') || ''
+      },
+      {
+        headerName: 'Actions',
+        sortable: false,
+        filter: false,
+        width: 100,
+        cellRenderer: ActionRendererComponent,
+        cellRendererParams: {
+          actions: [
+            {
+              icon: 'pi pi-eye',
+              tooltip: 'View Details',
+              actionCallback: (rowData: TenantSummary) => this.viewTenant(rowData)
+            }
+          ]
+        }
+      }
+    ];
+  }
 
   ngOnInit(): void {
-    // Subscribe to state changes
     this.tenants$.subscribe(tenants => {
       this.tenants = tenants;
     });
-    
+
     this.loading$.subscribe(loading => {
       this.loading = loading;
     });
-    
+
     this.pagination$.subscribe(pagination => {
       this.totalItems = pagination.total;
     });
-    
-    // Initialize columns after view init to ensure templates are available
-    setTimeout(() => {
-      this.columns = [
-        { key: 'email', label: 'Email', sortable: true },
-        { key: 'subscription_tier', label: 'Subscription', sortable: true, template: this.subscriptionTemplate },
-        { key: 'usage', label: 'Usage', sortable: false, template: this.usageTemplate },
-        { key: 'status', label: 'Status', sortable: true, template: this.statusTemplate },
-        { key: 'created_at', label: 'Created', sortable: true }
-      ];
-    });
-    
+
     this.loadTenants();
   }
 
@@ -139,13 +183,4 @@ export class TenantListComponent implements OnInit {
     this.router.navigate(['/admin/tenants', tenant.tenant_id]);
   }
 
-  getUsagePercentage(tenant: TenantSummary): number {
-    return (tenant.current_usage / tenant.monthly_quota) * 100;
-  }
-  
-  getUsageSeverity(percentage: number): string {
-    if (percentage >= 90) return 'danger';
-    if (percentage >= 80) return 'warning';
-    return 'success';
-  }
 }

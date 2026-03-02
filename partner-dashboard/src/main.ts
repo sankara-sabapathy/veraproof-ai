@@ -8,6 +8,10 @@ import { routes } from './app/app.routes';
 import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { errorInterceptor } from './app/core/interceptors/error.interceptor';
 
+// AG Grid: register all Community modules before bootstrap
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+ModuleRegistry.registerModules([AllCommunityModule]);
+
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
