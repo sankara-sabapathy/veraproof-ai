@@ -131,6 +131,26 @@ CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
 CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_timestamp ON usage_logs(tenant_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_id ON api_keys(tenant_id);
 
+-- ============================================================
+-- Idempotent Schema Migrations
+-- These ALTER statements ensure newer columns are added to
+-- pre-existing tables. Safe to re-run on every container boot.
+-- ============================================================
+
+-- Sessions: columns added after initial schema
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ai_score FLOAT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS physics_score FLOAT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS unified_score FLOAT;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ai_explanation JSONB;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS verification_status VARCHAR(50);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS video_s3_key VARCHAR(500);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS imu_data_s3_key VARCHAR(500);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS optical_flow_s3_key VARCHAR(500);
+
+-- Tenants: webhook support columns
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(500);
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS webhook_secret VARCHAR(255);
+
 -- Test tenant
 INSERT INTO tenants (email, subscription_tier, monthly_quota, current_usage)
 VALUES ('test@veraproof.ai', 'Sandbox', 3, 0)
