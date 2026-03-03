@@ -540,7 +540,7 @@ jobs:
       - name: Install dashboard dependencies
         run: |
           cd partner-dashboard
-          npm ci
+          npm ci --legacy-peer-deps
       
       - name: Get backend API URL
         id: api-url
