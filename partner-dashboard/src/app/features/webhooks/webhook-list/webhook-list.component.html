@@ -6,7 +6,7 @@
   </div>
 
   <p-card *ngIf="webhooks$ | async as webhooks; else loading">
-    <app-data-table [columns]="columns" [data]="webhooks" [loading]="false">
+    <app-data-table [columns]="columns" [data]="webhooks" [loading]="false" searchPlaceholder="Search webhooks...">
     </app-data-table>
   </p-card>
 

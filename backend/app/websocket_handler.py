@@ -262,7 +262,7 @@ class VerificationWebSocket:
             import tempfile
             import os
             from app.video_utils import extract_sparse_keyframes
-            from app.ai_provider import AmazonNovaLiteProvider
+            from app.ai_provider import get_ai_provider
             from app.scoring import calculate_unified_score, evaluate_trust_status
             from app.database import db_manager
             from app.webhooks import webhook_manager
@@ -289,7 +289,7 @@ class VerificationWebSocket:
                 pass
             
             # 3. Request AI classification
-            provider = AmazonNovaLiteProvider()
+            provider = get_ai_provider()
             metadata = session_db.get("metadata", {}) if (session_db := await session_manager.get_session(session_id)) else {}
             ai_score, ai_explanation = await provider.analyze_frames(frames_b64, metadata)
             

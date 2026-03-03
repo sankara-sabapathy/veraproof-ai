@@ -21,7 +21,6 @@ interface Breadcrumb {
   imports: [
     CommonModule,
     RouterModule,
-    ToolbarModule,
     ButtonModule,
     MenuModule,
     DividerModule
@@ -32,7 +31,7 @@ interface Breadcrumb {
 export class ToolbarComponent implements OnInit {
   @Input() showMenuButton: boolean | null = false;
   @Output() menuToggle = new EventEmitter<void>();
-  
+
   userEmail$: Observable<string | null>;
   breadcrumbs$: Observable<Breadcrumb[]>;
   userMenuItems: MenuItem[] = [];
@@ -93,7 +92,7 @@ export class ToolbarComponent implements OnInit {
   private createBreadcrumbs(): Breadcrumb[] {
     const url = this.router.url;
     const segments = url.split('/').filter(segment => segment && segment !== '');
-    
+
     if (segments.length === 0) {
       return [{ label: 'Dashboard', url: '/dashboard' }];
     }
@@ -105,7 +104,7 @@ export class ToolbarComponent implements OnInit {
       // Skip query parameters
       const cleanSegment = segment.split('?')[0];
       currentUrl += `/${cleanSegment}`;
-      
+
       const label = this.routeLabels[cleanSegment] || this.formatLabel(cleanSegment);
       breadcrumbs.push({ label, url: currentUrl });
     });

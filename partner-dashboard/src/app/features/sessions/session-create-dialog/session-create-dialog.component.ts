@@ -111,26 +111,27 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
   `,
   styles: [`
     .dialog-container {
-      min-width: 500px;
+      min-width: 480px;
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      gap: 20px;
     }
 
     .dialog-content {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 16px;
     }
 
     .description {
-      color: var(--text-color-secondary);
+      color: #64748b;
       margin: 0;
-      line-height: 1.5;
+      line-height: 1.6;
+      font-size: 14px;
     }
 
     .field {
-      margin-bottom: 1.5rem;
+      margin-bottom: 20px;
     }
 
     .full-width {
@@ -139,63 +140,69 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
 
     .field-hint {
       display: block;
-      margin-top: 0.25rem;
-      color: var(--text-color-secondary);
-      font-size: 0.875rem;
+      margin-top: 6px;
+      color: #94a3b8;
+      font-size: 12px;
     }
 
     .session-created {
-      margin-top: 0.5rem;
-      padding: 1rem;
-      background: var(--surface-50);
-      border-radius: 8px;
+      margin-top: 8px;
+      padding: 20px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
     }
 
     .success-message {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      color: var(--primary-color);
-      font-weight: 500;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: #10b981;
+      font-weight: 600;
+      font-size: 14px;
     }
 
     .success-message i {
-      font-size: 1.25rem;
+      font-size: 18px;
     }
 
     .session-info {
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 12px;
     }
 
     .info-row {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 4px;
     }
 
     .label {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-color-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
 
     code {
-      padding: 0.5rem;
-      background: var(--surface-0);
-      border: 1px solid var(--surface-border);
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-      font-size: 0.875rem;
+      padding: 10px 14px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      color: #e2e8f0;
       word-break: break-all;
+      display: block;
     }
 
     .url-container {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 8px;
     }
 
     .session-url {
@@ -205,28 +212,31 @@ import { CreateSessionResponse } from '../../../core/models/interfaces';
     .help-text {
       display: flex;
       align-items: flex-start;
-      gap: 0.5rem;
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background: var(--blue-50);
-      border-left: 3px solid var(--blue-500);
-      border-radius: 4px;
-      font-size: 0.875rem;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #eff6ff;
+      border-left: 3px solid #3b82f6;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1e40af;
+      line-height: 1.5;
     }
 
     .help-text i {
-      font-size: 1.25rem;
-      color: var(--blue-500);
-      margin-top: 0.125rem;
+      font-size: 16px;
+      color: #3b82f6;
+      margin-top: 1px;
     }
 
     .dialog-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 0.5rem;
-      margin-top: 1.5rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--surface-border);
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 16px;
+      padding-bottom: 8px;
+      border-top: 1px solid #f1f5f9;
     }
   `]
 })

@@ -72,6 +72,8 @@ export class DataTableComponent<T> implements OnInit {
   @Output() rowSelect = new EventEmitter<T>();
   @Output() rowUnselect = new EventEmitter<T>();
 
+  @Input() searchPlaceholder: string = 'Search across all columns...';
+
   searchTerm: string = '';
   private gridApi!: GridApi;
 

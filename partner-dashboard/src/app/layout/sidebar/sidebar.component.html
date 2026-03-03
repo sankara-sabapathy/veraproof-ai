@@ -1,10 +1,32 @@
-<div class="sidebar-header">
-  <div class="logo-container">
-    <i class="pi pi-shield logo-icon"></i>
-    <h2 class="logo-text">VeraProof AI</h2>
+<nav class="vp-sidebar">
+  <div class="nav-section">
+    <span class="nav-label">Main</span>
+    <ul class="nav-list">
+      <li *ngFor="let item of visibleNavItems" class="nav-item" [class.active]="isActiveRoute(item.route)">
+        <a [routerLink]="item.route" (click)="onNavItemClicked()">
+          <i [class]="item.icon"></i>
+          <span>{{ item.label }}</span>
+        </a>
+      </li>
+    </ul>
   </div>
-</div>
 
-<p-divider></p-divider>
+  <div class="nav-section" *ngIf="showAdminSection">
+    <span class="nav-label">Administration</span>
+    <ul class="nav-list">
+      <li class="nav-item" [class.active]="isActiveRoute('/admin')">
+        <a routerLink="/admin" (click)="onNavItemClicked()">
+          <i class="pi pi-users"></i>
+          <span>Admin</span>
+        </a>
+      </li>
+    </ul>
+  </div>
 
-<p-menu [model]="menuItems" styleClass="sidebar-menu"></p-menu>
+  <div class="sidebar-footer">
+    <div class="env-badge">
+      <span class="env-dot"></span>
+      <span>Development</span>
+    </div>
+  </div>
+</nav>

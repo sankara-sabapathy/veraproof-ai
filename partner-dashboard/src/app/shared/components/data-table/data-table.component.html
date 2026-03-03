@@ -2,7 +2,7 @@
   <div class="table-toolbar">
     <div class="search-wrapper">
       <i class="pi pi-search search-icon"></i>
-      <input type="text" class="search-input" placeholder="Search across all columns..." [(ngModel)]="searchTerm"
+      <input type="text" class="search-input" [placeholder]="searchPlaceholder" [(ngModel)]="searchTerm"
         (ngModelChange)="onSearchChange()" />
     </div>
   </div>

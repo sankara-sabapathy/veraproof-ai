@@ -16,9 +16,24 @@ class AIProvider(abc.ABC):
         """
         pass
 
+def get_ai_provider() -> AIProvider:
+    """
+    Factory function to get the appropriate AI Provider based on environment configuration.
+    Defaults to AmazonNovaLiteProvider.
+    """
+    import os
+    # For now, default to amazon-nova-lite. In the future this handles 'claude-3', 'qwen-vl', etc.
+    provider_name = os.environ.get("VERAPROOF_AI_MODEL_ID", "amazon-nova-lite").lower()
+    
+    if provider_name == "amazon-nova-lite":
+        return AmazonNovaLiteProvider()
+    else:
+        logger.warning(f"Unknown AI provider '{provider_name}', defaulting to Amazon Nova Lite.")
+        return AmazonNovaLiteProvider()
+
 
 class AmazonNovaLiteProvider(AIProvider):
-    def __init__(self, region_name: str = "us-east-1"):
+    def __init__(self, region_name: str = "ap-south-1"):
         self.bedrock_runtime = boto3.client(service_name="bedrock-runtime", region_name=region_name)
         # We will use us.amazon.nova-lite-v1:0
         self.model_id = "us.amazon.nova-lite-v1:0"

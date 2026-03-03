@@ -12,24 +12,24 @@
   <div *ngIf="dashboardData && !loading; else loadingTemplate">
     <!-- Stats Cards -->
     <div class="stats-grid">
-      <app-stat-card title="Sessions Today" [value]="dashboardData.stats.sessions_today" icon="today"
+      <app-stat-card title="Sessions Today" [value]="dashboardData.stats.sessions_today" icon="calendar-plus"
         iconColor="primary">
       </app-stat-card>
 
-      <app-stat-card title="Sessions This Week" [value]="dashboardData.stats.sessions_this_week" icon="date_range"
+      <app-stat-card title="Sessions This Week" [value]="dashboardData.stats.sessions_this_week" icon="calendar"
         iconColor="primary">
       </app-stat-card>
 
-      <app-stat-card title="Sessions This Month" [value]="dashboardData.stats.sessions_this_month" icon="calendar_month"
+      <app-stat-card title="Sessions This Month" [value]="dashboardData.stats.sessions_this_month" icon="chart-bar"
         iconColor="accent">
       </app-stat-card>
 
       <app-stat-card title="Success Rate" [value]="(dashboardData.stats.success_rate | number:'1.1-1') + '%'"
-        icon="check_circle" iconColor="primary">
+        icon="check-circle" iconColor="primary">
       </app-stat-card>
 
       <app-stat-card title="Avg Trust Score" [value]="dashboardData.stats.average_trust_score | number:'1.1-1'"
-        icon="stars" iconColor="accent">
+        icon="star-fill" iconColor="accent">
       </app-stat-card>
     </div>
 
@@ -59,26 +59,7 @@
       </ng-template>
     </p-card>
 
-    <!-- Charts -->
-    <div class="charts-grid">
-      <p-card styleClass="chart-card">
-        <ng-template pTemplate="header">
-          <div class="card-header">Usage Trend</div>
-        </ng-template>
-        <ng-template pTemplate="content">
-          <app-usage-chart [data]="usageTrendData"></app-usage-chart>
-        </ng-template>
-      </p-card>
 
-      <p-card styleClass="chart-card">
-        <ng-template pTemplate="header">
-          <div class="card-header">Outcome Distribution</div>
-        </ng-template>
-        <ng-template pTemplate="content">
-          <app-outcome-chart [data]="outcomeDistribution"></app-outcome-chart>
-        </ng-template>
-      </p-card>
-    </div>
 
     <!-- Recent Sessions -->
     <p-card styleClass="recent-sessions">

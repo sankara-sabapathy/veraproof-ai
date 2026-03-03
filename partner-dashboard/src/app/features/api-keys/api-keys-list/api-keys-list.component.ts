@@ -56,18 +56,22 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
         field: 'environment',
         headerName: 'Environment',
         cellRenderer: (params: any) => {
-          const envClass = params.value === 'sandbox' ? 'chip-sandbox' : 'chip-production';
-          let html = `<div class="p-chip p-component ${envClass}"><span class="p-chip-text">${this.capitalize(params.value)}</span></div>`;
+          const color = params.value === 'sandbox' ? '#f59e0b' : '#10b981';
+          let html = `<div style="display:flex; align-items:center; gap:6px; font-weight:600; color: var(--vp-text, #1e293b);">
+            <div style="width:8px; height:8px; border-radius:50%; background-color:${color};"></div>
+            ${this.capitalize(params.value)}
+          </div>`;
           if (params.data.revoked_at) {
-            html += ` <div class="p-chip p-component chip-revoked"><span class="p-chip-text">Revoked</span></div>`;
+            html += ` <div class="p-chip p-component" style="background:var(--vp-error-bg);color:var(--vp-error);font-size:11px;padding:2px 8px;font-weight:600;"><span class="p-chip-text">Revoked</span></div>`;
           }
-          return `<div style="display:flex; gap:8px;">${html}</div>`;
+          return `<div style="display:flex; gap:8px; align-items:center;">${html}</div>`;
         }
       },
       {
         field: 'api_key',
         headerName: 'API Key',
         flex: 2,
+        minWidth: 400,
         cellRenderer: CopyTextRendererComponent,
         cellRendererParams: {
           mask: (val: string) => this.getMaskedKey(val),
@@ -81,10 +85,11 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
         valueFormatter: (params: ValueFormatterParams) => this.formatDate(params.value)
       },
       {
-        field: 'total_calls',
+        field: 'usage_count',
         headerName: 'Usage',
+        valueGetter: (params: any) => params.data.usage_count || params.data.total_calls || 0,
         cellRenderer: (params: any) => {
-          return `<div class="usage-stats"><span class="usage-count">${params.value?.toLocaleString() || 0}</span><span class="usage-label" style="font-size:12px;color:gray;display:block;">calls</span></div>`;
+          return `<div class="usage-stats"><span class="usage-count">${params.value.toLocaleString()}</span><span class="usage-label" style="font-size:12px;color:#64748b;display:block;">calls</span></div>`;
         }
       },
       {

@@ -29,7 +29,7 @@ export class DashboardService {
     private analyticsService: AnalyticsService,
     private sessionsService: SessionsService,
     private billingService: BillingService
-  ) {}
+  ) { }
 
   getDashboardData(): Observable<DashboardData> {
     return forkJoin({
@@ -46,9 +46,9 @@ export class DashboardService {
           average_trust_score: analytics.average_trust_score
         },
         quota: {
-          current_usage: subscription.current_usage,
-          monthly_quota: subscription.monthly_quota,
-          usage_percentage: subscription.usage_percentage
+          current_usage: subscription.current_usage || analytics.sessions_this_month,
+          monthly_quota: subscription.monthly_quota || 100,
+          usage_percentage: subscription.current_usage ? subscription.usage_percentage : (analytics.sessions_this_month / (subscription.monthly_quota || 100)) * 100
         },
         recentSessions: sessions.sessions
       }))

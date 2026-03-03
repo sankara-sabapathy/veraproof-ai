@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from app.ai_provider import AmazonNovaLiteProvider
+from app.ai_provider import AmazonNovaLiteProvider, get_ai_provider
 import json
 
 @pytest.fixture
@@ -32,7 +32,7 @@ async def test_analyze_frames_success(mock_boto3_client):
     mock_response = {"body": mock_body}
     mock_runtime.invoke_model.return_value = mock_response
 
-    provider = AmazonNovaLiteProvider()
+    provider = get_ai_provider()
     frames = ["dummy_base64_string_1", "dummy_base64_string_2"]
     
     score, explanation = await provider.analyze_frames(frames)
@@ -52,7 +52,7 @@ async def test_analyze_frames_fallback_on_error(mock_boto3_client):
     mock_boto3_client.return_value = mock_runtime
     mock_runtime.invoke_model.side_effect = Exception("AWS Limit Exceeded")
     
-    provider = AmazonNovaLiteProvider()
+    provider = get_ai_provider()
     score, explanation = await provider.analyze_frames(["frame1"])
     
     assert score == 0.0

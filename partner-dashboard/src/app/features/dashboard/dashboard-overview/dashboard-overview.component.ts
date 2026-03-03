@@ -44,8 +44,6 @@ import { StatusRendererComponent } from '../../../shared/components/data-table/r
 export class DashboardOverviewComponent implements OnInit {
   dashboardData: DashboardData | null = null;
   loading = false;
-  usageTrendData: any[] = [];
-  outcomeDistribution: any = null;
   dialogRef: DynamicDialogRef | undefined;
 
   columns: ColDef[] = [];
@@ -103,7 +101,6 @@ export class DashboardOverviewComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadDashboard();
-    this.loadCharts();
   }
 
   loadDashboard(): void {
@@ -120,25 +117,7 @@ export class DashboardOverviewComponent implements OnInit {
     });
   }
 
-  loadCharts(): void {
-    this.analyticsService.getUsageTrend('daily').subscribe({
-      next: (data) => {
-        this.usageTrendData = data;
-      },
-      error: () => {
-        this.notification.error('Failed to load usage trends');
-      }
-    });
 
-    this.analyticsService.getOutcomeDistribution().subscribe({
-      next: (data) => {
-        this.outcomeDistribution = data;
-      },
-      error: () => {
-        this.notification.error('Failed to load outcome distribution');
-      }
-    });
-  }
 
   createSession(): void {
     this.dialogRef = this.dialogService.open(SessionCreateDialogComponent, {

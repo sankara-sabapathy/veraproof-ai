@@ -7,7 +7,8 @@
 
   <p-card>
     <!-- Data Table -->
-    <app-data-table [columns]="columns" [data]="apiKeys" [loading]="(loading$ | async) ?? false">
+    <app-data-table [columns]="columns" [data]="apiKeys" [loading]="(loading$ | async) ?? false"
+      searchPlaceholder="Search API keys...">
     </app-data-table>
   </p-card>
 </div>

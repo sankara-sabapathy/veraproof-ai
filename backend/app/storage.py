@@ -79,6 +79,26 @@ class ArtifactStorageManager:
                 logger.warning(f"Unexpected error checking bucket: {e}")
         except Exception as e:
             logger.warning(f"S3 connection not ready (will retry later): {e}")
+
+        # Ensure CORS is configured for localhost testing
+        if settings.environment == "development" and self.s3_client:
+            try:
+                self.s3_client.put_bucket_cors(
+                    Bucket=self.bucket_name,
+                    CORSConfiguration={
+                        'CORSRules': [
+                            {
+                                'AllowedHeaders': ['*'],
+                                'AllowedMethods': ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+                                'AllowedOrigins': ['*'],
+                                'ExposeHeaders': ['ETag']
+                            }
+                        ]
+                    }
+                )
+                logger.info(f"CORS configured for S3 bucket: {self.bucket_name}")
+            except Exception as cors_err:
+                logger.warning(f"Failed to set CORS on bucket: {cors_err}")
     
     def _put_object_with_retry(self, key: str, body, content_type: str):
         """Put an object into S3 with automatic retry on connection failures.

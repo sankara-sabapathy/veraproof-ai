@@ -128,47 +128,96 @@ class TestPropertyBasedAuth:
 
 
 class TestAPIKeys:
-    """API Key management tests"""
+    """API Key management tests (mocks db_manager for database-backed APIKeyManager)"""
     
     @pytest.mark.asyncio
     async def test_generate_api_key(self):
-        """Test API key generation"""
-        api_key_manager.api_keys.clear()
+        """Test API key generation stores hashed secret in DB"""
+        from unittest.mock import AsyncMock, patch
         
         tenant_id = "test-tenant-123"
         environment = "sandbox"
         
-        key = await api_key_manager.generate_key(tenant_id, environment)
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_val = AsyncMock(return_value=0)  # No existing keys
+            mock_db.execute_query = AsyncMock(return_value="INSERT")
+            
+            key = await api_key_manager.generate_key(tenant_id, environment)
         
         assert key["api_key"].startswith(f"vp_{environment}_")
         assert key["environment"] == environment
         assert key["key_id"] is not None
+        mock_db.execute_query.assert_awaited_once()
     
     @pytest.mark.asyncio
     async def test_validate_api_key(self):
-        """Test API key validation"""
-        api_key_manager.api_keys.clear()
+        """Test API key validation looks up hashed secret in DB"""
+        from unittest.mock import AsyncMock, patch
+        import hashlib
         
         tenant_id = "test-tenant-123"
-        key = await api_key_manager.generate_key(tenant_id, "sandbox")
+        raw_token = "vp_sandbox_abcdef1234567890abcdef1234567890"
+        hashed = hashlib.sha256(raw_token.encode()).hexdigest()
         
-        validated_tenant, env = await api_key_manager.validate_key(key["api_key"])
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_one = AsyncMock(return_value={
+                "tenant_id": tenant_id,
+                "environment": "sandbox"
+            })
+            
+            validated_tenant, env = await api_key_manager.validate_key(raw_token)
         
         assert validated_tenant == tenant_id
         assert env == "sandbox"
+        mock_db.fetch_one.assert_awaited_once()
+    
+    @pytest.mark.asyncio
+    async def test_validate_invalid_api_key_raises(self):
+        """Test validation of non-existent key raises ValueError"""
+        from unittest.mock import AsyncMock, patch
+        
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_one = AsyncMock(return_value=None)
+            
+            with pytest.raises(ValueError, match="Invalid or revoked API key"):
+                await api_key_manager.validate_key("vp_sandbox_invalid")
     
     @pytest.mark.asyncio
     async def test_revoke_api_key(self):
-        """Test API key revocation"""
-        api_key_manager.api_keys.clear()
+        """Test API key revocation updates DB"""
+        from unittest.mock import AsyncMock, patch
         
-        tenant_id = "test-tenant-123"
-        key = await api_key_manager.generate_key(tenant_id, "sandbox")
+        key_id = "test-key-id-123"
         
-        await api_key_manager.revoke_key(key["key_id"])
+        with patch("app.database.db_manager") as mock_db:
+            # First call: revoke returns the tenant_id
+            mock_db.fetch_one = AsyncMock(return_value={"tenant_id": "test-tenant-123"})
+            
+            await api_key_manager.revoke_key(key_id)
+            
+            mock_db.fetch_one.assert_awaited_once()
+    
+    @pytest.mark.asyncio
+    async def test_revoke_nonexistent_key_raises(self):
+        """Test revoking a non-existent key raises ValueError"""
+        from unittest.mock import AsyncMock, patch
         
-        with pytest.raises(ValueError, match="Invalid or revoked API key"):
-            await api_key_manager.validate_key(key["api_key"])
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_one = AsyncMock(return_value=None)
+            
+            with pytest.raises(ValueError, match="API key not found or already revoked"):
+                await api_key_manager.revoke_key("nonexistent-key")
+    
+    @pytest.mark.asyncio
+    async def test_generate_api_key_quota_exceeded(self):
+        """Test API key generation fails when quota is exceeded"""
+        from unittest.mock import AsyncMock, patch
+        
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_val = AsyncMock(return_value=5)  # At max quota
+            
+            with pytest.raises(ValueError, match="Maximum limit of 5 active API keys reached"):
+                await api_key_manager.generate_key("tenant-123", "sandbox")
 
 
 class TestPropertyBasedAPIKeys:
@@ -182,15 +231,43 @@ class TestPropertyBasedAPIKeys:
     @pytest.mark.asyncio
     async def test_property_api_key_format(self, tenant_id, environment):
         """Property 20: API keys follow correct format"""
-        api_key_manager.api_keys.clear()
+        from unittest.mock import AsyncMock, patch
         
-        key = await api_key_manager.generate_key(tenant_id, environment)
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_val = AsyncMock(return_value=0)
+            mock_db.execute_query = AsyncMock(return_value="INSERT")
+            
+            key = await api_key_manager.generate_key(tenant_id, environment)
         
         # Check format: vp_{environment}_{hex}
         pattern = rf"^vp_{environment}_[a-f0-9]{{32}}$"
         assert re.match(pattern, key["api_key"])
+    
+    @given(
+        tenant_id=st.uuids().map(str),
+        environment=st.sampled_from(["sandbox", "production"])
+    )
+    @settings(max_examples=20, deadline=None)
+    @pytest.mark.asyncio
+    async def test_property_generate_validate_roundtrip(self, tenant_id, environment):
+        """Property: Generated keys can be validated back to the same tenant"""
+        from unittest.mock import AsyncMock, patch
+        import hashlib
         
-        # Validate returns correct tenant
-        validated_tenant, env = await api_key_manager.validate_key(key["api_key"])
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_val = AsyncMock(return_value=0)
+            mock_db.execute_query = AsyncMock(return_value="INSERT")
+            
+            key = await api_key_manager.generate_key(tenant_id, environment)
+        
+        # Now validate with the raw token — mock the DB lookup to return what was stored
+        with patch("app.database.db_manager") as mock_db:
+            mock_db.fetch_one = AsyncMock(return_value={
+                "tenant_id": tenant_id,
+                "environment": environment
+            })
+            
+            validated_tenant, env = await api_key_manager.validate_key(key["api_key"])
+        
         assert validated_tenant == tenant_id
         assert env == environment

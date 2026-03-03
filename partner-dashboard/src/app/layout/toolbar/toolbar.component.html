@@ -1,61 +1,45 @@
-<p-toolbar styleClass="toolbar">
-  <ng-template pTemplate="start">
-    <p-button
-      *ngIf="showMenuButton"
-      icon="pi pi-bars"
-      (onClick)="onMenuToggle()"
-      [text]="true"
-      [rounded]="true"
-      styleClass="menu-button"
-      aria-label="Toggle menu">
-    </p-button>
+<header class="vp-toolbar">
+  <div class="toolbar-left">
+    <button *ngIf="showMenuButton" class="nav-toggle" (click)="onMenuToggle()" aria-label="Toggle menu">
+      <i class="pi pi-bars"></i>
+    </button>
 
-    <div class="brand-container">
-      <i class="pi pi-shield brand-icon"></i>
-      <span class="brand-text">VeraProof AI</span>
-    </div>
+    <a routerLink="/dashboard" class="brand">
+      <div class="brand-logo">
+        <i class="pi pi-shield"></i>
+      </div>
+      <span class="brand-name">VeraProof<span class="brand-accent">AI</span></span>
+    </a>
 
-    <div class="breadcrumb-container">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-          <li 
-            *ngFor="let crumb of breadcrumbs$ | async; let last = last"
-            class="breadcrumb-item"
-            [class.active]="last">
-            <a 
-              *ngIf="!last" 
-              [routerLink]="crumb.url"
-              class="breadcrumb-link">
-              {{ crumb.label }}
-            </a>
-            <span *ngIf="last">{{ crumb.label }}</span>
-            <i *ngIf="!last" class="pi pi-chevron-right breadcrumb-separator"></i>
-          </li>
-        </ol>
-      </nav>
-    </div>
-  </ng-template>
+    <nav class="breadcrumbs" aria-label="breadcrumb">
+      <ol>
+        <li *ngFor="let crumb of breadcrumbs$ | async; let last = last" [class.active]="last">
+          <a *ngIf="!last" [routerLink]="crumb.url">{{ crumb.label }}</a>
+          <span *ngIf="last">{{ crumb.label }}</span>
+          <i *ngIf="!last" class="pi pi-chevron-right sep"></i>
+        </li>
+      </ol>
+    </nav>
+  </div>
 
-  <ng-template pTemplate="end">
-    <div class="user-menu-container">
-      <p-button
-        icon="pi pi-user"
-        (onClick)="userMenu.toggle($event)"
-        [text]="true"
-        [rounded]="true"
-        styleClass="user-menu-button"
-        aria-label="User menu">
-      </p-button>
-      
-      <p-menu #userMenu [model]="userMenuItems" [popup]="true" appendTo="body">
-        <ng-template pTemplate="start">
-          <div class="user-menu-header">
-            <i class="pi pi-envelope"></i>
-            <span class="user-email">{{ userEmail$ | async }}</span>
+  <div class="toolbar-right">
+    <button class="user-btn" (click)="userMenu.toggle($event)" aria-label="User menu">
+      <i class="pi pi-user"></i>
+    </button>
+
+    <p-menu #userMenu [model]="userMenuItems" [popup]="true" appendTo="body">
+      <ng-template pTemplate="start">
+        <div class="user-menu-head">
+          <div class="user-avatar">
+            <i class="pi pi-user"></i>
           </div>
-          <p-divider></p-divider>
-        </ng-template>
-      </p-menu>
-    </div>
-  </ng-template>
-</p-toolbar>
+          <div class="user-info">
+            <span class="user-email">{{ userEmail$ | async }}</span>
+            <span class="user-role">Partner</span>
+          </div>
+        </div>
+        <p-divider></p-divider>
+      </ng-template>
+    </p-menu>
+  </div>
+</header>

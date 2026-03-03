@@ -416,7 +416,7 @@ jobs:
                   "DATABASE_URL": "postgresql://veraproof_admin:${{ steps.db-creds.outputs.password }}@${{ steps.db-creds.outputs.endpoint }}:5432/veraproof?sslmode=require",
                   "COGNITO_USER_POOL_ID": "ap-south-1_l4nlq0n8y",
                   "COGNITO_CLIENT_ID": "2b7tq4gj7426iamis9snrrh2fo",
-                  "ARTIFACTS_BUCKET": "veraproof-artifacts-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
+                  "S3_BUCKET_NAME": "veraproof-artifacts-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
                   "BRANDING_BUCKET": "veraproof-branding-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
                   "JWT_SECRET": "$JWT_SECRET",
                   "JWT_ALGORITHM": "HS256",
