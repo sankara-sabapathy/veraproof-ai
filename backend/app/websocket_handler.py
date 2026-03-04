@@ -274,6 +274,7 @@ class VerificationWebSocket:
             from app.scoring import calculate_unified_score, evaluate_trust_status
             from app.database import db_manager
             from app.webhooks import webhook_manager
+            from app.quota import quota_manager
             
             # 1. Rebuild video file
             if not session_data.get('video_chunks'):
@@ -334,8 +335,15 @@ class VerificationWebSocket:
             
             logger.info("AI Verification Complete", extra={"session_id": session_id, "unified_score": unified_score})
             
-            # 6. Webhook Notification
+            # Decrement usage quota
             tenant_id = session_db.get("tenant_id")
+            if tenant_id:
+                try:
+                    await quota_manager.decrement_quota(str(tenant_id))
+                except Exception as q_err:
+                    logger.error(f"Failed to decrement quota: {q_err}", extra={"session_id": session_id})
+            
+            # 6. Webhook Notification
             tenant_query = "SELECT webhook_url, webhook_secret FROM tenants WHERE tenant_id = $1"
             tenant_data = await db_manager.fetch_one(tenant_query, tenant_id)
             

@@ -42,10 +42,8 @@ export class MainLayoutComponent implements OnInit {
 
   onSidebarNavClick(): void {
     // Close mobile sidebar after navigation
-    this.isHandset$.pipe(take(1)).subscribe(isHandset => {
-      if (isHandset) {
-        this.sidebarVisible = false;
-      }
-    });
+    if (this.breakpointObserver.isMatched([Breakpoints.Handset, Breakpoints.Tablet])) {
+      this.sidebarVisible = false;
+    }
   }
 }

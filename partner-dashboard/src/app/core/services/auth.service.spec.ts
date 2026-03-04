@@ -27,30 +27,39 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     const routerSpyObj = jasmine.createSpyObj('Router', ['navigate']);
-    
+
     // Mock localStorage - check if already spied to avoid double-spy error
     localStorageMock = {};
-    
-    // Safer check: use optional chaining and check if method exists
-    if (!localStorage.getItem || !(localStorage.getItem as any)?.and) {
+
+    if (!localStorage.getItem) { localStorage.getItem = function () { } as any; }
+    if (!localStorage.setItem) { localStorage.setItem = function () { } as any; }
+    if (!localStorage.removeItem) { localStorage.removeItem = function () { } as any; }
+    if (!localStorage.clear) { localStorage.clear = function () { } as any; }
+
+    if ((localStorage.getItem as any)?.and) {
+      (localStorage.getItem as jasmine.Spy).and.callFake((key: string) => localStorageMock[key] || null);
+    } else {
       spyOn(localStorage, 'getItem').and.callFake((key: string) => localStorageMock[key] || null);
     }
-    if (!localStorage.setItem || !(localStorage.setItem as any)?.and) {
-      spyOn(localStorage, 'setItem').and.callFake((key: string, value: string) => {
-        localStorageMock[key] = value;
-      });
+
+    if ((localStorage.setItem as any)?.and) {
+      (localStorage.setItem as jasmine.Spy).and.callFake((key: string, value: string) => { localStorageMock[key] = value; });
+    } else {
+      spyOn(localStorage, 'setItem').and.callFake((key: string, value: string) => { localStorageMock[key] = value; });
     }
-    if (!localStorage.removeItem || !(localStorage.removeItem as any)?.and) {
-      spyOn(localStorage, 'removeItem').and.callFake((key: string) => {
-        delete localStorageMock[key];
-      });
+
+    if ((localStorage.removeItem as any)?.and) {
+      (localStorage.removeItem as jasmine.Spy).and.callFake((key: string) => { delete localStorageMock[key]; });
+    } else {
+      spyOn(localStorage, 'removeItem').and.callFake((key: string) => { delete localStorageMock[key]; });
     }
-    if (!localStorage.clear || !(localStorage.clear as any)?.and) {
-      spyOn(localStorage, 'clear').and.callFake(() => {
-        localStorageMock = {};
-      });
+
+    if ((localStorage.clear as any)?.and) {
+      (localStorage.clear as jasmine.Spy).and.callFake(() => { localStorageMock = {}; });
+    } else {
+      spyOn(localStorage, 'clear').and.callFake(() => { localStorageMock = {}; });
     }
-    
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
@@ -369,9 +378,9 @@ describe('AuthService', () => {
     it('should store valid tokens', () => {
       const accessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.test';
       const refreshToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.refresh';
-      
+
       service.setTokens(accessToken, refreshToken);
-      
+
       expect(localStorage.getItem('access_token')).toBe(accessToken);
       expect(localStorage.getItem('refresh_token')).toBe(refreshToken);
     });
@@ -459,19 +468,19 @@ describe('AuthService', () => {
 
       // Manually trigger the load
       (service as any).loadUserFromStorage();
-      
+
       expect(service.getCurrentUser()).toEqual(mockUser);
     });
 
     it('should not load user if token is expired', () => {
       const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjoxfQ.test';
-      
+
       localStorage.setItem('user', JSON.stringify(mockUser));
       localStorage.setItem('access_token', expiredToken);
 
       // Manually trigger the load
       (service as any).loadUserFromStorage();
-      
+
       expect(service.getCurrentUser()).toBeNull();
       expect(localStorage.getItem('access_token')).toBeNull();
     });
@@ -482,9 +491,8 @@ describe('AuthService', () => {
 
       // Manually trigger the load
       (service as any).loadUserFromStorage();
-      
+
       expect(service.getCurrentUser()).toBeNull();
     });
   });
 });
- 

@@ -644,27 +644,72 @@ async def get_webhook_logs(
 async def get_subscription(tenant_id: str = Depends(get_tenant_from_jwt)):
     """Get current subscription"""
     stats = await quota_manager.get_usage_stats(tenant_id)
+    # Inject frontend-required fields
+    stats["estimated_cost"] = 0.0
+    stats["next_renewal_date"] = stats["billing_cycle_end"]
     return stats
+
+@router.get("/billing/plans")
+async def get_billing_plans():
+    """Get available subscription plans"""
+    return [
+        {
+            "plan_id": "Starter",
+            "name": "Starter",
+            "tier": "Starter",
+            "monthly_quota": 1000,
+            "price_per_month": 49.0,
+            "price_per_verification": 0.05,
+            "features": ["1,000 Verifications/mo", "Basic Analytics", "Standard Support"]
+        },
+        {
+            "plan_id": "Pro",
+            "name": "Professional",
+            "tier": "Professional",
+            "monthly_quota": 10000,
+            "price_per_month": 199.0,
+            "price_per_verification": 0.02,
+            "features": ["10,000 Verifications/mo", "Advanced Analytics", "Priority Support", "Webhooks"],
+            "recommended": True
+        },
+        {
+            "plan_id": "Enterprise",
+            "name": "Enterprise",
+            "tier": "Enterprise",
+            "monthly_quota": 100000,
+            "price_per_month": 999.0,
+            "price_per_verification": 0.01,
+            "features": ["100,000+ Verifications/mo", "Custom Branding", "Dedicated Account Manager", "SLA"]
+        }
+    ]
 
 
 @router.post("/billing/upgrade")
 async def upgrade_subscription(
-    plan: str,
+    request: dict,
     tenant_id: str = Depends(get_tenant_from_jwt)
 ):
-    """Upgrade subscription plan"""
-    order = await billing_manager.create_subscription(tenant_id, plan, "monthly")
-    return order
+    """Upgrade subscription plan (Mocked)"""
+    plan_id = request.get("plan_id", "Pro")
+    # Simulate a successful payment by processing the upgrade in DB
+    await billing_manager.handle_payment_success("mock_upgrade", tenant_id, plan_id)
+    
+    return {"message": "Plan upgraded successfully", "status": "success"}
 
 
 @router.post("/billing/purchase-credits")
 async def purchase_credits(
-    amount: int,
+    request: dict,
     tenant_id: str = Depends(get_tenant_from_jwt)
 ):
-    """Purchase credits"""
-    order = await billing_manager.purchase_credits(tenant_id, amount)
-    return order
+    """Purchase credits (Mocked)"""
+    amount = request.get("amount", 100)
+    
+    # Simulate an immediate successful payment by updating quota
+    query = "UPDATE tenants SET monthly_quota = monthly_quota + $1 WHERE tenant_id = $2"
+    await db_manager.execute_query(query, amount, tenant_id)
+    
+    return {"message": f"{amount} credits purchased successfully", "status": "success"}
 
 
 @router.get("/billing/invoices")

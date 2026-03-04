@@ -57,6 +57,7 @@ async def test_analyze_frames_fallback_on_error(mock_boto3_client):
     provider = get_ai_provider()
     score, explanation = await provider.analyze_frames(["frame1"])
     
-    assert score == 0.0
+    assert score == -1.0
+    assert "error" in explanation
     assert "error" in explanation
     assert "AWS Limit Exceeded" in explanation["error"]

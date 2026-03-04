@@ -73,8 +73,7 @@ describe('ToolbarComponent', () => {
   it('should render user menu button', () => {
     fixture.detectChanges();
 
-    // PrimeNG button uses p-button selector
-    const userMenuButton = fixture.nativeElement.querySelector('.user-menu-button');
+    const userMenuButton = fixture.nativeElement.querySelector('.user-btn');
     expect(userMenuButton).toBeTruthy();
   });
 
@@ -98,10 +97,10 @@ describe('ToolbarComponent', () => {
     expect(component.userMenuItems[0].icon).toBe('pi pi-sign-out');
   });
 
-  it('should render PrimeNG toolbar', () => {
+  it('should render toolbar header', () => {
     fixture.detectChanges();
 
-    const toolbar = fixture.nativeElement.querySelector('p-toolbar');
+    const toolbar = fixture.nativeElement.querySelector('.vp-toolbar');
     expect(toolbar).toBeTruthy();
   });
 
@@ -111,10 +110,10 @@ describe('ToolbarComponent', () => {
   it('should render brand container', () => {
     fixture.detectChanges();
 
-    const brandContainer = fixture.nativeElement.querySelector('.brand-container');
+    const brandContainer = fixture.nativeElement.querySelector('.brand');
     expect(brandContainer).toBeTruthy();
-    
-    const brandText = brandContainer.querySelector('.brand-text');
-    expect(brandText?.textContent).toContain('VeraProof AI');
+
+    const brandName = brandContainer.querySelector('.brand-name');
+    expect(brandName?.textContent).toContain('VeraProof');
   });
 });

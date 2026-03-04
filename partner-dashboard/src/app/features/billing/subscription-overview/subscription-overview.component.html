@@ -61,6 +61,7 @@
     <ng-template pTemplate="footer">
       <div class="card-actions">
         <p-button label="View Plans" [routerLink]="['/billing/plans']" severity="primary"></p-button>
+        <p-button label="Buy Credits (500)" (onClick)="buyCredits(500)" severity="secondary"></p-button>
         <p-button label="View Invoices" [routerLink]="['/billing/invoices']" severity="secondary" [text]="true"></p-button>
       </div>
     </ng-template>

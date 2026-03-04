@@ -55,7 +55,7 @@ export interface Invoice {
 export class BillingService {
   private readonly baseUrl = '/api/v1/billing';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService) { }
 
   getSubscription(): Observable<Subscription> {
     return this.api.get<Subscription>(`${this.baseUrl}/subscription`);
@@ -70,7 +70,7 @@ export class BillingService {
   }
 
   purchaseCredits(amount: number): Observable<PurchaseResponse> {
-    return this.api.post<PurchaseResponse>(`${this.baseUrl}/credits`, { amount });
+    return this.api.post<PurchaseResponse>(`${this.baseUrl}/purchase-credits`, { amount });
   }
 
   getInvoices(): Observable<Invoice[]> {

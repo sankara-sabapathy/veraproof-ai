@@ -61,15 +61,21 @@ describe('ApiKeyCreateDialogComponent', () => {
 
     fixture = TestBed.createComponent(ApiKeyCreateDialogComponent);
     component = fixture.componentInstance;
-    
-    // Set up clipboard spy after component creation (check if already spied)
+
+    if (!(navigator as any).clipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: () => Promise.resolve() },
+        configurable: true
+      });
+    }
+
     if (!(navigator.clipboard.writeText as any).and) {
       clipboardSpy = spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
     } else {
       clipboardSpy = navigator.clipboard.writeText as jasmine.Spy;
       clipboardSpy.and.returnValue(Promise.resolve());
     }
-    
+
     fixture.detectChanges();
   });
 
@@ -93,9 +99,9 @@ describe('ApiKeyCreateDialogComponent', () => {
 
   it('should generate API key successfully', () => {
     mockApiKeysService.generateKey.and.returnValue(of(mockApiKeyResponse));
-    
+
     component.onGenerate();
-    
+
     expect(mockApiKeysService.generateKey).toHaveBeenCalledWith('sandbox');
     expect(component.generatedKey).toEqual(mockApiKeyResponse);
     expect(component.loading).toBe(false);
@@ -106,9 +112,9 @@ describe('ApiKeyCreateDialogComponent', () => {
   it('should handle generation error', () => {
     const error = new Error('Network error');
     mockApiKeysService.generateKey.and.returnValue(throwError(() => error));
-    
+
     component.onGenerate();
-    
+
     expect(component.loading).toBe(false);
     expect(component.generatedKey).toBeNull();
     expect(mockNotificationService.error).toHaveBeenCalledWith('Network error');
@@ -116,9 +122,9 @@ describe('ApiKeyCreateDialogComponent', () => {
 
   it('should not generate key if form is invalid', () => {
     component.createForm.patchValue({ environment: null });
-    
+
     component.onGenerate();
-    
+
     expect(mockApiKeysService.generateKey).not.toHaveBeenCalled();
   });
 
@@ -128,18 +134,18 @@ describe('ApiKeyCreateDialogComponent', () => {
       environment: 'production'
     }));
     component.createForm.patchValue({ environment: 'production' });
-    
+
     component.onGenerate();
-    
+
     expect(mockApiKeysService.generateKey).toHaveBeenCalledWith('production');
   });
 
   it('should copy API key to clipboard', async () => {
     clipboardSpy.and.returnValue(Promise.resolve());
     component.generatedKey = mockApiKeyResponse;
-    
+
     await component.copyToClipboard(mockApiKeyResponse.api_key);
-    
+
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockApiKeyResponse.api_key);
     expect(component.keyCopied).toBe(true);
     expect(mockNotificationService.success).toHaveBeenCalledWith('Copied to clipboard');
@@ -147,25 +153,25 @@ describe('ApiKeyCreateDialogComponent', () => {
 
   it('should handle clipboard copy failure', async () => {
     clipboardSpy.and.returnValue(Promise.reject(new Error('Clipboard error')));
-    
+
     component.copyToClipboard('test');
-    
+
     // Wait for promise to reject
     await new Promise(resolve => setTimeout(resolve, 10));
-    
+
     expect(mockNotificationService.error).toHaveBeenCalledWith('Failed to copy to clipboard');
   });
 
   it('should reset copied state after 2 seconds', (done) => {
     clipboardSpy.and.returnValue(Promise.resolve());
     component.generatedKey = mockApiKeyResponse;
-    
+
     component.copyToClipboard(mockApiKeyResponse.api_key);
-    
+
     // Verify it's set to true immediately after copy
     setTimeout(() => {
       expect(component.keyCopied).toBe(true);
-      
+
       // Verify it's reset to false after 2 seconds
       setTimeout(() => {
         expect(component.keyCopied).toBe(false);
@@ -176,7 +182,7 @@ describe('ApiKeyCreateDialogComponent', () => {
 
   it('should close dialog without warning if no key generated', () => {
     component.onClose();
-    
+
     expect(mockDialogRef.close).toHaveBeenCalled();
     expect(component.showCloseWarning).toBe(false);
   });
@@ -184,9 +190,9 @@ describe('ApiKeyCreateDialogComponent', () => {
   it('should show warning when closing without copying key', () => {
     component.generatedKey = mockApiKeyResponse;
     component.keyCopied = false;
-    
+
     component.onClose();
-    
+
     expect(component.showCloseWarning).toBe(true);
     expect(mockDialogRef.close).not.toHaveBeenCalled();
   });
@@ -194,26 +200,26 @@ describe('ApiKeyCreateDialogComponent', () => {
   it('should close dialog without warning if key was copied', () => {
     component.generatedKey = mockApiKeyResponse;
     component.keyCopied = true;
-    
+
     component.onClose();
-    
+
     expect(mockDialogRef.close).toHaveBeenCalled();
     expect(component.showCloseWarning).toBe(false);
   });
 
   it('should confirm close and dismiss dialog', () => {
     component.showCloseWarning = true;
-    
+
     component.confirmClose();
-    
+
     expect(mockDialogRef.close).toHaveBeenCalled();
   });
 
   it('should cancel close and hide warning', () => {
     component.showCloseWarning = true;
-    
+
     component.cancelClose();
-    
+
     expect(component.showCloseWarning).toBe(false);
     expect(mockDialogRef.close).not.toHaveBeenCalled();
   });
@@ -240,18 +246,18 @@ describe('ApiKeyCreateDialogComponent', () => {
 
   it('should set loading state during generation', () => {
     mockApiKeysService.generateKey.and.returnValue(of(mockApiKeyResponse));
-    
+
     component.onGenerate();
-    
+
     // Loading should be set to true initially (though it completes quickly in test)
     expect(mockApiKeysService.generateKey).toHaveBeenCalled();
   });
 
   it('should add generated key to state with correct format', () => {
     mockApiKeysService.generateKey.and.returnValue(of(mockApiKeyResponse));
-    
+
     component.onGenerate();
-    
+
     const addedKey = mockStateService.addKey.calls.mostRecent().args[0];
     expect(addedKey.key_id).toBe(mockApiKeyResponse.key_id);
     expect(addedKey.api_key).toBe(mockApiKeyResponse.api_key);

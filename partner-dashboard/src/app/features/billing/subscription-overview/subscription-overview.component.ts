@@ -9,6 +9,7 @@ import { DividerModule } from 'primeng/divider';
 import { BillingService } from '../services/billing.service';
 import { BillingStateService } from '../services/billing-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -34,8 +35,9 @@ export class SubscriptionOverviewComponent implements OnInit {
   constructor(
     private billingService: BillingService,
     private billingState: BillingStateService,
-    private notification: NotificationService
-  ) {}
+    private notification: NotificationService,
+    private confirmationDialog: ConfirmationDialogService
+  ) { }
 
   ngOnInit(): void {
     this.loadSubscription();
@@ -56,5 +58,31 @@ export class SubscriptionOverviewComponent implements OnInit {
     if (percentage >= 100) return 'danger';
     if (percentage >= 80) return 'warning';
     return 'success';
+  }
+
+  buyCredits(amount: number): void {
+    this.confirmationDialog.confirm({
+      title: 'Purchase Credits',
+      message: `Are you sure you want to purchase a block of ${amount} verifications? This will increase your monthly quota seamlessly.`,
+      confirmText: 'Purchase',
+      cancelText: 'Cancel',
+      confirmColor: 'primary'
+    }).subscribe(confirmed => {
+      if (confirmed) {
+        this.billingState.setLoading(true);
+        this.billingService.purchaseCredits(amount).subscribe({
+          next: () => {
+            this.notification.success(`Successfully added ${amount} credits to your quota.`);
+            // Reload the subscription state
+            this.loadSubscription();
+          },
+          error: (error) => {
+            this.billingState.setError(error.message);
+            this.notification.error('Failed to purchase credits.');
+            this.loadSubscription(); // Reset loading indicator safely
+          }
+        });
+      }
+    });
   }
 }

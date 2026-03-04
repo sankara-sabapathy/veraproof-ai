@@ -15,7 +15,7 @@ describe('MainLayoutComponent', () => {
   let authService: jasmine.SpyObj<AuthService>;
 
   beforeEach(async () => {
-    const breakpointObserverSpy = jasmine.createSpyObj('BreakpointObserver', ['observe']);
+    const breakpointObserverSpy = jasmine.createSpyObj('BreakpointObserver', ['observe', 'isMatched']);
     const authServiceSpy = jasmine.createSpyObj('AuthService', ['isAdmin', 'getCurrentUser', 'logout'], {
       currentUser$: of({ email: 'test@example.com', role: 'Admin' })
     });
@@ -56,6 +56,7 @@ describe('MainLayoutComponent', () => {
 
     // Set up default breakpoint observer behavior before creating component
     breakpointObserver.observe.and.returnValue(of({ matches: false, breakpoints: {} }));
+    breakpointObserver.isMatched.and.returnValue(false);
 
     fixture = TestBed.createComponent(MainLayoutComponent);
     component = fixture.componentInstance;

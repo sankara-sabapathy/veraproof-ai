@@ -5,6 +5,19 @@ describe('ThemeService', () => {
   let service: ThemeService;
   let localStorageSpy: jasmine.SpyObj<Storage>;
 
+  let originalLocalStorage: any;
+
+  beforeAll(() => {
+    originalLocalStorage = window.localStorage;
+  });
+
+  afterAll(() => {
+    Object.defineProperty(window, 'localStorage', {
+      value: originalLocalStorage,
+      writable: true
+    });
+  });
+
   beforeEach(() => {
     // Mock localStorage
     localStorageSpy = jasmine.createSpyObj('localStorage', ['getItem', 'setItem']);
@@ -115,10 +128,10 @@ describe('ThemeService', () => {
   describe('theme signal', () => {
     it('should be readonly', () => {
       const themeSignal = service.theme;
-      
+
       // Verify it's a signal by checking it's callable
       expect(typeof themeSignal).toBe('function');
-      
+
       // Verify initial value
       expect(themeSignal()).toBe('light');
     });

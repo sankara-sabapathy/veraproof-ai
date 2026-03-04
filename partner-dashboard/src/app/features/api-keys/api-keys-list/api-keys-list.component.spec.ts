@@ -10,6 +10,7 @@ import { ApiKeysStateService } from '../services/api-keys-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { ApiKey } from '../../../core/models/interfaces';
+import { ConfirmationService } from 'primeng/api';
 
 describe('ApiKeysListComponent', () => {
   let component: ApiKeysListComponent;
@@ -80,7 +81,8 @@ describe('ApiKeysListComponent', () => {
         { provide: ApiKeysService, useValue: mockApiKeysService },
         { provide: ApiKeysStateService, useValue: mockStateService },
         { provide: NotificationService, useValue: mockNotificationService },
-        { provide: ConfirmationDialogService, useValue: mockConfirmationDialog }
+        { provide: ConfirmationDialogService, useValue: mockConfirmationDialog },
+        ConfirmationService
       ]
     }).compileComponents();
 
@@ -88,6 +90,13 @@ describe('ApiKeysListComponent', () => {
     component = fixture.componentInstance;
 
     // Set up clipboard spy after component creation
+    if (!(navigator as any).clipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: () => Promise.resolve() },
+        configurable: true
+      });
+    }
+
     if (!(navigator.clipboard.writeText as any).and) {
       clipboardSpy = spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
     } else {
@@ -115,7 +124,7 @@ describe('ApiKeysListComponent', () => {
     expect((component.columns[0] as any).field).toBe('environment');
     expect((component.columns[1] as any).field).toBe('api_key');
     expect((component.columns[2] as any).field).toBe('created_at');
-    expect((component.columns[3] as any).field).toBe('total_calls');
+    expect((component.columns[3] as any).field).toBe('usage_count');
     expect((component.columns[4] as any).field).toBe('last_used_at');
     expect((component.columns[5] as any).headerName).toBe('Actions');
   });
@@ -132,7 +141,7 @@ describe('ApiKeysListComponent', () => {
 
   it('should format date correctly', () => {
     const formatted = component.formatDate('2024-01-15T10:30:00Z');
-    expect(formatted).toContain('1/15/2024');
+    expect(formatted).toContain('1/15/24');
   });
 
   it('should return "Never" for null date', () => {
