@@ -248,6 +248,7 @@ jobs:
           echo "DASHBOARD_BUCKET=$DASHBOARD_BUCKET"
           
           echo "lightsail-service=$LIGHTSAIL_SERVICE" >> $GITHUB_OUTPUT
+          echo "dashboard-bucket=$DASHBOARD_BUCKET" >> $GITHUB_OUTPUT
           echo "verification-bucket=$VERIFICATION_BUCKET" >> $GITHUB_OUTPUT
           echo "dashboard-distribution=$DASHBOARD_DIST" >> $GITHUB_OUTPUT
           echo "verification-distribution=$VERIFICATION_DIST" >> $GITHUB_OUTPUT
