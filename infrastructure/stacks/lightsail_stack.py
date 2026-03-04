@@ -115,29 +115,12 @@ class VeraproofLightsailStack(Stack):
             user_name=f"veraproof-backend-user-{stage}"
         )
 
-        # IAM role for the backend to access services (S3, Bedrock, SSM)
-        backend_role = iam.Role(
-            self,
-            f"Veraproof-Backend-Role-{stage}",
-            role_name=f"veraproof-backend-runtime-role-{stage}",
-            assumed_by=iam.ArnPrincipal(backend_user.user_arn),
-            description=f"Runtime IAM role for backend container - {stage}"
-        )
+        # Grant S3 permissions natively to the backend user
+        artifacts_bucket.grant_read_write(backend_user)
+        branding_bucket.grant_read_write(backend_user)
         
-        # Explicit policy: User can only assume this specific role
+        # Grant SSM Parameter Store read permission to the user
         backend_user.add_to_policy(
-            iam.PolicyStatement(
-                actions=["sts:AssumeRole"],
-                resources=[backend_role.role_arn]
-            )
-        )
-        
-        # Grant S3 permissions to the role
-        artifacts_bucket.grant_read_write(backend_role)
-        branding_bucket.grant_read_write(backend_role)
-        
-        # Grant SSM Parameter Store read permission to the role
-        backend_role.add_to_policy(
             iam.PolicyStatement(
                 actions=[
                     "ssm:GetParameter",
@@ -150,8 +133,8 @@ class VeraproofLightsailStack(Stack):
             )
         )
         
-        # Grant Amazon Bedrock invocation to the role
-        backend_role.add_to_policy(
+        # Grant Amazon Bedrock invocation to the user
+        backend_user.add_to_policy(
             iam.PolicyStatement(
                 actions=[
                     "bedrock:InvokeModel",
@@ -236,14 +219,7 @@ class VeraproofLightsailStack(Stack):
             export_name=f"Veraproof-Lightsail-DB-Port-{stage}"
         )
         
-        CfnOutput(
-            self,
-            f"Lightsail-IAM-Role-ARN-{stage}",
-            value=backend_role.role_arn,
-            description=f"IAM role ARN for Backend execution - {stage}",
-            export_name=f"VeraproofLightsailRoleARN{stage}"
-        )
-        
+
         # CORS URLs for backend configuration
         if self.dashboard_url:
             CfnOutput(

@@ -177,7 +177,6 @@ jobs:
       verification-distribution: ${{ steps.outputs.outputs.verification-distribution }}
       dashboard-url: ${{ steps.outputs.outputs.dashboard-url }}
       verification-url: ${{ steps.outputs.outputs.verification-url }}
-      backend-role: ${{ steps.outputs.outputs.backend-role }}
     
     steps:
       - name: Checkout code
@@ -254,11 +253,7 @@ jobs:
           echo "verification-distribution=$VERIFICATION_DIST" >> $GITHUB_OUTPUT
           echo "dashboard-url=$DASHBOARD_URL" >> $GITHUB_OUTPUT
           echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
-          
-          # Extract Backend IAM Role for STS AssumeRole
-          ROLE_ARN=$(jq -r '.["Veraproof-Lightsail-Stack-${{ steps.stage.outputs.stage }}"]["VeraproofLightsailRoleARN${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
-          echo "ROLE_ARN=$ROLE_ARN"
-          echo "backend-role=$ROLE_ARN" >> $GITHUB_OUTPUT
+          echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
   
   # Build and Deploy Backend to Lightsail
   deploy-backend:
@@ -461,8 +456,7 @@ jobs:
                   "OTEL_EXPORTER_OTLP_HEADERS": "$OTLP_HEADERS",
                   "OTEL_SERVICE_NAME": "veraproof-backend-${{ steps.stage.outputs.stage }}",
                   "AWS_ACCESS_KEY_ID": "$BACKEND_AWS_ACCESS_KEY_ID",
-                  "AWS_SECRET_ACCESS_KEY": "$BACKEND_AWS_SECRET_ACCESS_KEY",
-                  "AWS_ASSUME_ROLE_ARN": "${{ needs.deploy-infrastructure.outputs.backend-role }}"
+                  "AWS_SECRET_ACCESS_KEY": "$BACKEND_AWS_SECRET_ACCESS_KEY"
                 }
               }
             },

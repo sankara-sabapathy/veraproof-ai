@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 import json
 import logging
 import asyncio
+import time
 from datetime import datetime
 from opentelemetry import trace
 
@@ -178,6 +179,7 @@ class VerificationWebSocket:
     async def perform_verification(self, session_id: str):
         """Perform Tier 1 verification, show result to user, upload artifacts, then defer Tier 2 (AI)"""
         try:
+            start_time = time.time()
             from app.sensor_fusion import sensor_fusion_analyzer
             
             session_data = self.session_data.get(session_id)
@@ -232,6 +234,11 @@ class VerificationWebSocket:
                 physics_score=tier_1_score,
                 verification_status=tier_1_status
             )
+            
+            # Enforce strict 15-second minimum wait time for UX
+            elapsed_time = time.time() - start_time
+            if elapsed_time < 15.0:
+                await asyncio.sleep(15.0 - elapsed_time)
             
             # Send DEFINITIVE result to user based on Tier 1 physics
             await self.send_message(session_id, {
