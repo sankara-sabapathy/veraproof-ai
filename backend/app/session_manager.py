@@ -167,6 +167,8 @@ class SessionManager:
         if verification_status is None:
             verification_status = SessionState.COMPLETE.value
 
+        # NOTE: $10 is verification_status, $11 is state (same value)
+        # They are separate columns so they MUST use separate parameter indices.
         query = """
             UPDATE sessions
             SET 
@@ -180,24 +182,37 @@ class SessionManager:
                 unified_score = $8,
                 ai_explanation = $9::jsonb,
                 verification_status = $10,
-                state = $10
-            WHERE session_id = $11
+                state = $11
+            WHERE session_id = $12
         """
         
-        await db_manager.execute_query(
-            query,
-            tier_1_score,
-            tier_2_score,
-            final_trust_score,
-            correlation_value,
-            reasoning,
-            ai_score,
-            physics_score,
-            unified_score,
-            json.dumps(ai_explanation) if ai_explanation else None,
-            verification_status,
-            session_id
-        )
+        try:
+            await db_manager.execute_query(
+                query,
+                tier_1_score,
+                tier_2_score,
+                final_trust_score,
+                correlation_value,
+                reasoning,
+                ai_score,
+                physics_score,
+                unified_score,
+                json.dumps(ai_explanation) if ai_explanation else None,
+                verification_status,  # $10
+                verification_status,  # $11 state (same value)
+                session_id            # $12
+            )
+        except Exception as e:
+            logger.error(f"Failed to update session results in database: {e}", extra={"session_id": session_id})
+            # Update in-memory fallback if database is down
+            if session_id in self.in_memory_sessions:
+                self.in_memory_sessions[session_id].update({
+                    "tier_1_score": tier_1_score,
+                    "tier_2_score": tier_2_score,
+                    "final_trust_score": final_trust_score,
+                    "correlation_value": correlation_value,
+                    "verification_status": verification_status,
+                })
         
         logger.info(f"Session analytics recorded & completed", extra={
             "session_id": session_id, 

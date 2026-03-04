@@ -9,6 +9,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { SessionsService } from '../services/sessions.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CreateSessionResponse } from '../../../core/models/interfaces';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-session-create-dialog',
@@ -274,6 +275,15 @@ export class SessionCreateDialogComponent implements OnInit {
 
     this.sessionsService.createSession(request).subscribe({
       next: (response) => {
+        // Dynamically override the verification URL for local development to use the current IP
+        if (!environment.production) {
+          try {
+            const urlObj = new URL(response.session_url);
+            response.session_url = `https://${window.location.hostname}:8300${urlObj.pathname}${urlObj.search}`;
+          } catch (e) {
+            console.warn('Failed to parse and rewrite session_url for local dev', e);
+          }
+        }
         this.createdSession = response;
         this.loading = false;
         this.notificationService.success('Session created successfully!');

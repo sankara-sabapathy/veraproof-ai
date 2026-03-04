@@ -70,9 +70,21 @@ class AWSCredentialManager:
                 
             except Exception as e:
                 logger.error(f"STS: Failed to assume role {settings.aws_assume_role_arn}: {e}")
-                # Re-raise so startup fails quickly if IAM is misconfigured
                 if not self._session:
-                    raise
+                    # Do NOT crash the container on STS failure.
+                    # Fall back to static credentials and log a critical warning.
+                    # This allows the container to stay alive while the operator fixes IAM.
+                    logger.critical(
+                        "STS: AssumeRole failed and no prior session exists. "
+                        "Falling back to static credentials. AWS services may not work correctly. "
+                        f"Error: {e}"
+                    )
+                    self._session = boto3.Session(
+                        aws_access_key_id=settings.aws_access_key_id,
+                        aws_secret_access_key=settings.aws_secret_access_key,
+                        region_name=settings.aws_region
+                    )
+                    self._expiration = None
 
     def _start_refresh_thread(self):
         self._refresh_thread = threading.Thread(target=self._refresh_loop, daemon=True, name="AWSCredentialsRefresher")
