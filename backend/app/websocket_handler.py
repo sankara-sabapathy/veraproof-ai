@@ -350,18 +350,25 @@ class VerificationWebSocket:
                     "metadata": session_db.get("metadata", {})
                 }
                 
-                asyncio.create_task(
-                    webhook_manager.retry_webhook(
-                        tenant_id=str(tenant_id),
-                        webhook_url=tenant_data.get("webhook_url"),
-                        payload=webhook_payload,
-                        api_secret=tenant_data.get("webhook_secret") or "default_secret"
+                # Make sure exceptions in webhook don't crash the container or background task
+                try:
+                    asyncio.create_task(
+                        webhook_manager.retry_webhook(
+                            tenant_id=str(tenant_id),
+                            webhook_url=tenant_data.get("webhook_url"),
+                            payload=webhook_payload,
+                            api_secret=tenant_data.get("webhook_secret") or "default_secret"
+                        )
                     )
-                )
+                except Exception as webhook_err:
+                    logger.error(f"Failed to schedule webhook: {webhook_err}", extra={"session_id": session_id})
                 
         except Exception as e:
             # AI failure is fully isolated — it does NOT change the user-facing verification status
             logger.error(f"Background AI worker failed (non-critical): {e}", exc_info=True, extra={"session_id": session_id})
+        finally:
+            # Clear in-memory data to free up memory ONLY after all background tasks are done
+            self.clear_session_data(session_id)
     
     async def upload_session_artifacts(self, session_id: str):
         """Upload session artifacts to S3 after verification"""
@@ -411,7 +418,9 @@ class VerificationWebSocket:
                 logger.info(f"S3 metadata keys reconciled effectively", extra={"session_id": session_id})
             
             # Clear in-memory data to free up memory
-            self.clear_session_data(session_id)
+            # DO NOT clear here! It's clearing video chunks while run_ai_verification_background is running!
+            # Using memory cautiously is good, but asyncio.create_task runs in parallel
+            # self.clear_session_data(session_id)
             
         except Exception as e:
             logger.error(f"S3 global artifact engine thread failed: {e}", exc_info=True, extra={"session_id": session_id})
