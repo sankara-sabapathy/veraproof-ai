@@ -4,6 +4,7 @@ import json
 import logging
 from typing import List, Dict, Any, Tuple
 import boto3
+from app.aws_credentials import aws_cred_manager
 
 logger = logging.getLogger(__name__)
 

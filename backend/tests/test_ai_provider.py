@@ -5,8 +5,10 @@ import json
 
 @pytest.fixture
 def mock_boto3_client():
-    with patch("boto3.client") as mock_client:
-        yield mock_client
+    with patch("app.ai_provider.aws_cred_manager.get_session") as mock_get_session:
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        yield mock_session.client
 
 @pytest.mark.asyncio
 async def test_analyze_frames_success(mock_boto3_client):
