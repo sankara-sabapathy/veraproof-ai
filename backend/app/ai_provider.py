@@ -108,6 +108,7 @@ class AmazonNova2LiteProvider(AIProvider):
 
             return score, explanation
         except Exception as e:
-            logger.error(f"Error invoking Amazon Nova 2 Lite: {e}")
-            # Fallback return in case of any AWS API error, formatting error or invalid JSON
-            return 0.0, {"error": f"AI evaluation failed: {str(e)}"}
+            logger.error(f"Error invoking Amazon Nova: {e}")
+            # Fallback return in case of any AWS API error (like quota limits)
+            # Return -1.0 so the scoring engine knows to ignore the AI and strictly trust Tier 1
+            return -1.0, {"error": f"AI evaluation failed: {str(e)}"}

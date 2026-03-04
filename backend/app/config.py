@@ -3,9 +3,10 @@ from typing import List
 import os
 from dotenv import load_dotenv
 
-# Explicitly load .env file
-load_dotenv()
-
+# Load .env file but DO NOT override existing OS environment variables.
+# AWS Lightsail injects environment variables at runtime. If override=True, 
+# the bundled .env file will overwrite the production credentials!
+load_dotenv(override=False)
 
 class Settings(BaseSettings):
     # Database
