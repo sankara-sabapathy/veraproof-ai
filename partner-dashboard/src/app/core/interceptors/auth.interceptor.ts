@@ -26,6 +26,11 @@ export const authInterceptor: HttpInterceptorFn = (
     return next(req);
   }
 
+  // Skip auth for AWS S3 pre-signed URLs (S3 rejects requests with both query signatures and auth headers)
+  if (req.url.includes('amazonaws.com') || req.url.includes('X-Amz-Signature')) {
+    return next(req);
+  }
+
   // Add token to request
   const token = authService.getAccessToken();
   if (token) {

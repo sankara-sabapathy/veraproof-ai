@@ -170,9 +170,9 @@ class VerificationWebSocket:
             elif phase == "pan":
                 await self.send_phase_change(session_id, "return")
             elif phase == "return":
-                # Start analysis
+                # Start analysis in the background so the websocket receive loop continues ingesting video_chunks!
                 await session_manager.update_session_state(session_id, SessionState.ANALYZING)
-                await self.perform_verification(session_id)
+                asyncio.create_task(self.perform_verification(session_id))
         else:
             logger.warning(f"Unknown websocket instruction blocked", extra={"msg_type": msg_type, "session_id": session_id})
     
@@ -235,8 +235,11 @@ class VerificationWebSocket:
                 verification_status=tier_1_status
             )
             
-            # Enforce strict 15-second minimum wait time for UX
-            elapsed_time = time.time() - start_time
+            # Enforce strict 15-second minimum wait time for UX, calculated from FIRST video chunk receipt
+            # This ensures the frontend 15-second recording timer UI hits exactly 0 before sending the result.
+            video_chunks = session_data.get("video_chunks", [])
+            first_chunk_time = video_chunks[0]["timestamp"] if video_chunks else start_time
+            elapsed_time = time.time() - first_chunk_time
             if elapsed_time < 15.0:
                 await asyncio.sleep(15.0 - elapsed_time)
             
