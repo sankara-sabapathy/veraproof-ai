@@ -183,6 +183,7 @@ export class UIController {
       scoreElement.innerHTML = `
         <div class="score-label">Trust Score</div>
         <div class="score-value">${result.final_trust_score}/100</div>
+        <div class="score-note">Deep AI forensic analysis will follow shortly.</div>
       `;
     }
   }

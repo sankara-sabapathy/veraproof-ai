@@ -176,7 +176,7 @@ class VerificationWebSocket:
             logger.warning(f"Unknown websocket instruction blocked", extra={"msg_type": msg_type, "session_id": session_id})
     
     async def perform_verification(self, session_id: str):
-        """Perform Tier 1 verification and defer Tier 2 (AI)"""
+        """Perform Tier 1 verification, show result to user, upload artifacts, then defer Tier 2 (AI)"""
         try:
             from app.sensor_fusion import sensor_fusion_analyzer
             
@@ -217,36 +217,44 @@ class VerificationWebSocket:
             # Tier 1 (Physics Score)
             tier_1_score = int(correlation * 100) if (len(gyro_gamma) >= 10) else 0
             
-            # Update session with PENDING_AI status
+            # Determine Tier 1 pass/fail
+            tier_1_passed = tier_1_score >= 50
+            tier_1_status = "success" if tier_1_passed else "failed"
+            
+            # Update session with initial physics results
             await session_manager.update_session_results(
                 session_id=session_id,
                 tier_1_score=tier_1_score,
                 tier_2_score=None,
-                final_trust_score=tier_1_score,  # Temporary
+                final_trust_score=tier_1_score,
                 correlation_value=correlation,
-                reasoning=f"Sensor correlation: {correlation:.3f}. Proceeding to AI Analysis.",
+                reasoning=f"Sensor correlation: {correlation:.3f}. AI deep analysis will follow.",
                 physics_score=tier_1_score,
-                verification_status="PENDING_AI"
+                verification_status=tier_1_status
             )
             
-            # Send Tier 1 result to client
+            # Send DEFINITIVE result to user based on Tier 1 physics
             await self.send_message(session_id, {
                 "type": "result",
                 "payload": {
-                    "status": "pending_ai",
+                    "status": tier_1_status,
                     "physics_score": tier_1_score,
+                    "final_trust_score": tier_1_score,
                     "correlation_value": correlation,
-                    "message": "Physics check passed. AI analysis in progress."
+                    "reasoning": "Verification complete. Deep AI forensic analysis will follow shortly."
                 }
             })
             
-            logger.info(f"Tier 1 Verification concluded, dispatching Tier 2 (AI)", extra={
+            logger.info(f"Tier 1 Verification concluded", extra={
                 "session_id": session_id,
-                "physics_score": tier_1_score
+                "physics_score": tier_1_score,
+                "tier_1_status": tier_1_status
             })
             
-            # Clone session data to pass safely, and DO NOT clear data here
-            # We clear it after S3 upload inside the background task.
+            # Upload artifacts IMMEDIATELY (before AI analysis)
+            await self.upload_session_artifacts(session_id)
+            
+            # Dispatch Tier 2 AI analysis in background (non-blocking, failures are isolated)
             asyncio.create_task(self.run_ai_verification_background(session_id, session_data))
 
         except Exception as e:
@@ -257,7 +265,7 @@ class VerificationWebSocket:
             })
 
     async def run_ai_verification_background(self, session_id: str, session_data: dict):
-        """Background asynchronous AI video frame analysis"""
+        """Background asynchronous AI video frame analysis. Failures here are fully isolated."""
         try:
             import tempfile
             import os
@@ -269,7 +277,7 @@ class VerificationWebSocket:
             
             # 1. Rebuild video file
             if not session_data.get('video_chunks'):
-                logger.error("No video data found for AI processing", extra={"session_id": session_id})
+                logger.warning("No video data found for AI processing", extra={"session_id": session_id})
                 return
                 
             video_data = b''.join([chunk['data'] for chunk in session_data['video_chunks']])
@@ -290,7 +298,8 @@ class VerificationWebSocket:
             
             # 3. Request AI classification
             provider = get_ai_provider()
-            metadata = session_db.get("metadata", {}) if (session_db := await session_manager.get_session(session_id)) else {}
+            session_db = await session_manager.get_session(session_id)
+            metadata = session_db.get("metadata", {}) if session_db else {}
             ai_score, ai_explanation = await provider.analyze_frames(frames_b64, metadata)
             
             # 4. Final Scoring
@@ -308,7 +317,7 @@ class VerificationWebSocket:
             final_status = "success" if is_authentic else "failed"
             final_reasoning = f"AI Analysis Summary: {ai_explanation.get('summary', 'N/A')}."
             
-            # 5. Update Session DB
+            # 5. Update Session DB with AI enrichment
             await session_manager.update_session_results(
                 session_id=session_id,
                 tier_1_score=int(physics_score),
@@ -323,25 +332,9 @@ class VerificationWebSocket:
                 verification_status=final_status
             )
             
-            # 6. Notify Client via WebSockets (if still connected)
-            await self.send_message(session_id, {
-                "type": "result",
-                "payload": {
-                    "status": final_status,
-                    "final_trust_score": int(unified_score),
-                    "ai_score": ai_score,
-                    "physics_score": physics_score,
-                    "ai_explanation": ai_explanation,
-                    "reasoning": final_reasoning
-                }
-            })
-            
             logger.info("AI Verification Complete", extra={"session_id": session_id, "unified_score": unified_score})
             
-            # 7. Upload Artifacts (clears data locally)
-            await self.upload_session_artifacts(session_id)
-            
-            # 8. Webhook Notification
+            # 6. Webhook Notification
             tenant_id = session_db.get("tenant_id")
             tenant_query = "SELECT webhook_url, webhook_secret FROM tenants WHERE tenant_id = $1"
             tenant_data = await db_manager.fetch_one(tenant_query, tenant_id)
@@ -357,7 +350,6 @@ class VerificationWebSocket:
                     "metadata": session_db.get("metadata", {})
                 }
                 
-                # Verify that datetime elements are serialized during json dumps later
                 asyncio.create_task(
                     webhook_manager.retry_webhook(
                         tenant_id=str(tenant_id),
@@ -368,8 +360,8 @@ class VerificationWebSocket:
                 )
                 
         except Exception as e:
-            logger.error(f"Background AI worker crashed: {e}", exc_info=True, extra={"session_id": session_id})
-            await session_manager.update_session_state(session_id, SessionState.COMPLETE)
+            # AI failure is fully isolated — it does NOT change the user-facing verification status
+            logger.error(f"Background AI worker failed (non-critical): {e}", exc_info=True, extra={"session_id": session_id})
     
     async def upload_session_artifacts(self, session_id: str):
         """Upload session artifacts to S3 after verification"""

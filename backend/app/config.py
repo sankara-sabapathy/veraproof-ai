@@ -12,10 +12,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://veraproof:test@localhost:5432/veraproof_test"
     
     # AWS
-    aws_endpoint_url: str = "http://localhost:4566"
+    aws_endpoint_url: str = ""  # Empty = real AWS; set to http://localhost:4566 for LocalStack in .env
+    aws_assume_role_arn: str = "" # Role to assume via STS in production. Empty = use static creds
     aws_access_key_id: str = "test"
     aws_secret_access_key: str = "test"
-    aws_region: str = "us-east-1"
+    aws_region: str = "ap-south-1"
     s3_bucket_name: str = "veraproof-artifacts"
     
     # JWT

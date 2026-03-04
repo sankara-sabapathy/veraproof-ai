@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from app.ai_provider import AmazonNovaLiteProvider, get_ai_provider
+from app.ai_provider import AmazonNova2LiteProvider, get_ai_provider
 import json
 
 @pytest.fixture
@@ -10,7 +10,7 @@ def mock_boto3_client():
 
 @pytest.mark.asyncio
 async def test_analyze_frames_success(mock_boto3_client):
-    """Test successful interaction with Amazon Nova Lite via Bedrock."""
+    """Test successful interaction with Amazon Nova 2 Lite via Bedrock."""
     mock_runtime = MagicMock()
     mock_boto3_client.return_value = mock_runtime
     
@@ -43,7 +43,7 @@ async def test_analyze_frames_success(mock_boto3_client):
     # Verify Bedrock InvokeModel was called correctly
     mock_runtime.invoke_model.assert_called_once()
     call_kwargs = mock_runtime.invoke_model.call_args[1]
-    assert call_kwargs["modelId"] == "us.amazon.nova-lite-v1:0"
+    assert call_kwargs["modelId"] == "amazon.nova-2-lite-v1:0"
 
 @pytest.mark.asyncio
 async def test_analyze_frames_fallback_on_error(mock_boto3_client):

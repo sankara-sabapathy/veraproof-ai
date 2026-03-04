@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta
 import logging
 from app.config import settings
+from app.aws_credentials import aws_cred_manager
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +34,20 @@ class ArtifactStorageManager:
     def _connect(self):
         """Create a fresh boto3 S3 client and ensure the bucket exists."""
         try:
-            self.s3_client = boto3.client(
-                's3',
-                endpoint_url=settings.aws_endpoint_url,
-                aws_access_key_id=settings.aws_access_key_id,
-                aws_secret_access_key=settings.aws_secret_access_key,
-                region_name=settings.aws_region
-            )
+            session = aws_cred_manager.get_session()
+            client_kwargs = {
+                'service_name': 's3',
+                'region_name': settings.aws_region
+            }
+            # Only pass endpoint_url for LocalStack (local dev / CI)
+            if settings.aws_endpoint_url:
+                client_kwargs['endpoint_url'] = settings.aws_endpoint_url
+            
+            self.s3_client = session.client(**client_kwargs)
             self._ensure_bucket_exists()
             self._initialized = True
             logger.info("S3 storage manager initialized", extra={
-                "endpoint": settings.aws_endpoint_url,
+                "endpoint": settings.aws_endpoint_url or "AWS (default)",
                 "bucket": self.bucket_name,
             })
         except Exception as e:

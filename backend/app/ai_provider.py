@@ -19,24 +19,23 @@ class AIProvider(abc.ABC):
 def get_ai_provider() -> AIProvider:
     """
     Factory function to get the appropriate AI Provider based on environment configuration.
-    Defaults to AmazonNovaLiteProvider.
+    Defaults to AmazonNova2LiteProvider.
     """
     import os
-    # For now, default to amazon-nova-lite. In the future this handles 'claude-3', 'qwen-vl', etc.
-    provider_name = os.environ.get("VERAPROOF_AI_MODEL_ID", "amazon-nova-lite").lower()
+    provider_name = os.environ.get("VERAPROOF_AI_MODEL_ID", "amazon-nova-2-lite").lower()
     
-    if provider_name == "amazon-nova-lite":
-        return AmazonNovaLiteProvider()
+    if provider_name in ("amazon-nova-2-lite", "amazon-nova-lite"):
+        return AmazonNova2LiteProvider()
     else:
-        logger.warning(f"Unknown AI provider '{provider_name}', defaulting to Amazon Nova Lite.")
-        return AmazonNovaLiteProvider()
+        logger.warning(f"Unknown AI provider '{provider_name}', defaulting to Amazon Nova 2 Lite.")
+        return AmazonNova2LiteProvider()
 
 
-class AmazonNovaLiteProvider(AIProvider):
+class AmazonNova2LiteProvider(AIProvider):
     def __init__(self, region_name: str = "ap-south-1"):
-        self.bedrock_runtime = boto3.client(service_name="bedrock-runtime", region_name=region_name)
-        # We will use us.amazon.nova-lite-v1:0
-        self.model_id = "us.amazon.nova-lite-v1:0"
+        session = aws_cred_manager.get_session()
+        self.bedrock_runtime = session.client(service_name="bedrock-runtime", region_name=region_name)
+        self.model_id = "amazon.nova-2-lite-v1:0"
 
     async def analyze_frames(self, frames_base64: List[str], metadata: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
         try:
@@ -108,6 +107,6 @@ class AmazonNovaLiteProvider(AIProvider):
 
             return score, explanation
         except Exception as e:
-            logger.error(f"Error invoking Amazon Nova Lite: {e}")
+            logger.error(f"Error invoking Amazon Nova 2 Lite: {e}")
             # Fallback return in case of any AWS API error, formatting error or invalid JSON
             return 0.0, {"error": f"AI evaluation failed: {str(e)}"}

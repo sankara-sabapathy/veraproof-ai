@@ -108,21 +108,36 @@ class VeraproofLightsailStack(Stack):
             ]
         )
         
-        # IAM role for Lightsail to access S3
-        lightsail_role = iam.Role(
+        # IAM User for the backend (only has assumed role permission)
+        backend_user = iam.User(
             self,
-            f"Veraproof-Lightsail-Role-{stage}",
-            role_name=f"veraproof-lightsail-role-{stage}",
-            assumed_by=iam.ServicePrincipal("lightsail.amazonaws.com"),
-            description=f"IAM role for Lightsail container service - {stage}"
+            f"Veraproof-Backend-User-{stage}",
+            user_name=f"veraproof-backend-user-{stage}"
+        )
+
+        # IAM role for the backend to access services (S3, Bedrock, SSM)
+        backend_role = iam.Role(
+            self,
+            f"Veraproof-Backend-Role-{stage}",
+            role_name=f"veraproof-backend-runtime-role-{stage}",
+            assumed_by=iam.ArnPrincipal(backend_user.user_arn),
+            description=f"Runtime IAM role for backend container - {stage}"
         )
         
-        # Grant S3 permissions
-        artifacts_bucket.grant_read_write(lightsail_role)
-        branding_bucket.grant_read_write(lightsail_role)
+        # Explicit policy: User can only assume this specific role
+        backend_user.add_to_policy(
+            iam.PolicyStatement(
+                actions=["sts:AssumeRole"],
+                resources=[backend_role.role_arn]
+            )
+        )
         
-        # Grant SSM Parameter Store read permission
-        lightsail_role.add_to_policy(
+        # Grant S3 permissions to the role
+        artifacts_bucket.grant_read_write(backend_role)
+        branding_bucket.grant_read_write(backend_role)
+        
+        # Grant SSM Parameter Store read permission to the role
+        backend_role.add_to_policy(
             iam.PolicyStatement(
                 actions=[
                     "ssm:GetParameter",
@@ -131,6 +146,19 @@ class VeraproofLightsailStack(Stack):
                 ],
                 resources=[
                     f"arn:aws:ssm:{self.region}:{self.account}:parameter/veraproof/{stage}/*"
+                ]
+            )
+        )
+        
+        # Grant Amazon Bedrock invocation to the role
+        backend_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                ],
+                resources=[
+                    f"arn:aws:bedrock:{self.region}::foundation-model/amazon.nova-2-lite-v1:0"
                 ]
             )
         )
@@ -211,9 +239,9 @@ class VeraproofLightsailStack(Stack):
         CfnOutput(
             self,
             f"Lightsail-IAM-Role-ARN-{stage}",
-            value=lightsail_role.role_arn,
-            description=f"IAM role ARN for Lightsail - {stage}",
-            export_name=f"Veraproof-Lightsail-Role-ARN-{stage}"
+            value=backend_role.role_arn,
+            description=f"IAM role ARN for Backend execution - {stage}",
+            export_name=f"VeraproofLightsailRoleARN{stage}"
         )
         
         # CORS URLs for backend configuration

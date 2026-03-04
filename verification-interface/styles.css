@@ -341,6 +341,14 @@ body {
     margin-bottom: 30px;
 }
 
+.score-note {
+    font-size: 0.85rem;
+    color: #6B7280;
+    margin-top: 8px;
+    font-weight: 500;
+    font-style: italic;
+}
+
 .result-score.success {
     color: var(--success-color);
 }
