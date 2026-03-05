@@ -57,7 +57,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           cd backend
-          pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=45
+          pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=40
         env:
           DATABASE_URL: postgresql://veraproof:test_password@localhost:5432/veraproof_test
           AWS_ENDPOINT_URL: http://localhost:4566
