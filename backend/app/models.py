@@ -27,8 +27,15 @@ class IMUData(BaseModel):
     rotation_rate: Dict[str, float]
 
 
+class VerificationCommand(BaseModel):
+    text: str
+    lens: str = "user" # user or environment
+    duration: int
+
 class CreateSessionRequest(BaseModel):
     return_url: str
+    session_duration: Optional[int] = Field(default=15)
+    verification_commands: Optional[list[VerificationCommand]] = []
     metadata: Optional[Dict[str, Any]] = {}
 
 

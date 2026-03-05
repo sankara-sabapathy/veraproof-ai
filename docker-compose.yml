@@ -59,7 +59,7 @@ services:
       BACKEND_URL: http://localhost:${BACKEND_HTTP_PORT:-8100}
       FRONTEND_DASHBOARD_URL: http://localhost:${PARTNER_DASHBOARD_PORT:-8200}
       FRONTEND_VERIFICATION_URL: http://localhost:${VERIFICATION_INTERFACE_PORT:-8300}
-      CORS_ORIGINS: http://localhost:${PARTNER_DASHBOARD_PORT:-8200},http://localhost:${VERIFICATION_INTERFACE_PORT:-8300},http://localhost:${BACKEND_HTTP_PORT:-8100},https://localhost:${BACKEND_HTTPS_PORT:-8443}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8200,http://localhost:8300,http://localhost:8100,https://localhost:8443}
       MAX_CONCURRENT_SESSIONS: 10
       API_RATE_LIMIT_PER_MINUTE: 100
       SESSION_EXPIRATION_MINUTES: 15

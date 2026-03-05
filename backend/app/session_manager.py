@@ -22,7 +22,9 @@ class SessionManager:
         self,
         tenant_id: str,
         metadata: Dict[str, Any],
-        return_url: str
+        return_url: str,
+        session_duration: int = 15,
+        verification_commands: List[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Create new verification session"""
         session_id = str(uuid.uuid4())
@@ -38,8 +40,8 @@ class SessionManager:
         query = """
             INSERT INTO sessions (
                 session_id, tenant_id, created_at, expires_at,
-                state, return_url, metadata
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+                state, return_url, metadata, session_duration, verification_commands
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::jsonb)
             RETURNING session_id, created_at, expires_at
         """
         
@@ -52,7 +54,9 @@ class SessionManager:
                 expires_at,
                 SessionState.IDLE.value,
                 return_url,
-                json.dumps(metadata) if metadata else '{}'
+                json.dumps(metadata) if metadata else '{}',
+                session_duration,
+                json.dumps(verification_commands) if verification_commands else '[]'
             )
         except Exception as e:
             logger.error(f"Failed to insert session into database: {e}", extra={"session_id": session_id})
@@ -73,6 +77,8 @@ class SessionManager:
             "correlation_value": None,
             "reasoning": None,
             "video_s3_key": None,
+            "session_duration": session_duration,
+            "verification_commands": verification_commands or [],
             "imu_data_s3_key": None,
             "optical_flow_s3_key": None
         }
@@ -116,21 +122,22 @@ class SessionManager:
     async def update_session_state(
         self,
         session_id: str,
-        state: SessionState
+        state
     ):
-        """Update session state"""
+        """Update session state (accepts SessionState enum or plain string)"""
+        state_value = state.value if hasattr(state, 'value') else str(state)
         query = """
             UPDATE sessions
             SET state = $1
             WHERE session_id = $2
         """
         
-        await db_manager.execute_query(query, state.value, session_id)
-        logger.info(f"Session execution phase transition recorded", extra={"session_id": session_id, "new_state": state.value})
+        await db_manager.execute_query(query, state_value, session_id)
+        logger.info(f"Session execution phase transition recorded", extra={"session_id": session_id, "new_state": state_value})
         
         span = trace.get_current_span()
         if span and span.is_recording():
-            span.add_event("session_state_transition", {"session.state": state.value})
+            span.add_event("session_state_transition", {"session.state": state_value})
     
     async def extend_expiration(self, session_id: str):
         """Extend session expiration by 10 minutes"""

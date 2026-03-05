@@ -122,24 +122,33 @@ export class SessionDetailsComponent implements OnInit, OnDestroy {
 
     if (session.tier_1_score !== null && session.tier_1_score !== undefined) {
       this.timelineEvents.push({
-        status: 'Tier 1: Sensor Fusion Analysis',
+        status: 'Tier 1: Physics Sensor Analysis',
         date: session.created_at,
-        icon: 'pi pi-chart-line',
+        icon: 'pi pi-compass',
         color: session.tier_1_score >= 85 ? '#10b981' : '#f59e0b'
       });
     }
 
-    if (session.ai_score !== null && session.ai_score !== undefined) {
+    if (session.tier_2_score !== null && session.tier_2_score !== undefined) {
       this.timelineEvents.push({
-        status: 'Tier 2: AI Forensics',
+        status: 'Tier 2: Vision Machine AI',
         date: session.created_at,
         icon: 'pi pi-eye',
-        color: session.ai_score >= 85 ? '#10b981' : '#f59e0b'
+        color: session.tier_2_score >= 85 ? '#10b981' : '#f59e0b'
+      });
+    }
+
+    if (session.final_trust_score !== null && session.final_trust_score !== undefined) {
+      this.timelineEvents.push({
+        status: 'Tier 3: GenAI Forensic Review',
+        date: session.created_at,
+        icon: 'pi pi-sparkles',
+        color: session.final_trust_score >= 85 ? '#10b981' : '#f59e0b'
       });
     }
 
     if (session.state === 'complete' || session.state === 'success' || session.state === 'failed') {
-      const isSuccess = session.state === 'success' || session.state === 'complete' || (session.unified_score != null && session.unified_score >= 85);
+      const isSuccess = session.state === 'success' || session.state === 'complete' || (session.final_trust_score != null && session.final_trust_score >= 85);
       this.timelineEvents.push({
         status: `Verification ${isSuccess ? 'Passed' : 'Failed'}`,
         date: session.created_at,
@@ -152,12 +161,17 @@ export class SessionDetailsComponent implements OnInit, OnDestroy {
   // ── Score Helpers ──────────────────────────────────────
   getPhysicsScore(): number | null {
     if (!this.session) return null;
-    return this.session.physics_score ?? this.session.tier_1_score ?? null;
+    return this.session.tier_1_score ?? this.session.physics_score ?? null;
+  }
+
+  getVisionScore(): number | null {
+    if (!this.session) return null;
+    return this.session.tier_2_score ?? null;
   }
 
   getUnifiedScore(): number | null {
     if (!this.session) return null;
-    return this.session.unified_score ?? this.session.final_trust_score ?? null;
+    return this.session.unified_score ?? this.session.ai_score ?? null;
   }
 
   getScoreColor(score: number | undefined | null): string {

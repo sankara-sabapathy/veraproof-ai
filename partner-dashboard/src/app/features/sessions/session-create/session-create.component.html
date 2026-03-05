@@ -1,0 +1,233 @@
+<div class="create-session-page">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a routerLink="/sessions" class="breadcrumb-link">
+            <i class="pi pi-arrow-left"></i>
+            Sessions
+        </a>
+        <i class="pi pi-chevron-right breadcrumb-sep"></i>
+        <span class="breadcrumb-current">Create New Session</span>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>Create Verification Session</h1>
+        <p class="subtitle" *ngIf="!createdSession">
+            Configure a new verification session. You'll receive a mobile-ready URL to start the process.
+        </p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- Creation Form -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <form [formGroup]="createForm" *ngIf="!createdSession" class="form-layout">
+        <!-- LEFT COLUMN — Session Configuration -->
+        <div class="card config-card">
+            <div class="card-header">
+                <div class="card-icon"><i class="pi pi-cog"></i></div>
+                <div>
+                    <h2>Session Configuration</h2>
+                    <p class="card-subtitle">Basic session parameters</p>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label for="return_url" class="field-label">Return URL <span class="required">*</span></label>
+                <span class="p-input-icon-left full-width">
+                    <i class="pi pi-link"></i>
+                    <input pInputText id="return_url" formControlName="return_url" class="full-width"
+                        placeholder="https://your-app.com/callback"
+                        [class.ng-invalid]="createForm.get('return_url')?.invalid && createForm.get('return_url')?.touched">
+                </span>
+                <small class="field-hint">Where results are posted after verification completes</small>
+            </div>
+
+            <div class="field-group">
+                <label for="user_id" class="field-label">User ID <span class="optional">(optional)</span></label>
+                <span class="p-input-icon-left full-width">
+                    <i class="pi pi-user"></i>
+                    <input pInputText id="user_id" formControlName="user_id" class="full-width"
+                        placeholder="e.g. usr_abc123">
+                </span>
+                <small class="field-hint">Your internal user identifier for tracking</small>
+            </div>
+
+            <div class="field-group">
+                <label class="field-label">
+                    Session Duration
+                    <span class="duration-badge">{{ sessionDuration }}s</span>
+                </label>
+                <div
+                    style="background: #f1f5f9; padding: 12px; border-radius: 6px; display: flex; gap: 8px; color: #334155; font-size: 13px;">
+                    <i class="pi pi-info-circle" style="color: #3b82f6; margin-top: 2px;"></i>
+                    <div style="line-height: 1.4;">
+                        <span *ngIf="commands.length === 0">Defaults to the standard <strong>15-second</strong> physics
+                            motion sequence.</span>
+                        <span *ngIf="commands.length > 0">Custom playbook configured. Duration auto-calculated.</span>
+                    </div>
+                </div>
+                <small class="field-hint">Total time allowed for the verification recording</small>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN — Verification Playbook -->
+        <div class="card playbook-card">
+            <div class="card-header">
+                <div class="card-icon playbook-icon"><i class="pi pi-list"></i></div>
+                <div>
+                    <h2>Verification Playbook</h2>
+                    <p class="card-subtitle">Define the step-by-step instructions</p>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div *ngIf="commands.length === 0" class="empty-state">
+                <div class="empty-icon">
+                    <i class="pi pi-video"></i>
+                </div>
+                <p class="empty-title">No custom steps defined</p>
+                <p class="empty-desc">A standard front-camera verification will be used. Add custom steps to create a
+                    multi-step playbook.</p>
+                <p-button icon="pi pi-plus" label="Add First Step" [outlined]="true" (onClick)="addCommand()">
+                </p-button>
+            </div>
+
+            <!-- Steps List -->
+            <div formArrayName="commands" class="steps-list" *ngIf="commands.length > 0">
+                <div *ngFor="let cmd of commands.controls; let i = index" [formGroupName]="i" class="step-card">
+                    <div class="step-header">
+                        <div class="step-number">
+                            <span>{{ i + 1 }}</span>
+                        </div>
+                        <div class="step-meta">
+                            <span class="step-lens-badge" [class.lens-front]="cmd.get('lens')?.value === 'user'"
+                                [class.lens-back]="cmd.get('lens')?.value === 'environment'">
+                                <i [class]="getLensIcon(cmd.get('lens')?.value)"></i>
+                                {{ getLensLabel(cmd.get('lens')?.value) }}
+                            </span>
+                            <span class="step-duration-badge">{{ cmd.get('duration')?.value }}s</span>
+                        </div>
+                        <button type="button" class="step-delete" (click)="removeCommand(i)" pTooltip="Remove step">
+                            <i class="pi pi-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="step-body">
+                        <div class="step-field">
+                            <label class="step-field-label">Instruction Text</label>
+                            <input pInputText formControlName="text" class="full-width"
+                                placeholder="e.g. Show your face to the camera">
+                        </div>
+                        <div class="step-row">
+                            <div class="step-field flex-1">
+                                <label class="step-field-label">Camera</label>
+                                <p-dropdown formControlName="lens" [options]="lensOptions" optionLabel="label"
+                                    optionValue="value" styleClass="full-width" appendTo="body">
+                                </p-dropdown>
+                            </div>
+                            <div class="step-field duration-field">
+                                <label class="step-field-label">Duration</label>
+                                <p-inputNumber formControlName="duration" [min]="1" [max]="60" [showButtons]="true"
+                                    suffix="s" styleClass="full-width" class="full-width">
+                                </p-inputNumber>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Step Button -->
+                <button type="button" class="add-step-btn" (click)="addCommand()" [disabled]="commands.length >= 5">
+                    <i class="pi pi-plus"></i>
+                    <span>Add Step</span>
+                    <span class="add-step-count">{{ commands.length }}/5</span>
+                </button>
+
+                <!-- Duration Progress Bar -->
+                <!-- Duration Total -->
+                <div class="duration-summary"
+                    style="margin-top: 1.5rem; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-weight: 600; color: #1e293b;">Total Custom Duration</span>
+                        <span style="font-size: 12px; color: #64748b;">Minimum required: 15s</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 24px; font-weight: 700; color: #0f172a;"
+                            [style.color]="commandsTotalDuration < 15 ? '#ef4444' : '#0f172a'">{{ commandsTotalDuration
+                            }}s</span>
+                    </div>
+                </div>
+                <small *ngIf="durationMismatchError" class="duration-error"
+                    style="display: block; margin-top: 0.5rem; color: #ef4444;">
+                    <i class="pi pi-exclamation-triangle"></i>
+                    {{ durationMismatchError }}
+                </small>
+            </div>
+        </div>
+    </form>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- Success State -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div *ngIf="createdSession" class="success-container">
+        <div class="card success-card">
+            <div class="success-hero">
+                <div class="success-checkmark">
+                    <i class="pi pi-check"></i>
+                </div>
+                <h2>Session Created Successfully</h2>
+                <p>Your verification session is ready. Share the URL below with the end user.</p>
+            </div>
+
+            <div class="success-details">
+                <div class="detail-row">
+                    <span class="detail-label">Session ID</span>
+                    <div class="detail-value-row">
+                        <code class="detail-code">{{ createdSession.session_id }}</code>
+                        <button type="button" class="copy-btn" (click)="copySessionId()" pTooltip="Copy ID">
+                            <i class="pi pi-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Verification URL</span>
+                    <div class="detail-value-row">
+                        <code class="detail-code url-code">{{ createdSession.session_url }}</code>
+                        <button type="button" class="copy-btn" [class.copied]="urlCopied" (click)="copyUrl()"
+                            pTooltip="Copy URL">
+                            <i [class]="urlCopied ? 'pi pi-check' : 'pi pi-copy'"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">Expires At</span>
+                    <span class="detail-text">{{ createdSession.expires_at | date:'medium' }}</span>
+                </div>
+            </div>
+
+            <div class="info-banner">
+                <i class="pi pi-mobile"></i>
+                <span>Open this URL on a mobile device to begin the verification process.</span>
+            </div>
+
+            <div class="success-actions">
+                <p-button label="Back to Sessions" icon="pi pi-arrow-left" [outlined]="true" (onClick)="onCancel()">
+                </p-button>
+                <p-button label="Create Another" icon="pi pi-plus" (onClick)="createAnother()">
+                </p-button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- Bottom Action Bar (form mode only) -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="action-bar" *ngIf="!createdSession">
+        <p-button label="Cancel" icon="pi pi-times" [outlined]="true" severity="secondary" (onClick)="onCancel()">
+        </p-button>
+        <p-button label="Create Session" icon="pi pi-check" [loading]="loading" (onClick)="onCreate()"
+            [disabled]="loading || createForm.invalid || (commands.length > 0 && commandsTotalDuration < 15)">
+        </p-button>
+    </div>
+</div>

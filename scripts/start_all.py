@@ -46,9 +46,46 @@ def update_env_files(local_ip):
                 new_env.append(f"FRONTEND_VERIFICATION_URL=https://{local_ip}:{PORTS['VERIFICATION']}")
             elif line.startswith("FRONTEND_DASHBOARD_URL="):
                 new_env.append(f"FRONTEND_DASHBOARD_URL=http://{local_ip}:{PORTS['DASHBOARD']}")
+            elif line.startswith("CORS_ORIGINS="):
+                # Explicitly list LAN origins; wildcards (*) crash FastAPI CORS when allow_credentials=True
+                origins = [
+                    f"http://localhost:3000",
+                    f"http://localhost:4200",
+                    f"http://localhost:{PORTS['BACKEND']}",
+                    f"http://localhost:{PORTS['DASHBOARD']}",
+                    f"https://localhost:{PORTS['VERIFICATION']}",
+                    f"https://localhost:{PORTS['BACKEND_HTTPS']}",
+                    f"http://{local_ip}:{PORTS['BACKEND']}",
+                    f"https://{local_ip}:{PORTS['BACKEND_HTTPS']}",
+                    f"https://{local_ip}:{PORTS['VERIFICATION']}",
+                    f"http://{local_ip}:{PORTS['DASHBOARD']}"
+                ]
+                new_env.append(f"CORS_ORIGINS={','.join(origins)}")
             else:
                 new_env.append(line)
         backend_env_path.write_text("\n".join(new_env))
+
+    # 1b. Write a root-level .env so Docker Compose picks up ${CORS_ORIGINS} substitution
+    cors_origins = ",".join([
+        f"http://localhost:3000",
+        f"http://localhost:4200",
+        f"http://localhost:{PORTS['BACKEND']}",
+        f"http://localhost:{PORTS['DASHBOARD']}",
+        f"https://localhost:{PORTS['VERIFICATION']}",
+        f"https://localhost:{PORTS['BACKEND_HTTPS']}",
+        f"http://{local_ip}:{PORTS['BACKEND']}",
+        f"https://{local_ip}:{PORTS['BACKEND_HTTPS']}",
+        f"https://{local_ip}:{PORTS['VERIFICATION']}",
+        f"http://{local_ip}:{PORTS['DASHBOARD']}"
+    ])
+    root_env_path = project_root / ".env"
+    root_env_lines = []
+    if root_env_path.exists():
+        for line in root_env_path.read_text().splitlines():
+            if not line.startswith("CORS_ORIGINS="):
+                root_env_lines.append(line)
+    root_env_lines.append(f"CORS_ORIGINS={cors_origins}")
+    root_env_path.write_text("\n".join(root_env_lines) + "\n")
 
     # 2. Update Partner Dashboard environment.ts
     dash_env_path = project_root / "partner-dashboard" / "src" / "environments" / "environment.ts"

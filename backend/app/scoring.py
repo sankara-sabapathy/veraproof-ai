@@ -13,6 +13,11 @@ def calculate_unified_score(physics_score: float, ai_score: float) -> float:
         logger.warning(f"AI scoring fallback triggered. Relying 100% on Tier 1 Physics Score: {physics_score}")
         return float(physics_score)
         
+    # If the AI explicitly flagged the session as highly spoofed or a presentation attack
+    if ai_score == 0.0:
+        logger.warning("AI explicitly flagged the session as SPOOFED or FAKE. Failing verification entirely.")
+        return 0.0
+        
     # If the AI explicitly flagged it as heavily spoofed (Score < 20), immediately penalize heavily
     if ai_score < 20:
         return min(physics_score * 0.2, ai_score)

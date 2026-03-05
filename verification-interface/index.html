@@ -59,7 +59,26 @@
                     <p>Checking device compatibility...</p>
                 </div>
                 <div id="device-error" class="error-box hidden"></div>
-                <button id="continue-verification-btn" class="btn-primary hidden">Continue to Verification</button>
+
+                <!-- Explicit Consent Modal (Injected Before Recording Starts) -->
+                <div id="consent-modal" class="consent-modal hidden"
+                    style="margin-top: 20px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #f9fafb;">
+                    <h3>Privacy & Data Consent</h3>
+                    <p style="font-size: 0.9rem; color: #4b5563; margin: 10px 0;">
+                        By proceeding, you consent to VeraProof AI actively recording your device's
+                        <strong>camera</strong>, <strong>motion sensors (accelerometer/gyroscope)</strong>,
+                        and <strong>audio</strong> to conduct automated AI fraud detection and liveness analysis.
+                    </p>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button id="consent-decline-btn" class="btn-secondary" style="flex: 1;">Decline</button>
+                        <button id="consent-agree-btn" class="btn-primary" style="flex: 1; background-color: #10B981;">I
+                            Agree & Proceed</button>
+                    </div>
+                </div>
+
+                <div id="continue-container" class="hidden">
+                    <button id="continue-verification-btn" class="btn-primary">Continue to Verification</button>
+                </div>
                 <button id="request-permissions-btn" class="btn-secondary hidden">Grant Permissions</button>
             </div>
         </div>
@@ -91,9 +110,11 @@
                 </div>
 
                 <div id="status-message" class="status-message"></div>
-                
-                <div class="ai-disclaimer" style="font-size: 0.75rem; color: #6b7280; text-align: center; margin-top: 15px; padding: 0 10px;">
-                    <p>🔒 <strong>Note:</strong> There is no human involved in verifying the video. The process is fully automated by AI.</p>
+
+                <div class="ai-disclaimer"
+                    style="font-size: 0.75rem; color: #6b7280; text-align: center; margin-top: 15px; padding: 0 10px;">
+                    <p>🔒 <strong>Note:</strong> There is no human involved in verifying the video. The process is fully
+                        automated by AI.</p>
                 </div>
             </div>
         </div>
@@ -124,7 +145,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=9"></script>
+    <script type="module" src="js/main.js?v=13"></script>
 </body>
 
 </html>

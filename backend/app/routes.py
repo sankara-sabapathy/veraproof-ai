@@ -169,7 +169,9 @@ async def create_session(
     session = await session_manager.create_session(
         tenant_id=tenant_id,
         metadata=request.metadata,
-        return_url=request.return_url
+        return_url=request.return_url,
+        session_duration=request.session_duration,
+        verification_commands=[cmd.dict() for cmd in request.verification_commands] if request.verification_commands else []
     )
     
     return CreateSessionResponse(**session)
@@ -198,7 +200,9 @@ async def create_session_dashboard(
     session = await session_manager.create_session(
         tenant_id=tenant_id,
         metadata=request.metadata,
-        return_url=request.return_url
+        return_url=request.return_url,
+        session_duration=request.session_duration,
+        verification_commands=[cmd.dict() for cmd in request.verification_commands] if request.verification_commands else []
     )
     
     logger.info("Dashboard verification session created", extra={"session_id": session['session_id'], "tenant_id": tenant_id})

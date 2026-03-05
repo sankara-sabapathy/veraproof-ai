@@ -45,6 +45,58 @@ class VerificationWebSocket:
         
         # Extend session expiration when verification begins
         await session_manager.extend_expiration(session_id)
+
+        # Trigger the dynamic verification playbook sequence in the background
+        asyncio.create_task(self.run_playbook(session_id))
+    
+    async def run_playbook(self, session_id: str):
+        """Execute the Verification Playbook (custom or default fallback)"""
+        session_db_record = await session_manager.get_session(session_id)
+        if not session_db_record:
+            logger.error("Could not find session in db to run playbook", extra={"session_id": session_id})
+            return
+
+        commands = session_db_record.get("verification_commands")
+
+        # Fallback Algorithm: If no custom commands exist (or list is empty string "[]"), construct the 15s physics default.
+        if not commands or isinstance(commands, str) and commands == "[]" or len(commands) == 0:
+            commands = [
+                {"text": "Reflect your face and slowly pan your phone to the RIGHT", "lens": "user", "duration": 5},
+                {"text": "Slowly return your phone to the LEFT", "lens": "user", "duration": 5},
+                {"text": "Stay centered. Analyzing data...", "lens": "user", "duration": 5}
+            ]
+        elif isinstance(commands, str):
+            commands = json.loads(commands)
+            
+        # Dynamically calculate the ACTUAL session duration from the playbook commands
+        session_duration = sum(cmd.get("duration", 0) for cmd in commands)
+
+        logger.info(f"Starting Playbook Sequence with {len(commands)} commands over {session_duration}s", extra={"session_id": session_id})
+        
+        # Sequentially stream instructions down to the "Dumb Terminal" frontend
+        for index, cmd in enumerate(commands):
+            if session_id not in self.active_connections:
+                break # User dropped connection mid-playbook
+                
+            await self.send_message(session_id, {
+                "type": "instruction",
+                "payload": {
+                    "text": cmd["text"],
+                    "lens": cmd.get("lens", "user"),
+                    "duration": cmd["duration"]
+                }
+            })
+            
+            # Record the state for Tier 1 Physics grading awareness
+            await session_manager.update_session_state(session_id, f"cmd_{index}")
+            
+            # Wait for the exact requested duration before firing the next command
+            await asyncio.sleep(cmd["duration"])
+
+        # When the playbook finishes, trigger verification
+        if session_id in self.active_connections:
+            await session_manager.update_session_state(session_id, SessionState.ANALYZING)
+            asyncio.create_task(self.perform_verification(session_id, session_duration))
     
     def disconnect(self, session_id: str):
         """Remove WebSocket connection"""
@@ -161,22 +213,14 @@ class VerificationWebSocket:
         elif msg_type == "imu_batch":
             await self.handle_imu_batch(session_id, payload)
         elif msg_type == "phase_complete":
-            phase = payload.get("phase")
-            logger.info(f"Verification phase completed successfully", extra={"session_id": session_id, "phase_id": phase})
-            
-            # Trigger next phase or analysis
-            if phase == "baseline":
-                await self.send_phase_change(session_id, "pan")
-            elif phase == "pan":
-                await self.send_phase_change(session_id, "return")
-            elif phase == "return":
-                # Start analysis in the background so the websocket receive loop continues ingesting video_chunks!
-                await session_manager.update_session_state(session_id, SessionState.ANALYZING)
-                asyncio.create_task(self.perform_verification(session_id))
+            # Phase Complete is now vestigial since the Backend runs the asynchronous playbook. 
+            pass
+        elif msg_type == "instruction_acknowledged":
+            logger.debug("Frontend successfully rendered the latest playbook instruction", extra={"session_id": session_id})
         else:
             logger.warning(f"Unknown websocket instruction blocked", extra={"msg_type": msg_type, "session_id": session_id})
     
-    async def perform_verification(self, session_id: str):
+    async def perform_verification(self, session_id: str, expected_duration: int = 15):
         """Perform Tier 1 verification, show result to user, upload artifacts, then defer Tier 2 (AI)"""
         try:
             start_time = time.time()
@@ -235,13 +279,13 @@ class VerificationWebSocket:
                 verification_status=tier_1_status
             )
             
-            # Enforce strict 15-second minimum wait time for UX, calculated from FIRST video chunk receipt
-            # This ensures the frontend 15-second recording timer UI hits exactly 0 before sending the result.
+            # Enforce strict session_duration wait time for UX, calculated from FIRST video chunk receipt
+            # This ensures the frontend UI hits exactly 0 before sending the result.
             video_chunks = session_data.get("video_chunks", [])
             first_chunk_time = video_chunks[0]["timestamp"] if video_chunks else start_time
             elapsed_time = time.time() - first_chunk_time
-            if elapsed_time < 15.0:
-                await asyncio.sleep(15.0 - elapsed_time)
+            if elapsed_time < expected_duration:
+                await asyncio.sleep(expected_duration - elapsed_time)
             
             # Send DEFINITIVE result to user based on Tier 1 physics
             await self.send_message(session_id, {
@@ -280,7 +324,7 @@ class VerificationWebSocket:
             import tempfile
             import os
             from app.video_utils import extract_sparse_keyframes
-            from app.ai_provider import get_ai_provider
+            from app.ai_provider import get_ai_pipeline
             from app.scoring import calculate_unified_score, evaluate_trust_status
             from app.database import db_manager
             from app.webhooks import webhook_manager
@@ -307,13 +351,28 @@ class VerificationWebSocket:
             except:
                 pass
             
-            # 3. Request AI classification
-            provider = get_ai_provider()
+            # 3. Request AI classification via the 3-Tier Verification Engine
+            vision_engine, genai_engine = get_ai_pipeline()
             session_db = await session_manager.get_session(session_id)
             metadata = session_db.get("metadata", {}) if session_db else {}
-            ai_score, ai_explanation = await provider.analyze_frames(frames_b64, metadata)
             
-            # 4. Final Scoring
+            # --- TIER 2: VISION SCANNER (AWS Rekognition) ---
+            is_spoofed, vision_context = await vision_engine.extract_context(frames_b64)
+            
+            # Hard-fail the pipeline if Rekognition detects obvious Presentation Attacks (Screens, Photos)
+            if is_spoofed:
+                tier_2_score = 0
+                ai_score = 0.0
+                ai_explanation = vision_context
+            else:
+                # --- TIER 3: GENERATIVE AI EVALUATOR (Google Gemini / Amazon Nova) ---
+                # Calculate a rough Tier 2 pass/fail metric for the dashboard (just context extraction success)
+                tier_2_score = 100 if vision_context.get("status") == "success" else 0
+                
+                # Hand off the AWS Rekognition structured JSON explicitly to the GenAI prompt
+                ai_score, ai_explanation = await genai_engine.evaluate_trust(frames_b64, vision_context, metadata)
+            
+            # 4. Final Scoring Fusion
             if not session_db:
                 logger.error("Session missing from DB during AI pass", extra={"session_id": session_id})
                 return
@@ -322,17 +381,18 @@ class VerificationWebSocket:
             if physics_score is None:
                 physics_score = 0.0
             
+            # Fuse Tier 1 (Physics) with Tier 3 (GenAI Trust Score)
             unified_score = calculate_unified_score(physics_score, ai_score)
             is_authentic = evaluate_trust_status(unified_score)
             
             final_status = "success" if is_authentic else "failed"
-            final_reasoning = f"AI Analysis Summary: {ai_explanation.get('summary', 'N/A')}."
+            final_reasoning = f"{ai_explanation.get('summary', 'N/A')}"
             
-            # 5. Update Session DB with AI enrichment
+            # 5. Update Session DB with Full 3-Tier enrichment
             await session_manager.update_session_results(
                 session_id=session_id,
                 tier_1_score=int(physics_score),
-                tier_2_score=int(ai_score),
+                tier_2_score=int(tier_2_score),
                 final_trust_score=int(unified_score),
                 correlation_value=session_db.get("correlation_value"),
                 reasoning=final_reasoning,
@@ -382,8 +442,29 @@ class VerificationWebSocket:
                     logger.error(f"Failed to schedule webhook: {webhook_err}", extra={"session_id": session_id})
                 
         except Exception as e:
-            # AI failure is fully isolated — it does NOT change the user-facing verification status
+            # AI failure is fully isolated — it does NOT change the user-facing verification status immediately
+            # But we MUST record the AI failure score so the dashboard doesn't inherit Tier 1's score.
             logger.error(f"Background AI worker failed (non-critical): {e}", exc_info=True, extra={"session_id": session_id})
+            
+            try:
+                session_db = await session_manager.get_session(session_id)
+                if session_db:
+                    physics = session_db.get("physics_score", 0.0) or 0.0
+                    await session_manager.update_session_results(
+                        session_id=session_id,
+                        tier_1_score=int(physics),
+                        tier_2_score=0,
+                        final_trust_score=int(physics), # Overall stays at physics
+                        correlation_value=session_db.get("correlation_value"),
+                        reasoning=f"AI Forensics Error: {str(e)[:100]}",
+                        ai_score=0.0,
+                        physics_score=physics,
+                        unified_score=0.0, # Explicitly denote AI failure
+                        ai_explanation={"summary": "AI module execution failed."},
+                        verification_status="failed"
+                    )
+            except Exception as db_err:
+                logger.error(f"Failed to record AI crash to DB: {db_err}", extra={"session_id": session_id})
         finally:
             # Clear in-memory data to free up memory ONLY after all background tasks are done
             self.clear_session_data(session_id)

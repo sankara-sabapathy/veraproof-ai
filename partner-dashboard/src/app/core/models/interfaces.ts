@@ -89,8 +89,16 @@ export interface Session {
   optical_flow_s3_key: string | null;
 }
 
+export interface VerificationCommand {
+  text: string;
+  lens: 'user' | 'environment';
+  duration: number;
+}
+
 export interface CreateSessionRequest {
   return_url: string;
+  session_duration?: number;
+  verification_commands?: VerificationCommand[];
   metadata?: Record<string, any>;
 }
 

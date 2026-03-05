@@ -66,18 +66,14 @@ export class IMUCollector {
       }
 
       eventCount++;
-      
-      // Log first few events for debugging
+
+      // Log first few events for debugging (removed for production)
       if (eventCount <= 3) {
-        console.log('DeviceMotion event #' + eventCount + ':', {
-          acceleration: event.acceleration,
-          rotationRate: event.rotationRate,
-          interval: event.interval
-        });
+        // Verbose logging omitted
       }
 
       const now = Date.now();
-      
+
       // Throttle to target sampling rate
       if (now - this.lastSampleTime < this.samplingInterval) {
         return;
@@ -112,14 +108,14 @@ export class IMUCollector {
     };
 
     window.addEventListener('devicemotion', this.handler);
-    
+
     // Check if events are firing
     setTimeout(() => {
       if (eventCount === 0) {
         console.error('No DeviceMotion events received after 2 seconds!');
         console.error('Device may not support motion sensors or permission was denied');
       } else {
-        console.log('IMU collector working:', eventCount, 'events received');
+        // console.log('IMU collector working:', eventCount, 'events received');
       }
     }, 2000);
   }

@@ -5,11 +5,9 @@ import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { ChipModule } from 'primeng/chip';
 import { TooltipModule } from 'primeng/tooltip';
-import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { SessionService } from '../services/session.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { SessionCreateDialogComponent } from '../session-create-dialog/session-create-dialog.component';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { ColDef, ValueFormatterParams } from 'ag-grid-community';
 import { StatusRendererComponent } from '../../../shared/components/data-table/renderers/status-renderer.component';
@@ -38,7 +36,7 @@ interface Session {
     LoadingSpinnerComponent,
     DataTableComponent
   ],
-  providers: [DialogService, DatePipe],
+  providers: [DatePipe],
   templateUrl: './sessions-list.component.html',
   styleUrls: ['./sessions-list.component.scss']
 })
@@ -49,13 +47,10 @@ export class SessionsListComponent implements OnInit {
 
   columns: ColDef[] = [];
 
-  private dialogRef: DynamicDialogRef | undefined;
-
   constructor(
     private sessionService: SessionService,
     private notification: NotificationService,
     private router: Router,
-    private dialogService: DialogService,
     private datePipe: DatePipe
   ) {
     this.columns = [
@@ -107,7 +102,6 @@ export class SessionsListComponent implements OnInit {
 
   loadSessions(): void {
     this.loading = true;
-    // We fetch a larger chunk to allow AG Grid to handle pagination natively
     this.sessionService.getSessions(1000, 0).subscribe({
       next: (response) => {
         this.sessions = response.sessions;
@@ -123,21 +117,11 @@ export class SessionsListComponent implements OnInit {
   }
 
   createSession(): void {
-    this.dialogRef = this.dialogService.open(SessionCreateDialogComponent, {
-      header: 'Create Test Session',
-      width: '600px',
-      modal: true,
-      dismissableMask: false
-    });
-
-    this.dialogRef.onClose.subscribe(result => {
-      if (result) {
-        this.loadSessions();
-      }
-    });
+    this.router.navigate(['/sessions/create']);
   }
 
   viewSession(sessionId: string): void {
     this.router.navigate(['/sessions', sessionId]);
   }
 }
+

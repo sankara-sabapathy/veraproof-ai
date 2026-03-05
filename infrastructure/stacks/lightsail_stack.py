@@ -145,6 +145,16 @@ class VeraproofLightsailStack(Stack):
                 ]
             )
         )
+
+        # Grant Amazon Rekognition permission for general object/environment detection
+        backend_user.add_to_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "rekognition:DetectLabels"
+                ],
+                resources=["*"]
+            )
+        )
         
         # Store database connection info in SSM for backend to use
         ssm.StringParameter(

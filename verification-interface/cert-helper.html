@@ -157,22 +157,26 @@
     const sessionId = params.get('session_id');
     const returnUrl = params.get('return_url');
 
-    // Determine backend URL
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    let backendHost;
+    let healthUrl = params.get('health_url');
 
-    if (window.location.hostname === 'localhost' && window.location.protocol === 'https:') {
-      backendHost = 'localhost:8443';
-    } else if (window.location.hostname === 'localhost') {
-      backendHost = 'localhost:8100';
-    } else if (window.location.port === '3443') {
-      backendHost = `${window.location.hostname}:8443`;
-    } else {
-      backendHost = window.location.host;
+    if (!healthUrl) {
+      // Fallback logic if health_url wasn't provided
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      let backendHost;
+
+      if (window.location.hostname === 'localhost' && window.location.protocol === 'https:') {
+        backendHost = 'localhost:8443';
+      } else if (window.location.hostname === 'localhost') {
+        backendHost = 'localhost:8100';
+      } else if (window.location.port === '3443') {
+        backendHost = `${window.location.hostname}:8443`;
+      } else {
+        backendHost = window.location.host;
+      }
+
+      const backendUrl = `${protocol}//${backendHost}`;
+      healthUrl = `${backendUrl}/health`;
     }
-
-    const backendUrl = `${protocol}//${backendHost}`;
-    const healthUrl = `${backendUrl}/health`;
 
     document.getElementById('open-backend').addEventListener('click', () => {
       window.open(healthUrl, '_blank');

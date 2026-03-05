@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from app.ai_provider import AmazonNova2LiteProvider, get_ai_provider
+from app.ai_provider import AmazonNova2LiteProvider
 import json
 
 @pytest.fixture
@@ -34,10 +34,11 @@ async def test_analyze_frames_success(mock_boto3_client):
     mock_response = {"body": mock_body}
     mock_runtime.invoke_model.return_value = mock_response
 
-    provider = get_ai_provider()
+    provider = AmazonNova2LiteProvider()
     frames = ["dummy_base64_string_1", "dummy_base64_string_2"]
+    mock_vision_context = {"status": "success", "faces_detected": 1}
     
-    score, explanation = await provider.analyze_frames(frames)
+    score, explanation = await provider.evaluate_trust(frames, mock_vision_context)
     
     assert score == 92.5
     assert explanation["summary"] == "The video displays a natural 3D capture without static framing or screen glare."
@@ -54,8 +55,9 @@ async def test_analyze_frames_fallback_on_error(mock_boto3_client):
     mock_boto3_client.return_value = mock_runtime
     mock_runtime.invoke_model.side_effect = Exception("AWS Limit Exceeded")
     
-    provider = get_ai_provider()
-    score, explanation = await provider.analyze_frames(["frame1"])
+    provider = AmazonNova2LiteProvider()
+    mock_vision_context = {"status": "success", "faces_detected": 1}
+    score, explanation = await provider.evaluate_trust(["frame1"], mock_vision_context)
     
     assert score == -1.0
     assert "error" in explanation

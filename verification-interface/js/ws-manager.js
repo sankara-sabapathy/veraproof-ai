@@ -70,7 +70,10 @@ export class WSManager {
         this.ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
-            console.log('WebSocket message received:', message.type);
+            // Hide standard instruction logs from console output
+            if (message.type !== 'instruction' && message.type !== 'branding') {
+              // console.log('WebSocket message received:', message.type);
+            }
             if (this.messageCallback) {
               this.messageCallback(message);
             }

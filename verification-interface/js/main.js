@@ -1,12 +1,12 @@
 /**
  * Main entry point for VeraProof AI Verification Interface
  */
-import { DeviceDetector } from './device-detector.js?v=9';
-import { VideoCapture } from './video-capture.js?v=9';
-import { IMUCollector } from './imu-collector.js?v=9';
-import { WSManager } from './ws-manager.js?v=9';
-import { ChallengeController } from './challenge-controller.js?v=9';
-import { UIController } from './ui-controller.js?v=9';
+import { DeviceDetector } from './device-detector.js?v=12';
+import { VideoCapture } from './video-capture.js?v=12';
+import { IMUCollector } from './imu-collector.js?v=12';
+import { WSManager } from './ws-manager.js?v=12';
+import { ChallengeController } from './challenge-controller.js?v=12';
+import { UIController } from './ui-controller.js?v=12';
 
 class VerificationApp {
   constructor() {
@@ -132,13 +132,13 @@ class VerificationApp {
   }
 
   /**
-   * Request permissions and continue if granted
+   * Request permissions, display explicit consent, and continue if granted
    */
   async requestPermissionsAndContinue() {
     try {
       this.ui.showStatusMessage('Requesting permissions...', 'info');
 
-      // Perform full device check (this will request permissions)
+      // Perform full device check (this will request camera/motion permissions)
       const checkResult = await DeviceDetector.performDeviceCheck();
       this.ui.showDeviceStatus(checkResult);
 
@@ -146,20 +146,45 @@ class VerificationApp {
         return;
       }
 
-      // Permissions granted, continue
-      this.ui.showStatusMessage('Permissions granted! Starting verification...', 'success');
+      // Hide permission button and display Consent Modal
+      document.getElementById('request-permissions-btn').classList.add('hidden');
+      const consentModal = document.getElementById('consent-modal');
+      consentModal.classList.remove('hidden');
 
-      // Wait a moment
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create a blocking Promise that awaits user Explicit Consent
+      const userConsent = await new Promise((resolve, reject) => {
+        document.getElementById('consent-agree-btn').addEventListener('click', () => {
+          consentModal.classList.add('hidden');
+          resolve(true);
+        }, { once: true });
 
-      // Initialize components
-      await this.initializeComponents();
+        document.getElementById('consent-decline-btn').addEventListener('click', () => {
+          reject(new Error("User declined privacy consent."));
+        }, { once: true });
+      });
 
-      // Start verification
-      await this.runVerification();
+      if (userConsent) {
+        this.ui.showStatusMessage('Consent granted! Starting verification...', 'success');
+
+        // Wait a moment
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Initialize components and boot the camera tracks
+        const initSuccess = await this.initializeComponents();
+        if (!initSuccess) {
+          return; // Halt if initialization failed. The user has been shown a retry prompt.
+        }
+
+        // Start verification playbook
+        await this.runVerification();
+      }
     } catch (error) {
-      console.error('Permission request error:', error);
-      this.ui.showError({ message: `Permission error: ${error.message}` });
+      console.error('Permission / Consent error:', error);
+      this.ui.showError({ message: error.message });
+      // Redirect to partner dashboard after 3 seconds on decline
+      setTimeout(() => {
+        window.location.href = this.returnUrl ? this.returnUrl : '/';
+      }, 3000);
     }
   }
 
@@ -189,18 +214,22 @@ class VerificationApp {
 
       // Setup event handlers
       this.setupEventHandlers();
+
+      return true;
     } catch (error) {
       console.error('Component initialization error:', error);
 
       // Check if it's a certificate/connection error
-      if (error.message.includes('WebSocket') || error.message.includes('certificate')) {
+      if (error.message.includes('WebSocket') || error.message.includes('certificate') || error.message.includes('connection') || error.message.includes('Cannot connect')) {
         this.ui.showError({
           message: 'Connection failed. Please ensure you have accepted the security certificate. Click "Try Again" and accept any certificate warnings.',
           showRetry: true
         });
       } else {
-        throw error;
+        this.ui.showError({ message: error.message });
       }
+
+      return false;
     }
   }
 
@@ -210,7 +239,11 @@ class VerificationApp {
    */
   async testBackendConnection() {
     // Skip certificate check in production
-    if (!window.location.hostname.includes('localhost') && window.location.port !== '3443') {
+    const isLocalDev = window.location.hostname === 'localhost' ||
+      window.location.port === '3443' ||
+      window.location.hostname.match(/^(192|172|10)\./);
+
+    if (!isLocalDev) {
       console.log('Production environment detected, skipping certificate check');
       return;
     }
@@ -233,8 +266,9 @@ class VerificationApp {
       console.error('Backend connection test failed:', error);
 
       // Only redirect to cert helper in local development
-      if (window.location.hostname === 'localhost' || window.location.port === '3443') {
+      if (isLocalDev) {
         const params = new URLSearchParams(window.location.search);
+        params.set('health_url', healthUrl);
         window.location.href = `/cert-helper.html?${params.toString()}`;
         throw new Error('Redirecting to certificate setup...');
       } else {
@@ -292,9 +326,25 @@ class VerificationApp {
         this.ui.applyBranding(message.payload);
         break;
 
+      case 'instruction':
+        // A single instruction payload from the Playbook
+        // Swap camera lens before updating the UI
+        if (message.payload && message.payload.lens) {
+          this.videoCapture.switchCamera(message.payload.lens).then((newStream) => {
+            // Refresh the video preview with the new camera stream
+            if (newStream) this.ui.setupVideoPreview(newStream);
+            this.challengeController.executeInstruction(message.payload);
+            // Send acknowledgement ping so backend confirms UI delivery
+            this.wsManager.ws.send(JSON.stringify({ type: 'instruction_acknowledged' }));
+          }).catch(err => console.error("Hardware flip failed", err));
+        }
+        break;
+
       case 'phase_change':
-        // Server can override phase changes if needed
-        this.ui.showInstructions(message.payload);
+        // Phase change is informational — update the UI but do NOT stop recording
+        if (message.payload) {
+          this.challengeController.emitPhaseChange(message.payload);
+        }
         break;
 
       case 'result':
@@ -336,25 +386,26 @@ class VerificationApp {
       countdownOverlay.classList.remove('hidden');
 
       for (let i = 5; i > 0; i--) {
+        // Reset animation by removing class, forcing reflow, and adding back
+        countdownTimer.classList.remove('animate-pop');
+        void countdownTimer.offsetWidth; // Trigger DOM reflow
+
         countdownTimer.textContent = i;
+        countdownTimer.classList.add('animate-pop');
+
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       countdownOverlay.classList.add('hidden');
 
-      // Start video recording
-      this.videoCapture.start();
+      // Start the video pipeline recording the blob (async: waits for any pending camera switch)
+      await this.videoCapture.start();
 
-      // Start IMU collection
+      // Start IMU loop
       this.imuCollector.start();
 
-      // Start global 15-second recording timer UI
-      this.startRecordingTimer(15);
-
-      // Start challenge sequence after 3 seconds of buffer recording
-      setTimeout(() => {
-        this.challengeController.startChallenge();
-      }, 3000);
+      // Enter waiting mode while backend dictates instruction sequence
+      this.challengeController.startChallenge();
 
     } catch (error) {
       console.error('Verification run error:', error);
@@ -367,17 +418,20 @@ class VerificationApp {
     const timeDisplay = document.getElementById('recording-time');
     if (indicator) indicator.classList.remove('hidden');
 
-    let timeLeft = totalSeconds;
-    if (timeDisplay) timeDisplay.textContent = `${timeLeft}s`;
+    const endTime = Date.now() + (totalSeconds * 1000);
+
+    if (timeDisplay) timeDisplay.textContent = `${totalSeconds}s`;
 
     this.recordingInterval = setInterval(() => {
-      timeLeft--;
-      if (timeLeft >= 0) {
-        if (timeDisplay) timeDisplay.textContent = `${timeLeft}s`;
+      const remainingMs = endTime - Date.now();
+      const secondsLeft = Math.ceil(remainingMs / 1000);
+
+      if (secondsLeft >= 0) {
+        if (timeDisplay) timeDisplay.textContent = `${secondsLeft}s`;
       } else {
         clearInterval(this.recordingInterval);
       }
-    }, 1000);
+    }, 100); // 100ms interval for smoother absolute UTC sync without dropping ticks
   }
 
   /**

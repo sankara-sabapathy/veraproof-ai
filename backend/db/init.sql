@@ -64,7 +64,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     verification_status VARCHAR(50),
     video_s3_key VARCHAR(500),
     imu_data_s3_key VARCHAR(500),
-    optical_flow_s3_key VARCHAR(500)
+    optical_flow_s3_key VARCHAR(500),
+    session_duration INTEGER DEFAULT 15,
+    verification_commands JSONB
 );
 
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
@@ -146,6 +148,8 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS verification_status VARCHAR(50);
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS video_s3_key VARCHAR(500);
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS imu_data_s3_key VARCHAR(500);
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS optical_flow_s3_key VARCHAR(500);
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_duration INTEGER DEFAULT 15;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS verification_commands JSONB;
 
 -- Tenants: webhook support columns
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(500);

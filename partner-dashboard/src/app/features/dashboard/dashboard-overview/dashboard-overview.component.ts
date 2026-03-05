@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -14,7 +13,6 @@ import { StatCardComponent } from '../../../shared/components/stat-card/stat-car
 import { UsageChartComponent } from '../../analytics/usage-chart/usage-chart.component';
 import { OutcomeChartComponent } from '../../analytics/outcome-chart/outcome-chart.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { SessionCreateDialogComponent } from '../../sessions/session-create-dialog/session-create-dialog.component';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
 import { ColDef, ValueFormatterParams } from 'ag-grid-community';
 import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
@@ -37,14 +35,14 @@ import { StatusRendererComponent } from '../../../shared/components/data-table/r
     OutcomeChartComponent,
     LoadingSpinnerComponent
   ],
-  providers: [DialogService, DatePipe],
+  providers: [DatePipe],
   templateUrl: './dashboard-overview.component.html',
   styleUrls: ['./dashboard-overview.component.scss']
 })
 export class DashboardOverviewComponent implements OnInit {
   dashboardData: DashboardData | null = null;
   loading = false;
-  dialogRef: DynamicDialogRef | undefined;
+
 
   columns: ColDef[] = [];
 
@@ -53,7 +51,6 @@ export class DashboardOverviewComponent implements OnInit {
     private analyticsService: AnalyticsService,
     private notification: NotificationService,
     private router: Router,
-    private dialogService: DialogService,
     private datePipe: DatePipe
   ) {
     this.columns = [
@@ -120,18 +117,7 @@ export class DashboardOverviewComponent implements OnInit {
 
 
   createSession(): void {
-    this.dialogRef = this.dialogService.open(SessionCreateDialogComponent, {
-      header: 'Create Session',
-      width: '600px',
-      modal: true
-    });
-
-    this.dialogRef.onClose.subscribe(result => {
-      if (result) {
-        // Session was created, reload dashboard to show it
-        this.loadDashboard();
-      }
-    });
+    this.router.navigate(['/sessions/create']);
   }
 
   generateApiKey(): void {
