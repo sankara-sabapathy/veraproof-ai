@@ -24,35 +24,45 @@ def extract_sparse_keyframes(video_path: str, num_frames: int = 5) -> List[str]:
             return frames_base64
             
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        # FIX: Browser-recorded WebM files often lack duration metadata, causing OpenCV to report <= 0 frames.
+        # If this happens, we must manually read frames to determine length and sample them.
         if total_frames <= 0:
-            logger.warning(f"Video {video_path} has 0 frames.")
+            logger.warning(f"Metadata reported 0 frames for {video_path}, falling back to manual frame extraction.")
+            all_frames = []
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                all_frames.append(frame)
+            
+            total_frames = len(all_frames)
+            if total_frames == 0:
+                logger.error(f"Video {video_path} is completely empty or unsupported by OpenCV/FFmpeg.")
+                cap.release()
+                return frames_base64
+                
+            step = max(1, total_frames // num_frames)
+            frame_indices = [min(i * step, total_frames - 1) for i in range(num_frames)]
+            frame_indices = sorted(list(set(frame_indices)))
+            
+            for target_idx in frame_indices:
+                frame = all_frames[target_idx]
+                _process_and_encode_frame(frame, frames_base64)
+                
             cap.release()
             return frames_base64
-            
-        # Calculate indices to extract evenly spaced frames
+
+        # Fast path for videos WITH proper headers
         step = max(1, total_frames // num_frames)
         frame_indices = [min(i * step, total_frames - 1) for i in range(num_frames)]
-        
-        # In case the video is very short, make sure we only capture valid unique indices
         frame_indices = sorted(list(set(frame_indices)))
         
         for target_idx in frame_indices:
-            # Set video position
             cap.set(cv2.CAP_PROP_POS_FRAMES, target_idx)
             ret, frame = cap.read()
             if ret:
-                # Downscale the frame to reduce LLM token count and payload size
-                h, w = frame.shape[:2]
-                max_dim = 512
-                if max(h, w) > max_dim:
-                    scale = max_dim / float(max(h, w))
-                    new_w, new_h = int(w * scale), int(h * scale)
-                    frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-                # Encode to high-quality JPEG
-                _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-                b64_str = base64.b64encode(buffer).decode('utf-8')
-                frames_base64.append(b64_str)
+                _process_and_encode_frame(frame, frames_base64)
             else:
                 logger.warning(f"Failed to read frame {target_idx} from video {video_path}")
                 
@@ -61,3 +71,16 @@ def extract_sparse_keyframes(video_path: str, num_frames: int = 5) -> List[str]:
         logger.error(f"Error during OpenCV frame extraction: {e}")
         
     return frames_base64
+
+def _process_and_encode_frame(frame, frames_base64_list):
+    """Helper to downscale and base64-encode a single OpenCV frame."""
+    h, w = frame.shape[:2]
+    max_dim = 512
+    if max(h, w) > max_dim:
+        scale = max_dim / float(max(h, w))
+        new_w, new_h = int(w * scale), int(h * scale)
+        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+    b64_str = base64.b64encode(buffer).decode('utf-8')
+    frames_base64_list.append(b64_str)
