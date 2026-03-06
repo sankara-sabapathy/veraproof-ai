@@ -29,31 +29,44 @@ def extract_sparse_keyframes(video_path: str, num_frames: int = 5) -> List[str]:
         # If this happens, we must manually read frames to determine length and sample them.
         if total_frames <= 0:
             logger.warning(f"Metadata reported 0 frames for {video_path}, falling back to manual frame extraction.")
-            all_frames = []
+            
+            # PASS 1: Count total frames efficiently without decoding arrays to RAM (Prevents OOM Crashes)
+            total_frames = 0
             while True:
-                ret, frame = cap.read()
+                ret = cap.grab()
                 if not ret:
                     break
-                all_frames.append(frame)
+                total_frames += 1
             
-            total_frames = len(all_frames)
             if total_frames == 0:
                 logger.error(f"Video {video_path} is completely empty or unsupported by OpenCV/FFmpeg.")
                 cap.release()
                 return frames_base64
                 
             step = max(1, total_frames // num_frames)
-            frame_indices = [min(i * step, total_frames - 1) for i in range(num_frames)]
-            frame_indices = sorted(list(set(frame_indices)))
+            frame_indices = sorted(list(set([min(i * step, total_frames - 1) for i in range(num_frames)])))
+            target_set = set(frame_indices)
             
-            for target_idx in frame_indices:
-                frame = all_frames[target_idx]
-                _process_and_encode_frame(frame, frames_base64)
-                
+            # PASS 2: Re-open and extract the precise target frames
+            cap.release()
+            
+            cap = cv2.VideoCapture(video_path)
+            current_frame = 0
+            
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                    
+                if current_frame in target_set:
+                    _process_and_encode_frame(frame, frames_base64)
+                    
+                current_frame += 1
+                if current_frame > max(frame_indices):
+                    break # Optimization: exit early once all targets are hit
+                    
             cap.release()
             return frames_base64
-
-        # Fast path for videos WITH proper headers
         step = max(1, total_frames // num_frames)
         frame_indices = [min(i * step, total_frames - 1) for i in range(num_frames)]
         frame_indices = sorted(list(set(frame_indices)))
