@@ -71,6 +71,31 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 
+-- Media Analysis Jobs Table
+CREATE TABLE IF NOT EXISTS media_analysis_jobs (
+    job_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'pending',
+    analysis_outcome VARCHAR(50),
+    media_type VARCHAR(20) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    source_filename VARCHAR(255) NOT NULL,
+    file_size_bytes BIGINT NOT NULL,
+    metadata JSONB,
+    artifact_s3_key VARCHAR(500),
+    tier_2_score INTEGER,
+    final_trust_score INTEGER,
+    ai_score FLOAT,
+    reasoning TEXT,
+    ai_explanation JSONB,
+    vision_context JSONB,
+    error_message TEXT
+);
+
+ALTER TABLE media_analysis_jobs ENABLE ROW LEVEL SECURITY;
+
 -- Branding Configuration Table
 CREATE TABLE IF NOT EXISTS branding_configs (
     tenant_id UUID PRIMARY KEY REFERENCES tenants(tenant_id) ON DELETE CASCADE,
@@ -130,6 +155,9 @@ ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_sessions_tenant_id ON sessions(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
+CREATE INDEX IF NOT EXISTS idx_media_analysis_jobs_tenant_id ON media_analysis_jobs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_media_analysis_jobs_created_at ON media_analysis_jobs(created_at);
+CREATE INDEX IF NOT EXISTS idx_media_analysis_jobs_status ON media_analysis_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_timestamp ON usage_logs(tenant_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_id ON api_keys(tenant_id);
 
@@ -151,6 +179,24 @@ ALTER TABLE sessions ADD COLUMN IF NOT EXISTS optical_flow_s3_key VARCHAR(500);
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS session_duration INTEGER DEFAULT 15;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS verification_commands JSONB;
 
+-- Media analysis jobs: additive columns for iterative rollout
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS analysis_outcome VARCHAR(50);
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS media_type VARCHAR(20);
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS content_type VARCHAR(100);
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS source_filename VARCHAR(255);
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS file_size_bytes BIGINT;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS metadata JSONB;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS artifact_s3_key VARCHAR(500);
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS tier_2_score INTEGER;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS final_trust_score INTEGER;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS ai_score FLOAT;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS reasoning TEXT;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS ai_explanation JSONB;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS vision_context JSONB;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS error_message TEXT;
+
 -- Tenants: webhook support columns
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(500);
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS webhook_secret VARCHAR(255);
@@ -159,3 +205,5 @@ ALTER TABLE tenants ADD COLUMN IF NOT EXISTS webhook_secret VARCHAR(255);
 INSERT INTO tenants (email, subscription_tier, monthly_quota, current_usage)
 VALUES ('test@veraproof.ai', 'Sandbox', 3, 0)
 ON CONFLICT (email) DO NOTHING;
+
+

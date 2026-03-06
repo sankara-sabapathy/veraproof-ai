@@ -143,7 +143,7 @@ body {
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-primary {
@@ -228,7 +228,11 @@ body {
     opacity: 0;
 }
 
-.animate-pop {
+.animate-pop-a {
+    animation: popIn 1s ease-out;
+}
+
+.animate-pop-b {
     animation: popIn 1s ease-out;
 }
 
@@ -418,4 +422,62 @@ body {
 
 .pulsing {
     animation: pulse 2s ease-in-out infinite;
+}
+/* Accessibility and modal hardening */
+.consent-modal {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-color);
+}
+
+.consent-modal h3 {
+    margin-bottom: 10px;
+}
+
+.consent-modal p {
+    font-size: 0.9rem;
+    color: #4b5563;
+    margin: 10px 0;
+}
+
+.consent-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.consent-btn {
+    flex: 1;
+}
+
+.consent-agree-btn {
+    background-color: var(--button-color);
+}
+
+.ai-disclaimer {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 15px;
+    padding: 0 10px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary-color) 70%, white 30%);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

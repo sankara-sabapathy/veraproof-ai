@@ -129,3 +129,4 @@ backend/test_session_flow.py
 # Agent context
 .agent/
 .agents/
+.codex/

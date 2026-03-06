@@ -41,7 +41,7 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--vp-text-secondary, #64748b);
-    transition: all 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
     cursor: pointer;
 
     i {

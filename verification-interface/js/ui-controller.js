@@ -11,6 +11,7 @@ export class UIController {
       error: document.getElementById('error-page')
     };
     this.instructionTimer = null;
+    this.countdownAnimationClass = 'animate-pop-a';
   }
 
   /**
@@ -61,6 +62,7 @@ export class UIController {
     const titleElement = document.getElementById('phase-title');
     const instructionElement = document.getElementById('phase-instruction');
     const progressFill = document.getElementById('progress-fill');
+    const progressBar = document.getElementById('progress-bar');
     const countdownOverlay = document.getElementById('countdown-overlay');
     const countdownTimerElement = document.getElementById('countdown-timer');
 
@@ -82,8 +84,11 @@ export class UIController {
       };
 
       // If it's a dynamic instruction phase, assume ~50% progress for visual continuity
-      let progress = phaseData.phase === 'instruction' ? 50 : (progressMap[phaseData.phase] || 0);
+      const progress = phaseData.phase === 'instruction' ? 50 : (progressMap[phaseData.phase] || 0);
       progressFill.style.width = `${progress}%`;
+      if (progressBar) {
+        progressBar.setAttribute('aria-valuenow', String(progress));
+      }
     }
 
     // Handle dynamic duration timer
@@ -98,31 +103,31 @@ export class UIController {
 
         let secondsRemaining = Math.ceil(phaseData.duration / 1000);
 
-        // Initial tick render
         countdownTimerElement.textContent = secondsRemaining;
-        countdownTimerElement.classList.remove('animate-pop');
-        void countdownTimerElement.offsetWidth; // Reflow
-        countdownTimerElement.classList.add('animate-pop');
+        this.restartCountdownAnimation(countdownTimerElement);
 
-        // Interval loop
         this.instructionTimer = setInterval(() => {
           secondsRemaining--;
           if (secondsRemaining > 0) {
             countdownTimerElement.textContent = secondsRemaining;
-            countdownTimerElement.classList.remove('animate-pop');
-            void countdownTimerElement.offsetWidth; // Reflow
-            countdownTimerElement.classList.add('animate-pop');
+            this.restartCountdownAnimation(countdownTimerElement);
           } else {
             clearInterval(this.instructionTimer);
             this.instructionTimer = null;
             countdownOverlay.classList.add('hidden');
           }
         }, 1000);
-
       } else {
         countdownOverlay.classList.add('hidden');
       }
     }
+  }
+
+  restartCountdownAnimation(countdownTimerElement) {
+    countdownTimerElement.classList.remove('animate-pop-a', 'animate-pop-b');
+    this.countdownAnimationClass =
+      this.countdownAnimationClass === 'animate-pop-a' ? 'animate-pop-b' : 'animate-pop-a';
+    countdownTimerElement.classList.add(this.countdownAnimationClass);
   }
 
   /**
@@ -136,16 +141,15 @@ export class UIController {
 
     if (checkResult.isCompatible) {
       statusBox.innerHTML = `
-        <p class="success">✓ Device is compatible</p>
+        <p class="success">&#10003; Device is compatible</p>
         <p>Browser: ${checkResult.deviceInfo.browser} ${checkResult.deviceInfo.version}</p>
         <p>OS: ${checkResult.deviceInfo.os} ${checkResult.deviceInfo.version}</p>
-        <p>✓ Camera access granted</p>
-        <p>✓ Motion sensors accessible</p>
+        <p>&#10003; Camera access granted</p>
+        <p>&#10003; Motion sensors accessible</p>
       `;
       statusBox.className = 'status-box success';
       errorBox.classList.add('hidden');
 
-      // Show continue button
       if (continueBtn) {
         continueBtn.classList.remove('hidden');
       }
@@ -153,7 +157,7 @@ export class UIController {
         permissionsBtn.classList.add('hidden');
       }
     } else {
-      statusBox.innerHTML = '<p class="error">✗ Device is not compatible</p>';
+      statusBox.innerHTML = '<p class="error">&#10007; Device is not compatible</p>';
       statusBox.className = 'status-box error';
 
       errorBox.innerHTML = `
@@ -164,7 +168,6 @@ export class UIController {
       `;
       errorBox.classList.remove('hidden');
 
-      // Hide buttons if incompatible
       if (continueBtn) {
         continueBtn.classList.add('hidden');
       }
@@ -182,11 +185,11 @@ export class UIController {
     const permissionsBtn = document.getElementById('request-permissions-btn');
 
     statusBox.innerHTML = `
-      <p class="info">✓ Device is compatible</p>
+      <p class="info">&#10003; Device is compatible</p>
       <p>We need your permission to access:</p>
       <ul style="text-align: left; margin: 1rem auto; max-width: 300px;">
-        <li>📷 Camera (for video recording)</li>
-        <li>📱 Motion sensors (for fraud detection)</li>
+        <li>&#128247; Camera (for video recording)</li>
+        <li>&#128241; Motion sensors (for fraud detection)</li>
       </ul>
       <p>Click the button below to grant permissions.</p>
     `;
@@ -210,18 +213,17 @@ export class UIController {
     const scoreElement = document.getElementById('result-score');
 
     if (result.status === 'success') {
-      iconElement.textContent = '✓';
+      iconElement.textContent = '\u2713';
       iconElement.className = 'result-icon success';
       titleElement.textContent = 'Verification Successful';
       messageElement.textContent = result.reasoning || 'Your video has been verified successfully.';
     } else {
-      iconElement.textContent = '✗';
+      iconElement.textContent = '\u2717';
       iconElement.className = 'result-icon failed';
       titleElement.textContent = 'Verification Failed';
       messageElement.textContent = result.reasoning || 'Your video could not be verified.';
     }
 
-    // Show trust score
     if (result.final_trust_score !== undefined) {
       scoreElement.innerHTML = `
         <div class="score-label">Trust Score</div>
@@ -249,6 +251,8 @@ export class UIController {
     if (statusElement) {
       statusElement.textContent = message;
       statusElement.className = `status-message ${type}`;
+      statusElement.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+      statusElement.setAttribute('role', type === 'error' ? 'alert' : 'status');
     }
   }
 
@@ -269,7 +273,6 @@ export class UIController {
     const redirectBtn = document.getElementById('redirect-btn');
     if (redirectBtn) {
       if (returnUrl) {
-        // Add verification results to return URL
         const url = new URL(returnUrl);
         url.searchParams.set('session_id', sessionId);
         url.searchParams.set('status', result.status);
@@ -283,7 +286,6 @@ export class UIController {
           window.location.href = url.toString();
         };
       } else {
-        // No return URL, just close or show message
         redirectBtn.textContent = 'Close';
         redirectBtn.onclick = () => {
           window.close();

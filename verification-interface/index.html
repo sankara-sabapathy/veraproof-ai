@@ -27,17 +27,17 @@
 
                 <div class="features">
                     <div class="feature">
-                        <span class="icon">🔒</span>
+                        <span class="icon">&#128274;</span>
                         <h3>Secure</h3>
                         <p>Military-grade encryption</p>
                     </div>
                     <div class="feature">
-                        <span class="icon">⚡</span>
+                        <span class="icon">&#9889;</span>
                         <h3>Fast</h3>
                         <p>Results in 3 seconds</p>
                     </div>
                     <div class="feature">
-                        <span class="icon">🎯</span>
+                        <span class="icon">&#127919;</span>
                         <h3>Accurate</h3>
                         <p>Physics-based detection</p>
                     </div>
@@ -46,7 +46,7 @@
                 <button id="start-verification-btn" class="btn-primary">Start Verification</button>
 
                 <div class="footer-links">
-                    <a href="#" id="partner-login-link">Partner Login</a>
+                    <a href="/partner-dashboard" id="partner-login-link">Partner Login</a>
                 </div>
             </div>
         </div>
@@ -61,17 +61,17 @@
                 <div id="device-error" class="error-box hidden"></div>
 
                 <!-- Explicit Consent Modal (Injected Before Recording Starts) -->
-                <div id="consent-modal" class="consent-modal hidden"
-                    style="margin-top: 20px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background-color: #f9fafb;">
-                    <h3>Privacy & Data Consent</h3>
-                    <p style="font-size: 0.9rem; color: #4b5563; margin: 10px 0;">
+                <div id="consent-modal" class="consent-modal hidden" role="dialog" aria-modal="true"
+                    aria-labelledby="consent-title" aria-describedby="consent-description" tabindex="-1">
+                    <h3 id="consent-title">Privacy & Data Consent</h3>
+                    <p id="consent-description">
                         By proceeding, you consent to VeraProof AI actively recording your device's
                         <strong>camera</strong>, <strong>motion sensors (accelerometer/gyroscope)</strong>,
                         and <strong>audio</strong> to conduct automated AI fraud detection and liveness analysis.
                     </p>
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        <button id="consent-decline-btn" class="btn-secondary" style="flex: 1;">Decline</button>
-                        <button id="consent-agree-btn" class="btn-primary" style="flex: 1; background-color: #10B981;">I
+                    <div class="consent-actions">
+                        <button id="consent-decline-btn" type="button" class="btn-secondary consent-btn">Decline</button>
+                        <button id="consent-agree-btn" type="button" class="btn-primary consent-btn consent-agree-btn">I
                             Agree & Proceed</button>
                     </div>
                 </div>
@@ -94,10 +94,10 @@
                         <span id="recording-time">15s</span>
                     </div>
                     <div id="countdown-overlay" class="countdown-overlay hidden">
-                        <span id="countdown-timer">5</span>
+                        <span id="countdown-timer" aria-live="polite" aria-atomic="true">5</span>
                     </div>
-                    <video id="video-preview" autoplay playsinline muted></video>
-                    <canvas id="video-canvas" class="hidden"></canvas>
+                    <video id="video-preview" autoplay playsinline muted aria-label="Live verification camera preview"></video>
+                    <canvas id="video-canvas" class="hidden" aria-hidden="true"></canvas>
                 </div>
 
                 <div class="instructions">
@@ -105,15 +105,15 @@
                     <p id="phase-instruction">Please wait while we set up your verification</p>
                 </div>
 
-                <div class="progress-bar">
+                <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                    aria-valuenow="0" aria-label="Verification progress">
                     <div id="progress-fill" class="progress-fill"></div>
                 </div>
 
-                <div id="status-message" class="status-message"></div>
+                <div id="status-message" class="status-message" role="status" aria-live="polite" aria-atomic="true"></div>
 
-                <div class="ai-disclaimer"
-                    style="font-size: 0.75rem; color: #6b7280; text-align: center; margin-top: 15px; padding: 0 10px;">
-                    <p>🔒 <strong>Note:</strong> There is no human involved in verifying the video. The process is fully
+                <div class="ai-disclaimer">
+                    <p>&#128274; <strong>Note:</strong> There is no human involved in verifying the video. The process is fully
                         automated by AI.</p>
                 </div>
             </div>
@@ -136,7 +136,7 @@
         <div id="error-page" class="page">
             <div class="container">
                 <div class="error-content">
-                    <span class="error-icon">⚠️</span>
+                    <span class="error-icon">&#9888;&#65039;</span>
                     <h2>Verification Error</h2>
                     <p id="error-message"></p>
                     <button id="retry-btn" class="btn-secondary">Try Again</button>

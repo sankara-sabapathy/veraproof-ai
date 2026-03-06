@@ -1,5 +1,7 @@
 .webhook-form-dialog {
-  min-width: 500px;
+  width: min(100vw - 32px, 640px);
+  min-width: min(100vw - 32px, 640px);
+  max-width: 100%;
 }
 
 form {
@@ -78,5 +80,21 @@ form {
     font-weight: 600;
     font-size: 13px;
     padding: 9px 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .webhook-form-dialog {
+    width: calc(100vw - 24px);
+    min-width: calc(100vw - 24px);
+  }
+
+  .dialog-actions {
+    flex-direction: column;
+    align-items: stretch;
+
+    ::ng-deep .p-button {
+      width: 100%;
+    }
   }
 }

@@ -19,6 +19,8 @@ class VerificationApp {
     this.returnUrl = null;
     this.imuBuffer = [];
     this.imuBatchSize = 10; // Send IMU data in batches of 10 samples
+    this.consentDialogCleanup = null;
+    this.lastFocusedElement = null;
   }
 
   /**
@@ -45,21 +47,12 @@ class VerificationApp {
    */
   setupLandingPage() {
     const startBtn = document.getElementById('start-verification-btn');
-    const partnerLink = document.getElementById('partner-login-link');
 
     if (startBtn) {
       startBtn.addEventListener('click', () => {
         this.ui.showError({
           message: 'Please access this page through a partner verification link.'
         });
-      });
-    }
-
-    if (partnerLink) {
-      partnerLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        // Redirect to partner dashboard (to be implemented)
-        window.location.href = '/partner-dashboard';
       });
     }
   }
@@ -132,6 +125,130 @@ class VerificationApp {
   }
 
   /**
+   * Keep background content out of keyboard/screen-reader flow while dialog is open.
+   */
+  setAppInertState(modalOpen) {
+    const app = document.getElementById('app');
+    const modal = document.getElementById('consent-modal');
+
+    if (!app || !modal) return;
+
+    Array.from(app.children).forEach((child) => {
+      if (child === modal) return;
+
+      if (modalOpen) {
+        child.setAttribute('aria-hidden', 'true');
+        child.setAttribute('inert', '');
+      } else {
+        child.removeAttribute('aria-hidden');
+        child.removeAttribute('inert');
+      }
+    });
+  }
+
+  /**
+   * Open consent dialog with focus trapping.
+   */
+  openConsentDialog() {
+    const consentModal = document.getElementById('consent-modal');
+    const agreeBtn = document.getElementById('consent-agree-btn');
+    const declineBtn = document.getElementById('consent-decline-btn');
+
+    if (!consentModal || !agreeBtn || !declineBtn) {
+      return Promise.reject(new Error('Consent dialog is unavailable.'));
+    }
+
+    this.lastFocusedElement = document.activeElement;
+    consentModal.classList.remove('hidden');
+    this.setAppInertState(true);
+
+    const focusableSelector = [
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+
+    const getFocusable = () => Array.from(consentModal.querySelectorAll(focusableSelector));
+
+    const cleanup = () => {
+      document.removeEventListener('keydown', onKeyDown);
+      agreeBtn.removeEventListener('click', onAgree);
+      declineBtn.removeEventListener('click', onDecline);
+      consentModal.classList.add('hidden');
+      this.setAppInertState(false);
+      this.consentDialogCleanup = null;
+
+      if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
+        this.lastFocusedElement.focus();
+      }
+    };
+
+    const onAgree = () => {
+      cleanup();
+      resolvePromise(true);
+    };
+
+    const onDecline = () => {
+      cleanup();
+      rejectPromise(new Error('User declined privacy consent.'));
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onDecline();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    let resolvePromise;
+    let rejectPromise;
+
+    const promise = new Promise((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
+    });
+
+    document.addEventListener('keydown', onKeyDown);
+    agreeBtn.addEventListener('click', onAgree);
+    declineBtn.addEventListener('click', onDecline);
+
+    this.consentDialogCleanup = cleanup;
+
+    const focusable = getFocusable();
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    } else {
+      consentModal.focus();
+    }
+
+    return promise;
+  }
+
+  /**
    * Request permissions, display explicit consent, and continue if granted
    */
   async requestPermissionsAndContinue() {
@@ -148,20 +265,8 @@ class VerificationApp {
 
       // Hide permission button and display Consent Modal
       document.getElementById('request-permissions-btn').classList.add('hidden');
-      const consentModal = document.getElementById('consent-modal');
-      consentModal.classList.remove('hidden');
 
-      // Create a blocking Promise that awaits user Explicit Consent
-      const userConsent = await new Promise((resolve, reject) => {
-        document.getElementById('consent-agree-btn').addEventListener('click', () => {
-          consentModal.classList.add('hidden');
-          resolve(true);
-        }, { once: true });
-
-        document.getElementById('consent-decline-btn').addEventListener('click', () => {
-          reject(new Error("User declined privacy consent."));
-        }, { once: true });
-      });
+      const userConsent = await this.openConsentDialog();
 
       if (userConsent) {
         this.ui.showStatusMessage('Consent granted! Starting verification...', 'success');
@@ -336,12 +441,12 @@ class VerificationApp {
             this.challengeController.executeInstruction(message.payload);
             // Send acknowledgement ping so backend confirms UI delivery
             this.wsManager.ws.send(JSON.stringify({ type: 'instruction_acknowledged' }));
-          }).catch(err => console.error("Hardware flip failed", err));
+          }).catch(err => console.error('Hardware flip failed', err));
         }
         break;
 
       case 'phase_change':
-        // Phase change is informational — update the UI but do NOT stop recording
+        // Phase change is informational - update the UI but do NOT stop recording
         if (message.payload) {
           this.challengeController.emitPhaseChange(message.payload);
         }
@@ -453,6 +558,10 @@ class VerificationApp {
    */
   cleanup() {
     this.stopRecording();
+
+    if (this.consentDialogCleanup) {
+      this.consentDialogCleanup();
+    }
 
     if (this.wsManager) {
       this.wsManager.close();

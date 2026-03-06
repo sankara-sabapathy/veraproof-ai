@@ -227,7 +227,7 @@ interface Invoice {
       padding: 1.5rem 2rem;
       background: white;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
     .credit-btn:hover {

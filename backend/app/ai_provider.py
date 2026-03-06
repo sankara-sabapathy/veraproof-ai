@@ -8,6 +8,31 @@ from app.aws_credentials import aws_cred_manager
 
 logger = logging.getLogger(__name__)
 
+
+def _coerce_mapping(value: Any, field_name: str) -> Dict[str, Any]:
+    """Normalize JSON-ish values from DB/providers into a dict."""
+    if value is None:
+        return {}
+
+    if isinstance(value, dict):
+        return value
+
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            logger.warning("Failed to decode JSON string for %s", field_name)
+            return {}
+
+        if isinstance(parsed, dict):
+            return parsed
+
+        logger.warning("Decoded %s but it was %s instead of dict", field_name, type(parsed).__name__)
+        return {}
+
+    logger.warning("Unexpected %s type: %s", field_name, type(value).__name__)
+    return {}
+
 class VisionProvider(abc.ABC):
     @abc.abstractmethod
     async def extract_context(self, frames_base64: List[str], metadata: Dict[str, Any] = None) -> Tuple[bool, Dict[str, Any]]:
@@ -79,10 +104,13 @@ class GoogleGeminiProvider(GenAIProvider):
         from google.genai import types
         
         try:
+            metadata = _coerce_mapping(metadata, "metadata")
+            vision_context = _coerce_mapping(vision_context, "vision_context")
+
             logger.info(f"Tier 2 AWS Rekognition Vision Context Extracted:\n{json.dumps(vision_context, indent=2)}")
             
             # Resolve verification profile from metadata
-            verification_profile = (metadata or {}).get("verification_profile", "standard")
+            verification_profile = metadata.get("verification_profile", "standard")
             logger.info(f"Gemini evaluation using verification_profile='{verification_profile}'")
             
             # 1. Build profile-aware preamble
@@ -207,8 +235,11 @@ class AmazonNova2LiteProvider(GenAIProvider):
                     }
                 })
             
+            metadata = _coerce_mapping(metadata, "metadata")
+            vision_context = _coerce_mapping(vision_context, "vision_context")
+
             # Resolve verification profile from metadata
-            verification_profile = (metadata or {}).get("verification_profile", "standard")
+            verification_profile = metadata.get("verification_profile", "standard")
             
             profile_preamble = ""
             if verification_profile == "object_originality":
@@ -305,7 +336,8 @@ class AmazonRekognitionProvider(VisionProvider):
         Returns: (is_spoofed_boolean, structured_vision_context)
         """
         try:
-            verification_profile = (metadata or {}).get("verification_profile", "standard")
+            metadata = _coerce_mapping(metadata, "metadata")
+            verification_profile = metadata.get("verification_profile", "standard")
             logger.info(f"Rekognition Tier 2 running with verification_profile='{verification_profile}'")
             
             # Determine if we should run face analysis (only for human-facing profiles)

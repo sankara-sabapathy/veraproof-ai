@@ -32,7 +32,7 @@
       padding: 9px 18px !important;
       min-height: 38px;
       box-shadow: none;
-      transition: all 0.2s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       margin: 0 !important;
 
       .p-button-icon {

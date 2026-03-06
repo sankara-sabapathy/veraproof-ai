@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Header, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from typing import Optional
 import logging
 from opentelemetry import trace
@@ -917,3 +917,105 @@ async def websocket_verify(websocket: WebSocket, session_id: str):
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
         ws_handler.disconnect(session_id)
+
+
+def _parse_metadata_json(metadata: Optional[str]) -> dict:
+    if not metadata:
+        return {}
+
+    import json
+
+    try:
+        parsed = json.loads(metadata)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="metadata must be valid JSON") from exc
+
+    if not isinstance(parsed, dict):
+        raise HTTPException(status_code=400, detail="metadata must be a JSON object")
+
+    return parsed
+
+
+@router.post("/media-analysis")
+async def create_media_analysis_job(
+    file: UploadFile = File(...),
+    metadata: Optional[str] = Form(None),
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
+):
+    """Upload an image or video and trigger asynchronous fraud analysis."""
+    import asyncio
+    from app.media_analysis import media_analysis_manager
+
+    tenant_id, _role = auth_data
+
+    await ensure_tenant_exists(tenant_id)
+
+    if not await rate_limiter.check_api_rate_limit(tenant_id):
+        raise HTTPException(status_code=429, detail="API rate limit exceeded")
+
+    if not await quota_manager.check_quota(tenant_id):
+        raise HTTPException(status_code=429, detail="Usage quota exceeded")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    try:
+        job = await media_analysis_manager.create_job(
+            tenant_id=tenant_id,
+            filename=file.filename or "upload.bin",
+            content_type=file.content_type or "application/octet-stream",
+            media_bytes=file_bytes,
+            metadata=_parse_metadata_json(metadata),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    asyncio.create_task(media_analysis_manager.process_job(job["job_id"], file_bytes))
+    return job
+
+
+@router.get("/media-analysis")
+async def list_media_analysis_jobs(
+    limit: int = 20,
+    offset: int = 0,
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
+):
+    """List fraud-analysis jobs for the authenticated tenant."""
+    from app.media_analysis import media_analysis_manager
+
+    tenant_id, _role = auth_data
+    return await media_analysis_manager.list_jobs(tenant_id, limit, offset)
+
+
+@router.get("/media-analysis/{job_id}")
+async def get_media_analysis_job(
+    job_id: str,
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
+):
+    """Get fraud-analysis job status and results."""
+    from app.media_analysis import media_analysis_manager
+
+    tenant_id, role = auth_data
+    job = await media_analysis_manager.get_job(job_id, tenant_id, role)
+    if not job:
+        raise HTTPException(status_code=404, detail="Media analysis job not found")
+    return job
+
+
+@router.get("/media-analysis/{job_id}/artifact")
+async def get_media_analysis_artifact(
+    job_id: str,
+    auth_data: tuple[str, str] = Depends(get_tenant_and_role_from_any_auth)
+):
+    """Get a signed URL for the uploaded fraud-analysis source artifact."""
+    from app.media_analysis import media_analysis_manager
+
+    tenant_id, role = auth_data
+    try:
+        url = await media_analysis_manager.get_artifact_url(job_id, tenant_id, role)
+        return {"url": url}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+

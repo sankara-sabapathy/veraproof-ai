@@ -1,6 +1,7 @@
 import asyncpg
 from typing import Optional, Any, Dict, List
 from contextlib import asynccontextmanager
+import json
 from app.config import settings
 import logging
 import asyncio
@@ -13,6 +14,21 @@ class TenantDatabaseManager:
     
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
+
+    async def _init_connection(self, conn: asyncpg.Connection):
+        # Ensure Postgres json/jsonb columns are decoded into Python objects.
+        await conn.set_type_codec(
+            'json',
+            encoder=json.dumps,
+            decoder=json.loads,
+            schema='pg_catalog'
+        )
+        await conn.set_type_codec(
+            'jsonb',
+            encoder=json.dumps,
+            decoder=json.loads,
+            schema='pg_catalog'
+        )
     
     async def connect(self):
         """Initialize database connection pool"""
@@ -23,7 +39,8 @@ class TenantDatabaseManager:
                     settings.database_url,
                     min_size=5,
                     max_size=20,
-                    command_timeout=60
+                    command_timeout=60,
+                    init=self._init_connection
                 ),
                 timeout=5.0  # 5 second timeout
             )

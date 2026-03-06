@@ -43,7 +43,7 @@
     letter-spacing: -0.3px;
 
     &::before {
-      content: '🛡️';
+      content: '\\1F6E1\\FE0F';
       display: block;
       font-size: 36px;
       margin-bottom: 12px;
@@ -82,7 +82,7 @@
     border-radius: 8px;
     font-size: 14px;
     font-family: inherit;
-    transition: all 0.2s;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
     box-sizing: border-box;
     background: var(--vp-bg, #f8fafc);
 
@@ -156,7 +156,7 @@
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;

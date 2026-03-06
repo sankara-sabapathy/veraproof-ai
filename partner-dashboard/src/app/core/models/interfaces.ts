@@ -134,6 +134,37 @@ export interface SessionListResponse {
   offset: number;
 }
 
+export type MediaAnalysisStatus = 'pending' | 'analyzing' | 'completed' | 'failed';
+
+export interface MediaAnalysisJob {
+  job_id: string;
+  tenant_id: string;
+  status: MediaAnalysisStatus;
+  analysis_outcome: 'authentic' | 'suspicious' | 'spoof_detected' | 'error' | null;
+  media_type: 'image' | 'video';
+  content_type: string;
+  source_filename: string;
+  file_size_bytes: number;
+  metadata: Record<string, any>;
+  artifact_s3_key: string | null;
+  tier_2_score: number | null;
+  final_trust_score: number | null;
+  ai_score: number | null;
+  reasoning: string | null;
+  ai_explanation: Record<string, any> | null;
+  vision_context: Record<string, any> | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface MediaAnalysisListResponse {
+  jobs: MediaAnalysisJob[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ============================================================================
 // Analytics Models
 // ============================================================================

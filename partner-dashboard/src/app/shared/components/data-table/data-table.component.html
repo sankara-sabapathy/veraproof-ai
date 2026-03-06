@@ -2,7 +2,7 @@
   <div class="table-toolbar">
     <div class="search-wrapper">
       <i class="pi pi-search search-icon"></i>
-      <input type="text" class="search-input" [placeholder]="searchPlaceholder" [(ngModel)]="searchTerm"
+      <input type="text" class="search-input" aria-label="Search table" autocomplete="off" [placeholder]="searchPlaceholder" [(ngModel)]="searchTerm"
         (ngModelChange)="onSearchChange()" />
     </div>
   </div>
@@ -11,7 +11,7 @@
     <ag-grid-angular [theme]="gridTheme" [rowData]="data" [columnDefs]="columns" [defaultColDef]="defaultColDef"
       [rowSelection]="rowSelection" [pagination]="true" [paginationPageSize]="pageSize"
       [paginationPageSizeSelector]="paginationPageSizeSelector" [domLayout]="domLayout" [animateRows]="true"
-      [suppressCellFocus]="true" [loading]="loading"
+      [loading]="loading"
       [overlayNoRowsTemplate]="'<div class=&quot;no-rows-overlay&quot;><i class=&quot;pi pi-inbox&quot; style=&quot;font-size:40px;color:#94a3b8;margin-bottom:12px;&quot;></i><p style=&quot;color:#64748b;font-size:14px;&quot;>No data available</p></div>'"
       (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)"
       (selectionChanged)="onSelectionChanged($event)">

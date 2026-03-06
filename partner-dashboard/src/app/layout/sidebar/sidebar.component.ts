@@ -33,6 +33,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Dashboard', icon: 'pi pi-home', route: '/dashboard' },
     { label: 'API Keys', icon: 'pi pi-key', route: '/api-keys' },
     { label: 'Sessions', icon: 'pi pi-shield', route: '/sessions' },
+    { label: 'Fraud Analysis', icon: 'pi pi-search', route: '/fraud-analysis' },
     { label: 'Analytics', icon: 'pi pi-chart-line', route: '/analytics' },
     { label: 'Billing', icon: 'pi pi-file', route: '/billing' },
     { label: 'Webhooks', icon: 'pi pi-link', route: '/webhooks' },
@@ -73,3 +74,4 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.navItemClick.emit();
   }
 }
+

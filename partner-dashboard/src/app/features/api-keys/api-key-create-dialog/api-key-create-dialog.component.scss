@@ -1,5 +1,6 @@
 .dialog-container {
-  min-width: 480px;
+  width: min(100vw - 32px, 560px);
+  min-width: min(100vw - 32px, 560px);
   max-width: 560px;
 
   .description {
@@ -27,13 +28,13 @@
         width: 100%;
         display: flex;
         align-items: center;
-        height: 44px;
+        min-height: 44px;
         border-radius: 8px;
 
         .p-dropdown-label {
           display: flex;
           align-items: center;
-          height: 100%;
+          min-height: 44px;
           line-height: normal;
         }
       }
@@ -170,8 +171,10 @@
         ::ng-deep .p-button {
           flex-shrink: 0;
           margin-left: auto;
+          min-width: 44px;
+          min-height: 44px;
           color: #94a3b8 !important;
-          transition: all 0.15s ease;
+          transition: color 0.15s ease, background-color 0.15s ease;
 
           &:hover {
             color: white !important;
@@ -233,13 +236,15 @@
       font-weight: 600;
       font-size: 13px;
       padding: 9px 20px;
+      min-height: 44px;
     }
   }
 }
 
 @media (max-width: 600px) {
   .dialog-container {
-    min-width: unset;
+    width: calc(100vw - 24px);
+    min-width: calc(100vw - 24px);
     max-width: 100%;
 
     .generated-step .credential-section .credential-display {

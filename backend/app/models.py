@@ -21,6 +21,13 @@ class VerificationStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class MediaAnalysisStatus(str, Enum):
+    PENDING = "pending"
+    ANALYZING = "analyzing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class IMUData(BaseModel):
     timestamp: float
     acceleration: Dict[str, float]
@@ -29,8 +36,9 @@ class IMUData(BaseModel):
 
 class VerificationCommand(BaseModel):
     text: str
-    lens: str = "user" # user or environment
+    lens: str = "user"  # user or environment
     duration: int
+
 
 class CreateSessionRequest(BaseModel):
     return_url: str
@@ -58,6 +66,28 @@ class VerificationResult(BaseModel):
     unified_score: Optional[float] = None
     ai_explanation: Optional[Dict[str, Any]] = None
     timestamp: datetime
+
+
+class MediaAnalysisJob(BaseModel):
+    job_id: str
+    tenant_id: str
+    status: str
+    analysis_outcome: Optional[str] = None
+    media_type: str
+    content_type: str
+    source_filename: str
+    file_size_bytes: int
+    metadata: Dict[str, Any] = {}
+    artifact_s3_key: Optional[str] = None
+    tier_2_score: Optional[int] = None
+    final_trust_score: Optional[int] = None
+    ai_score: Optional[float] = None
+    reasoning: Optional[str] = None
+    ai_explanation: Optional[Dict[str, Any]] = None
+    vision_context: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
 
 
 class WebhookPayload(BaseModel):

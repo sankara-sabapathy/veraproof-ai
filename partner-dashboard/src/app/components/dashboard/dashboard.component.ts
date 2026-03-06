@@ -109,7 +109,7 @@ interface DashboardStats {
       color: var(--text-secondary);
       border-bottom: 2px solid transparent;
       margin-bottom: -2px;
-      transition: all 0.2s;
+      transition: color 0.2s ease, border-bottom-color 0.2s ease;
     }
 
     .nav-link:hover, .nav-link.active {
@@ -173,7 +173,7 @@ interface DashboardStats {
       border: 2px solid var(--border-color);
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
     }
 
     .action-btn:hover {

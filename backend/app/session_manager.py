@@ -11,12 +11,38 @@ from app.models import SessionState
 logger = logging.getLogger(__name__)
 
 
+def _normalize_json_field(value, fallback):
+    if value is None:
+        return fallback
+
+    if isinstance(value, type(fallback)):
+        return value
+
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return fallback
+        return parsed if isinstance(parsed, type(fallback)) else fallback
+
+    return fallback
+
+
 class SessionManager:
     """Manages verification sessions"""
     
     def __init__(self):
         """Initialize session manager with in-memory fallback storage"""
         self.in_memory_sessions = {}  # Fallback when database unavailable
+
+    def _normalize_session_record(self, session: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not session:
+            return session
+
+        session["metadata"] = _normalize_json_field(session.get("metadata"), {})
+        session["verification_commands"] = _normalize_json_field(session.get("verification_commands"), [])
+        session["ai_explanation"] = _normalize_json_field(session.get("ai_explanation"), {})
+        return session
     
     async def create_session(
         self,
@@ -108,6 +134,8 @@ class SessionManager:
         
         session = await db_manager.fetch_one(query, session_id)
         
+        session = self._normalize_session_record(session)
+
         # Fallback to in-memory storage if database unavailable
         if session is None and session_id in self.in_memory_sessions:
             session = self.in_memory_sessions[session_id]
@@ -294,6 +322,7 @@ class SessionManager:
             limit,
             offset
         )
+        sessions = [self._normalize_session_record(session) for session in sessions]
         
         # Return empty list if database unavailable (graceful degradation)
         if sessions is None:

@@ -53,6 +53,10 @@ export const routes: Routes = [
         ]
       },
       {
+        path: 'fraud-analysis',
+        loadComponent: () => import('./features/media-analysis/media-analysis-workbench/media-analysis-workbench.component').then(m => m.MediaAnalysisWorkbenchComponent)
+      },
+      {
         path: 'analytics',
         loadComponent: () => import('./features/analytics/analytics-overview/analytics-overview.component').then(m => m.AnalyticsOverviewComponent)
       },
@@ -103,3 +107,4 @@ export const routes: Routes = [
     redirectTo: 'dashboard'
   }
 ];
+
