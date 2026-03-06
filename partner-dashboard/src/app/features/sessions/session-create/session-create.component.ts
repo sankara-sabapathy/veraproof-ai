@@ -49,10 +49,32 @@ export class SessionCreateComponent implements OnInit {
         { label: 'Back Camera (Environment)', value: 'environment', icon: 'pi pi-image' }
     ];
 
+    verificationProfileOptions = [
+        {
+            label: 'Standard Liveness',
+            value: 'standard',
+            description: 'Full human liveness detection with anti-spoofing',
+            icon: 'pi pi-shield'
+        },
+        {
+            label: 'Static Human',
+            value: 'static_human',
+            description: 'Human verification with tolerance for minimal movement',
+            icon: 'pi pi-user'
+        },
+        {
+            label: 'Object Originality',
+            value: 'object_originality',
+            description: 'Verify physical objects are real and present in 3D space',
+            icon: 'pi pi-box'
+        }
+    ];
+
     ngOnInit(): void {
         this.createForm = this.fb.group({
             return_url: [this.getDefaultReturnUrl(), Validators.required],
             user_id: [''],
+            verification_profile: ['standard', Validators.required],
             commands: this.fb.array([])
         });
     }
@@ -132,7 +154,10 @@ export class SessionCreateComponent implements OnInit {
 
         const request = {
             return_url: formValue.return_url,
-            metadata: formValue.user_id ? { user_id: formValue.user_id } : {},
+            metadata: {
+                ...(formValue.user_id ? { user_id: formValue.user_id } : {}),
+                verification_profile: formValue.verification_profile
+            },
             session_duration: this.sessionDuration,
             verification_commands: formValue.commands.length > 0 ? formValue.commands : undefined
         };
@@ -187,7 +212,8 @@ export class SessionCreateComponent implements OnInit {
     createAnother(): void {
         this.createdSession = null;
         this.createForm.reset({
-            return_url: this.getDefaultReturnUrl()
+            return_url: this.getDefaultReturnUrl(),
+            verification_profile: 'standard'
         });
         while (this.commands.length > 0) {
             this.commands.removeAt(0);

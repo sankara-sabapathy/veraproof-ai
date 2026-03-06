@@ -10,18 +10,20 @@ logger = logging.getLogger(__name__)
 
 class VisionProvider(abc.ABC):
     @abc.abstractmethod
-    async def extract_context(self, frames_base64: List[str]) -> Tuple[bool, Dict[str, Any]]:
+    async def extract_context(self, frames_base64: List[str], metadata: Dict[str, Any] = None) -> Tuple[bool, Dict[str, Any]]:
         """
         Tier 2: Extract structured visual context from the video frames.
+        Accepts optional metadata for profile-aware spoof label suppression.
         Returns: (is_spoofed_boolean, context_json_dict)
         """
         pass
 
 class GenAIProvider(abc.ABC):
     @abc.abstractmethod
-    async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
+    async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None, imu_context: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
         """
         Tier 3: Evaluates the combined video frames and Tier 2 JSON map to determine a final AI Trust Score.
+        Accepts optional imu_context for cross-modal device motion validation.
         Returns: (Final AI Score (0-100), AI Explanation Dict)
         """
         pass
@@ -73,21 +75,59 @@ class GoogleGeminiProvider(GenAIProvider):
         self.client = genai.Client(api_key=api_key)
         self.model_id = os.environ.get("GEMINI_MODEL_ID", "gemini-3.1-flash-lite-preview")
 
-    async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
+    async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None, imu_context: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
         from google.genai import types
         
         try:
             logger.info(f"Tier 2 AWS Rekognition Vision Context Extracted:\n{json.dumps(vision_context, indent=2)}")
             
-            # 1. Structure the prompt with the Tier 2 JSON
+            # Resolve verification profile from metadata
+            verification_profile = (metadata or {}).get("verification_profile", "standard")
+            logger.info(f"Gemini evaluation using verification_profile='{verification_profile}'")
+            
+            # 1. Build profile-aware preamble
+            profile_preamble = ""
+            if verification_profile == "object_originality":
+                profile_preamble = (
+                    "IMPORTANT CONTEXT: This verification session is for OBJECT ORIGINALITY, not human liveness. "
+                    "The user is proving that a physical object (e.g., a keyboard, monitor, laptop, or other item) is real and physically present in 3D space. "
+                    "Do NOT penalize the absence of a human face. Do NOT penalize the presence of electronics or screens as spoofing indicators—they may be the legitimate subject of verification. "
+                    "Instead, focus on: (1) camera parallax and perspective shifts proving 3D depth, (2) natural ambient lighting and reflections consistent with a real environment, "
+                    "(3) subtle sensor noise and compression artifacts typical of a live camera feed vs. a digitally replayed recording, "
+                    "(4) any evidence of moiré patterns, screen bezels, or pixel grids that would indicate a screen-of-a-screen attack.\n\n"
+                )
+            elif verification_profile == "static_human":
+                profile_preamble = (
+                    "IMPORTANT CONTEXT: This verification session involves a STATIC HUMAN subject. "
+                    "The user is expected to remain relatively still—minimal head or body movement is NORMAL and should NOT be treated as a spoofing indicator. "
+                    "Do NOT penalize near-identical facial positions or consistent confidence scores across frames. "
+                    "Instead, focus on: (1) subtle depth-of-field variations proving a 3D environment, (2) natural skin micro-textures, pores, and physiological details inconsistent with printed photos or screens, "
+                    "(3) ambient lighting gradients and soft shadows that shift naturally, (4) slight camera sensor noise and compression patterns consistent with live capture, "
+                    "(5) any telltale signs of a flat 2D source such as moiré patterns, screen bezels, edge distortion, or uniform backlighting.\n\n"
+                )
+            
+            # 2. Build IMU cross-modal context block
+            imu_block = ""
+            if imu_context and imu_context.get("has_data"):
+                imu_block = (
+                    f"\nDevice IMU Sensor Data (Gyroscope + Accelerometer): {json.dumps(imu_context)}\n"
+                    "Cross-validate: Does the device's physical motion (gyroscope rotation and accelerometer shake) "
+                    "correlate with the visual motion you observe in the video frames? "
+                    "If the video shows panning but the IMU shows zero movement, this is a strong spoofing indicator. "
+                    "If the IMU shows natural hand tremor and motion consistent with the visual feed, this supports genuineness.\n\n"
+                )
+            
+            # 3. Structure the prompt with the Tier 2 JSON and IMU context
             prompt_text = (
+                f"{profile_preamble}"
                 "You are an expert fraud detection AI system. Analyze these sequential keyframes extracted from a user's verification video "
                 "alongside the attached AWS Rekognition machine-vision output.\n\n"
                 f"AWS Rekognition Vision Context: {json.dumps(vision_context)}\n\n"
+                f"{imu_block}"
                 "Assess if the video represents a genuine physical interaction in 3D space or a spoofed presentation attack (e.g., a video of a screen, printed photo, or AI generated).\n"
                 "Respond with ONLY a valid JSON object with EXACTLY two keys:\n"
                 "- 'trust_score' (a number between 0 and 100, where 100 means fully genuine and 0 means definitely spoofed or fake)\n"
-                "- 'explanation' (a highly detailed and analytical 3-4 sentence paragraph explaining your reasoning. Detail specifically what you observed in the video frames—like lighting, depth, physics, and fluid movements—and reference the Rekognition context to justify your score. Do not be generic.)\n"
+                "- 'explanation' (a highly detailed and analytical 3-4 sentence paragraph explaining your reasoning. Detail specifically what you observed in the video frames—like lighting, depth, physics, and fluid movements—and reference the Rekognition context and IMU sensor data to justify your score. Do not be generic.)\n"
                 "No other text should be in your output, just the JSON block."
             )
             
@@ -153,7 +193,7 @@ class AmazonNova2LiteProvider(GenAIProvider):
         self.bedrock_runtime = session.client(service_name="bedrock-runtime", region_name=region_name)
         self.model_id = "amazon.nova-2-lite-v1:0"
 
-    async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
+    async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None, imu_context: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
         try:
             content = []
             
@@ -167,10 +207,36 @@ class AmazonNova2LiteProvider(GenAIProvider):
                     }
                 })
             
+            # Resolve verification profile from metadata
+            verification_profile = (metadata or {}).get("verification_profile", "standard")
+            
+            profile_preamble = ""
+            if verification_profile == "object_originality":
+                profile_preamble = (
+                    "IMPORTANT CONTEXT: This verification is for OBJECT ORIGINALITY, not human liveness. "
+                    "Do NOT penalize the absence of a human face or the presence of electronics—they may be the legitimate subject. "
+                    "Focus on 3D parallax, ambient lighting, and sensor noise vs. screen replay indicators.\n\n"
+                )
+            elif verification_profile == "static_human":
+                profile_preamble = (
+                    "IMPORTANT CONTEXT: The subject is expected to remain STATIC. Minimal movement is NORMAL. "
+                    "Focus on depth-of-field, skin micro-textures, and ambient lighting instead of motion.\n\n"
+                )
+            
+            # Build IMU cross-modal context block
+            imu_block = ""
+            if imu_context and imu_context.get("has_data"):
+                imu_block = (
+                    f"\nDevice IMU Sensor Data: {json.dumps(imu_context)}\n"
+                    "Cross-validate device motion with visual motion. Mismatch = spoofing indicator.\n\n"
+                )
+            
             prompt_text = (
+                f"{profile_preamble}"
                 "You are an expert fraud detection AI system. Analyze these sequential keyframes extracted from a user's verification video "
                 "alongside the attached AWS Rekognition machine-vision output.\n\n"
                 f"AWS Rekognition Vision Context: {json.dumps(vision_context)}\n\n"
+                f"{imu_block}"
                 "Assess if the video represents a genuine physical interaction in 3D space or a spoofed event (e.g., a video of a screen, printed photo, or AI generated).\n"
                 "Check for signs of screen glare, lack of depth, or unnatural movements.\n"
                 "Respond with ONLY a valid JSON object with EXACTLY two keys:\n"
@@ -231,17 +297,27 @@ class AmazonRekognitionProvider(VisionProvider):
         # Fallback to us-east-1 strictly for global Rekognition endpoints if needed
         self.rekognition = session.client(service_name="rekognition", region_name=region_name)
 
-    async def extract_context(self, frames_base64: List[str]) -> Tuple[bool, Dict[str, Any]]:
+    async def extract_context(self, frames_base64: List[str], metadata: Dict[str, Any] = None) -> Tuple[bool, Dict[str, Any]]:
         """
-        Uses AWS Rekognition DetectLabels to identify objects, scenes, and potential presentation attacks.
+        Uses AWS Rekognition DetectLabels (and DetectFaces for human profiles) to identify
+        objects, scenes, face attributes, and potential presentation attacks.
+        Accepts optional metadata to resolve verification_profile for conditional spoof suppression.
         Returns: (is_spoofed_boolean, structured_vision_context)
         """
         try:
+            verification_profile = (metadata or {}).get("verification_profile", "standard")
+            logger.info(f"Rekognition Tier 2 running with verification_profile='{verification_profile}'")
+            
+            # Determine if we should run face analysis (only for human-facing profiles)
+            run_face_analysis = verification_profile in ("standard", "static_human")
+            
             total_frames = len(frames_base64)
             labels_log = []
+            face_analysis_log = []
             primary_labels_tracker = {}
             valid_frames = 0
             
+            # Full spoof label set for standard liveness detection
             SPOOF_LABELS = {
                 "Screen", "Monitor", "Display", "Television", "TV", "Mobile Phone", 
                 "Tablet Computer", "Laptop", "Computer Monitor", "Electronics",
@@ -249,6 +325,16 @@ class AmazonRekognitionProvider(VisionProvider):
                 "Painting", "Art", "Anime", "Paper", "Poster", "Flyer", "Brochure",
                 "Picture Frame"
             }
+            
+            # For object_originality, electronics ARE the legitimate subject—only flag 2D reproduction labels
+            if verification_profile == "object_originality":
+                SPOOF_LABELS = {
+                    "Illustration", "Animation", "Graphics", "Drawing",
+                    "Painting", "Art", "Anime", "Poster", "Flyer", "Brochure"
+                }
+            
+            # Track spoof detections across frames for profile-aware soft signaling
+            spoof_detections = []
 
             for index, frame_b64 in enumerate(frames_base64):
                 image_bytes = base64.b64decode(frame_b64)
@@ -269,6 +355,12 @@ class AmazonRekognitionProvider(VisionProvider):
                         name = label['Name']
                         confidence = float(label['Confidence'])
                         if name in SPOOF_LABELS and confidence > 65.0:
+                            # For static_human, collect evidence but defer final judgement to Tier 3 GenAI
+                            if verification_profile == "static_human":
+                                spoof_detections.append({"label": name, "confidence": confidence, "frame": index})
+                                logger.warning(f"Spoof indicator noted (deferred to Tier 3): {name} (Conf: {confidence}%)")
+                                continue
+                            
                             logger.warning(f"SPOOF DETECTED BY REKOGNITION (Tier 2): {name} (Conf: {confidence}%)")
                             return True, {
                                 "status": "failed",
@@ -290,6 +382,45 @@ class AmazonRekognitionProvider(VisionProvider):
                         "frame_index": index,
                         "frame_subjects": frame_labels_summary
                     })
+                
+                # --- DetectFaces: Face attribute analysis for human profiles ---
+                if run_face_analysis:
+                    try:
+                        face_response = self.rekognition.detect_faces(
+                            Image={'Bytes': image_bytes},
+                            Attributes=['ALL']
+                        )
+                        faces = face_response.get('FaceDetails', [])
+                        if faces:
+                            primary_face = faces[0]  # Use the most prominent face
+                            pose = primary_face.get('Pose', {})
+                            quality = primary_face.get('Quality', {})
+                            eyes_open = primary_face.get('EyesOpen', {})
+                            mouth_open = primary_face.get('MouthOpen', {})
+                            
+                            face_analysis_log.append({
+                                "frame_index": index,
+                                "pose": {
+                                    "pitch": round(pose.get('Pitch', 0), 2),
+                                    "roll": round(pose.get('Roll', 0), 2),
+                                    "yaw": round(pose.get('Yaw', 0), 2)
+                                },
+                                "quality": {
+                                    "brightness": round(quality.get('Brightness', 0), 2),
+                                    "sharpness": round(quality.get('Sharpness', 0), 2)
+                                },
+                                "eyes_open": {
+                                    "value": eyes_open.get('Value', False),
+                                    "confidence": round(eyes_open.get('Confidence', 0), 2)
+                                },
+                                "mouth_open": {
+                                    "value": mouth_open.get('Value', False),
+                                    "confidence": round(mouth_open.get('Confidence', 0), 2)
+                                },
+                                "face_count": len(faces)
+                            })
+                    except Exception as face_err:
+                        logger.warning(f"DetectFaces failed for frame {index}: {face_err}")
 
             # Calculate vision context payload for GenAI intake
             if valid_frames == 0 or total_frames == 0:
@@ -304,10 +435,43 @@ class AmazonRekognitionProvider(VisionProvider):
 
             vision_context = {
                 "status": "success",
+                "verification_profile": verification_profile,
                 "total_frames_analyzed": total_frames,
                 "most_consistent_global_subjects": consistent_subjects,
                 "frame_by_frame_details": labels_log
             }
+            
+            # Include face analysis data and computed variance metrics for human profiles
+            if face_analysis_log:
+                vision_context["face_analysis"] = {
+                    "frames_with_faces": len(face_analysis_log),
+                    "per_frame_details": face_analysis_log
+                }
+                
+                # Compute inter-frame face pose variance as a liveness signal
+                # Zero or near-zero variance = static image/screen, natural variance = live person
+                if len(face_analysis_log) >= 2:
+                    import statistics
+                    yaws = [f["pose"]["yaw"] for f in face_analysis_log]
+                    pitches = [f["pose"]["pitch"] for f in face_analysis_log]
+                    rolls = [f["pose"]["roll"] for f in face_analysis_log]
+                    brightnesses = [f["quality"]["brightness"] for f in face_analysis_log]
+                    
+                    variance_metrics = {
+                        "yaw_std_dev": round(statistics.stdev(yaws), 4) if len(yaws) > 1 else 0,
+                        "pitch_std_dev": round(statistics.stdev(pitches), 4) if len(pitches) > 1 else 0,
+                        "roll_std_dev": round(statistics.stdev(rolls), 4) if len(rolls) > 1 else 0,
+                        "brightness_std_dev": round(statistics.stdev(brightnesses), 4) if len(brightnesses) > 1 else 0,
+                        "interpretation": "natural_variance" if (
+                            statistics.stdev(yaws) > 0.5 or statistics.stdev(pitches) > 0.5
+                        ) else "suspiciously_static"
+                    }
+                    vision_context["face_analysis"]["pose_variance_metrics"] = variance_metrics
+                    logger.info(f"Face pose variance: {variance_metrics}")
+            
+            # Include deferred spoof signals so Tier 3 GenAI can weigh them
+            if spoof_detections:
+                vision_context["deferred_spoof_indicators"] = spoof_detections
 
             return False, vision_context
 

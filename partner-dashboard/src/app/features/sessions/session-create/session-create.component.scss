@@ -188,6 +188,49 @@
   color: var(--vp-text-muted, #94a3b8);
 }
 
+// ── Verification Profile Dropdown ───────────────────────────────
+.profile-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.profile-option-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-option-icon {
+  font-size: 14px;
+  color: var(--vp-primary, #667eea);
+}
+
+.profile-option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vp-text, #1e293b);
+}
+
+.profile-option-desc {
+  font-size: 12px;
+  color: var(--vp-text-muted, #94a3b8);
+  line-height: 1.4;
+  padding-left: 22px;
+}
+
+.profile-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-selected-icon {
+  font-size: 14px;
+  color: var(--vp-primary, #667eea);
+}
+
 // ── PrimeNG Input Overrides ─────────────────────────────────────
 ::ng-deep {
   .p-inputtext {

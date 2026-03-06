@@ -53,6 +53,30 @@
             </div>
 
             <div class="field-group">
+                <label for="verification_profile" class="field-label">Verification Profile <span class="required">*</span></label>
+                <p-dropdown id="verification_profile" formControlName="verification_profile"
+                    [options]="verificationProfileOptions" optionLabel="label" optionValue="value"
+                    styleClass="full-width" appendTo="body" placeholder="Select a profile">
+                    <ng-template let-option pTemplate="item">
+                        <div class="profile-option">
+                            <div class="profile-option-header">
+                                <i [class]="option.icon" class="profile-option-icon"></i>
+                                <span class="profile-option-label">{{ option.label }}</span>
+                            </div>
+                            <span class="profile-option-desc">{{ option.description }}</span>
+                        </div>
+                    </ng-template>
+                    <ng-template let-option pTemplate="selectedItem">
+                        <div class="profile-selected">
+                            <i [class]="option.icon" class="profile-selected-icon"></i>
+                            <span>{{ option.label }}</span>
+                        </div>
+                    </ng-template>
+                </p-dropdown>
+                <small class="field-hint">Determines how the AI pipeline analyzes the verification video</small>
+            </div>
+
+            <div class="field-group">
                 <label class="field-label">
                     Session Duration
                     <span class="duration-badge">{{ sessionDuration }}s</span>

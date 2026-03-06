@@ -385,7 +385,50 @@ class VerificationWebSocket:
             metadata = session_db.get("metadata", {}) if session_db else {}
             
             # --- TIER 2: VISION SCANNER (AWS Rekognition) ---
-            is_spoofed, vision_context = await vision_engine.extract_context(frames_b64)
+            # Pass metadata so Rekognition can resolve the verification_profile for conditional spoof suppression
+            is_spoofed, vision_context = await vision_engine.extract_context(frames_b64, metadata)
+            
+            # --- Compute IMU summary stats for cross-modal validation ---
+            imu_context = {"has_data": False}
+            gyro_gamma = session_data.get("gyro_gamma", [])
+            imu_raw = session_data.get("imu_data", [])
+            
+            if len(gyro_gamma) >= 5:
+                import statistics
+                imu_context = {
+                    "has_data": True,
+                    "gyro_gamma_samples": len(gyro_gamma),
+                    "gyro_gamma_range": round(max(gyro_gamma) - min(gyro_gamma), 4),
+                    "gyro_gamma_std_dev": round(statistics.stdev(gyro_gamma), 4),
+                    "gyro_gamma_mean": round(statistics.mean(gyro_gamma), 4),
+                    "motion_detected": abs(max(gyro_gamma) - min(gyro_gamma)) > 5.0,
+                    "motion_interpretation": "device_was_panned" if abs(max(gyro_gamma) - min(gyro_gamma)) > 15.0 
+                        else "minimal_device_movement" if abs(max(gyro_gamma) - min(gyro_gamma)) > 5.0
+                        else "device_stationary"
+                }
+                
+                # Extract accelerometer magnitude variance if available
+                accel_magnitudes = []
+                for sample in imu_raw:
+                    accel = sample.get("acceleration") or sample.get("accelerationIncludingGravity", {})
+                    if accel:
+                        x = accel.get("x", 0) or 0
+                        y = accel.get("y", 0) or 0
+                        z = accel.get("z", 0) or 0
+                        magnitude = (x**2 + y**2 + z**2) ** 0.5
+                        accel_magnitudes.append(magnitude)
+                
+                if len(accel_magnitudes) > 1:
+                    imu_context["accel_magnitude_std_dev"] = round(statistics.stdev(accel_magnitudes), 4)
+                    imu_context["accel_interpretation"] = (
+                        "natural_hand_tremor" if statistics.stdev(accel_magnitudes) > 0.1 
+                        else "suspiciously_stable"
+                    )
+                
+                logger.info(f"IMU context for AI evaluation", extra={
+                    "session_id": session_id,
+                    "imu_context": imu_context
+                })
             
             # Hard-fail the pipeline if Rekognition detects obvious Presentation Attacks (Screens, Photos)
             if is_spoofed:
@@ -397,8 +440,8 @@ class VerificationWebSocket:
                 # Calculate a rough Tier 2 pass/fail metric for the dashboard (just context extraction success)
                 tier_2_score = 100 if vision_context.get("status") == "success" else 0
                 
-                # Hand off the AWS Rekognition structured JSON explicitly to the GenAI prompt
-                ai_score, ai_explanation = await genai_engine.evaluate_trust(frames_b64, vision_context, metadata)
+                # Hand off the AWS Rekognition structured JSON and IMU context to the GenAI prompt
+                ai_score, ai_explanation = await genai_engine.evaluate_trust(frames_b64, vision_context, metadata, imu_context)
             
             # 4. Final Scoring Fusion
             if not session_db:
