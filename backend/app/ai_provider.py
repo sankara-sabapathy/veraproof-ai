@@ -71,12 +71,14 @@ class GoogleGeminiProvider(GenAIProvider):
                 logger.error(f"Failed to fetch GEMINI_API_KEY from AWS SSM: {str(e)}")
                 
         self.client = genai.Client(api_key=api_key)
-        self.model_id = 'gemini-3.1-flash-lite-preview'
+        self.model_id = os.environ.get("GEMINI_MODEL_ID", "gemini-3.1-flash-lite-preview")
 
     async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
         from google.genai import types
         
         try:
+            logger.info(f"Tier 2 AWS Rekognition Vision Context Extracted:\n{json.dumps(vision_context, indent=2)}")
+            
             # 1. Structure the prompt with the Tier 2 JSON
             prompt_text = (
                 "You are an expert fraud detection AI system. Analyze these sequential keyframes extracted from a user's verification video "
@@ -85,7 +87,7 @@ class GoogleGeminiProvider(GenAIProvider):
                 "Assess if the video represents a genuine physical interaction in 3D space or a spoofed presentation attack (e.g., a video of a screen, printed photo, or AI generated).\n"
                 "Respond with ONLY a valid JSON object with EXACTLY two keys:\n"
                 "- 'trust_score' (a number between 0 and 100, where 100 means fully genuine and 0 means definitely spoofed or fake)\n"
-                "- 'explanation' (a concise 1-2 sentence explanation of your reasoning for the final dashboard)\n"
+                "- 'explanation' (a highly detailed and analytical 3-4 sentence paragraph explaining your reasoning. Detail specifically what you observed in the video frames—like lighting, depth, physics, and fluid movements—and reference the Rekognition context to justify your score. Do not be generic.)\n"
                 "No other text should be in your output, just the JSON block."
             )
             
@@ -108,7 +110,23 @@ class GoogleGeminiProvider(GenAIProvider):
                 )
             )
             
-            output_text = response.text
+            # Log the full raw response to capture thought signatures and tracing metadata
+            try:
+                raw_log = response.model_dump_json(indent=2) if hasattr(response, "model_dump_json") else str(response)
+                logger.info(f"Full Gemini AI Response Dump:\n{raw_log}")
+            except Exception as e:
+                logger.warning(f"Failed to dump Gemini response: {e}")
+                
+            # Extract text carefully to avoid the 'thought_signature' SDK warning
+            output_text = ""
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    # Append actual text, skip internal thought blocks
+                    if getattr(part, 'text', None):
+                        output_text += part.text
+            
+            if not output_text.strip():
+                output_text = response.text # Safe fallback
             
             # 4. Clean up Markdown JSON blocks
             clean_json_str = output_text.strip()
