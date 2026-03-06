@@ -377,26 +377,9 @@ class VerificationApp {
 
       this.ui.showInstructions({
         title: 'Get Ready',
-        instruction: 'You are about to capture a 15-second verification video. Starting in...'
+        instruction: 'Preparing your verification environment...',
+        phase: 'baseline'
       });
-
-      // Show countdown
-      const countdownOverlay = document.getElementById('countdown-overlay');
-      const countdownTimer = document.getElementById('countdown-timer');
-      countdownOverlay.classList.remove('hidden');
-
-      for (let i = 5; i > 0; i--) {
-        // Reset animation by removing class, forcing reflow, and adding back
-        countdownTimer.classList.remove('animate-pop');
-        void countdownTimer.offsetWidth; // Trigger DOM reflow
-
-        countdownTimer.textContent = i;
-        countdownTimer.classList.add('animate-pop');
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      countdownOverlay.classList.add('hidden');
 
       // Start the video pipeline recording the blob (async: waits for any pending camera switch)
       await this.videoCapture.start();
@@ -413,26 +396,6 @@ class VerificationApp {
     }
   }
 
-  startRecordingTimer(totalSeconds) {
-    const indicator = document.getElementById('recording-indicator');
-    const timeDisplay = document.getElementById('recording-time');
-    if (indicator) indicator.classList.remove('hidden');
-
-    const endTime = Date.now() + (totalSeconds * 1000);
-
-    if (timeDisplay) timeDisplay.textContent = `${totalSeconds}s`;
-
-    this.recordingInterval = setInterval(() => {
-      const remainingMs = endTime - Date.now();
-      const secondsLeft = Math.ceil(remainingMs / 1000);
-
-      if (secondsLeft >= 0) {
-        if (timeDisplay) timeDisplay.textContent = `${secondsLeft}s`;
-      } else {
-        clearInterval(this.recordingInterval);
-      }
-    }, 100); // 100ms interval for smoother absolute UTC sync without dropping ticks
-  }
 
   /**
    * Handle verification result

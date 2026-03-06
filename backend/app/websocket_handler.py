@@ -25,7 +25,28 @@ class VerificationWebSocket:
         await websocket.accept()
         self.active_connections[session_id] = websocket
         
-        # Initialize session data storage
+        # Prevent data wipe if a user refreshes the tab while the background AI worker is analyzing
+        session_db_record = await session_manager.get_session(session_id)
+        if session_db_record:
+            state = session_db_record.get("state")
+            status = session_db_record.get("verification_status")
+            
+            # If the session has already advanced past data collection, protect the RAM and do not restart the playbook.
+            if state in [SessionState.ANALYZING.value, "success", "failed"] or status in ["success", "failed"]:
+                logger.info("Client reconnected to an already completed/analyzing session", extra={"session_id": session_id})
+                
+                # If Tier 3 AI has already firmly finalized this session, re-transmit the final score to the frontend.
+                if session_db_record.get("unified_score") is not None:
+                    await self.send_message(session_id, {
+                        "type": "result",
+                        "payload": {
+                            "status": "success",
+                            "reasoning": "Verification complete. You can close this tab and return to your application."
+                        }
+                    })
+                return # Abort playbook restart to cleanly wait for AI to finish or dashboard to render
+        
+        # Initialize session data storage for a fresh run
         self.session_data[session_id] = {
             "video_chunks": [],
             "imu_data": [],
@@ -195,11 +216,20 @@ class VerificationWebSocket:
     
     def clear_session_data(self, session_id: str):
         """Clear session data from memory"""
+        if session_id in self.active_connections:
+            del self.active_connections[session_id]
+            logger.info("WebSocket connection state removed", extra={"session_id": session_id})
+            
         if session_id in self.session_data:
             del self.session_data[session_id]
-        
-        logger.info(f"Session state cleared from RAM", extra={"session_id": session_id})
-    
+        logger.info("Session state cleared from RAM", extra={"session_id": session_id})
+            
+    async def disconnect(self, session_id: str):
+        """Handle client disconnect cleanly without deleting session RAM (Deferred to AI worker)"""
+        if session_id in self.active_connections:
+            del self.active_connections[session_id]
+            logger.info("WebSocket client disconnected, memory buffer preserved for AI", extra={"session_id": session_id})
+            
     async def handle_message(self, session_id: str, message: Dict):
         """Handle incoming WebSocket message"""
         msg_type = message.get("type")
@@ -287,15 +317,12 @@ class VerificationWebSocket:
             if elapsed_time < expected_duration:
                 await asyncio.sleep(expected_duration - elapsed_time)
             
-            # Send DEFINITIVE result to user based on Tier 1 physics
+            # Send DEFINITIVE conclusion to the UX (Hiding Tier 1 scores)
             await self.send_message(session_id, {
                 "type": "result",
                 "payload": {
-                    "status": tier_1_status,
-                    "physics_score": tier_1_score,
-                    "final_trust_score": tier_1_score,
-                    "correlation_value": correlation,
-                    "reasoning": "Verification complete. Deep AI forensic analysis will follow shortly."
+                    "status": "success",
+                    "reasoning": "Verification complete. You can close this tab and return to your application."
                 }
             })
             
@@ -305,11 +332,12 @@ class VerificationWebSocket:
                 "tier_1_status": tier_1_status
             })
             
+            # Start background AI verification (Tier 2 and 3)
+            # Pass session_data into the worker so it can operate even if WebSocket disconnected
+            asyncio.create_task(self.run_ai_verification_background(session_id, session_data))
+
             # Upload artifacts IMMEDIATELY (before AI analysis)
             await self.upload_session_artifacts(session_id)
-            
-            # Dispatch Tier 2 AI analysis in background (non-blocking, failures are isolated)
-            asyncio.create_task(self.run_ai_verification_background(session_id, session_data))
 
         except Exception as e:
             logger.error(f"Verification Tier 1 crashed: {e}", exc_info=True, extra={"session_id": session_id})
@@ -467,7 +495,11 @@ class VerificationWebSocket:
                 logger.error(f"Failed to record AI crash to DB: {db_err}", extra={"session_id": session_id})
         finally:
             # Clear in-memory data to free up memory ONLY after all background tasks are done
-            self.clear_session_data(session_id)
+            # Also delay for 5 seconds to ensure any lagging connections are safely disconnected
+            await asyncio.sleep(5)
+            if session_id in self.session_data:
+                del self.session_data[session_id]
+            logger.info("Session state cleared from RAM after AI pipeline lock", extra={"session_id": session_id})
     
     async def upload_session_artifacts(self, session_id: str):
         """Upload session artifacts to S3 after verification"""

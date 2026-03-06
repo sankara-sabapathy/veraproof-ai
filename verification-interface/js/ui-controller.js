@@ -10,6 +10,7 @@ export class UIController {
       result: document.getElementById('result-page'),
       error: document.getElementById('error-page')
     };
+    this.instructionTimer = null;
   }
 
   /**
@@ -19,7 +20,7 @@ export class UIController {
     Object.values(this.pages).forEach(page => {
       page.classList.remove('active');
     });
-    
+
     if (this.pages[pageName]) {
       this.pages[pageName].classList.add('active');
     }
@@ -60,6 +61,8 @@ export class UIController {
     const titleElement = document.getElementById('phase-title');
     const instructionElement = document.getElementById('phase-instruction');
     const progressFill = document.getElementById('progress-fill');
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownTimerElement = document.getElementById('countdown-timer');
 
     if (titleElement) {
       titleElement.textContent = phaseData.title;
@@ -77,8 +80,48 @@ export class UIController {
         return: 75,
         analyzing: 100
       };
-      const progress = progressMap[phaseData.phase] || 0;
+
+      // If it's a dynamic instruction phase, assume ~50% progress for visual continuity
+      let progress = phaseData.phase === 'instruction' ? 50 : (progressMap[phaseData.phase] || 0);
       progressFill.style.width = `${progress}%`;
+    }
+
+    // Handle dynamic duration timer
+    if (this.instructionTimer) {
+      clearInterval(this.instructionTimer);
+      this.instructionTimer = null;
+    }
+
+    if (countdownOverlay && countdownTimerElement) {
+      if (phaseData.duration && phaseData.phase === 'instruction') {
+        countdownOverlay.classList.remove('hidden');
+
+        let secondsRemaining = Math.ceil(phaseData.duration / 1000);
+
+        // Initial tick render
+        countdownTimerElement.textContent = secondsRemaining;
+        countdownTimerElement.classList.remove('animate-pop');
+        void countdownTimerElement.offsetWidth; // Reflow
+        countdownTimerElement.classList.add('animate-pop');
+
+        // Interval loop
+        this.instructionTimer = setInterval(() => {
+          secondsRemaining--;
+          if (secondsRemaining > 0) {
+            countdownTimerElement.textContent = secondsRemaining;
+            countdownTimerElement.classList.remove('animate-pop');
+            void countdownTimerElement.offsetWidth; // Reflow
+            countdownTimerElement.classList.add('animate-pop');
+          } else {
+            clearInterval(this.instructionTimer);
+            this.instructionTimer = null;
+            countdownOverlay.classList.add('hidden');
+          }
+        }, 1000);
+
+      } else {
+        countdownOverlay.classList.add('hidden');
+      }
     }
   }
 
@@ -101,7 +144,7 @@ export class UIController {
       `;
       statusBox.className = 'status-box success';
       errorBox.classList.add('hidden');
-      
+
       // Show continue button
       if (continueBtn) {
         continueBtn.classList.remove('hidden');
@@ -112,7 +155,7 @@ export class UIController {
     } else {
       statusBox.innerHTML = '<p class="error">✗ Device is not compatible</p>';
       statusBox.className = 'status-box error';
-      
+
       errorBox.innerHTML = `
         <h3>Compatibility Issues:</h3>
         <ul>
@@ -120,7 +163,7 @@ export class UIController {
         </ul>
       `;
       errorBox.classList.remove('hidden');
-      
+
       // Hide buttons if incompatible
       if (continueBtn) {
         continueBtn.classList.add('hidden');
@@ -234,7 +277,7 @@ export class UIController {
         if (result.correlation_value !== undefined) {
           url.searchParams.set('correlation', result.correlation_value.toFixed(3));
         }
-        
+
         redirectBtn.textContent = 'Continue';
         redirectBtn.onclick = () => {
           window.location.href = url.toString();
