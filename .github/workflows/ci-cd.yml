@@ -145,7 +145,7 @@ jobs:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
     needs: [backend-tests, dashboard-build, verification-interface-check, security-scan]
-    if: github.event_name == 'push' && github.ref_name == 'main'
+    if: github.event_name == 'push'
     outputs:
       lightsail-service: ${{ steps.outputs.outputs.lightsail-service }}
       dashboard-bucket: ${{ steps.outputs.outputs.dashboard-bucket }}
@@ -208,7 +208,7 @@ jobs:
     name: Deploy Backend to Lightsail
     runs-on: ubuntu-latest
     needs: [deploy-infrastructure]
-    if: github.event_name == 'push' && github.ref_name == 'main'
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -388,7 +388,7 @@ jobs:
     name: Deploy Frontend
     runs-on: ubuntu-latest
     needs: [deploy-infrastructure, deploy-backend]
-    if: github.event_name == 'push' && github.ref_name == 'main'
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -479,7 +479,7 @@ jobs:
     name: Smoke Tests
     runs-on: ubuntu-latest
     needs: [deploy-backend, deploy-frontend]
-    if: github.event_name == 'push' && github.ref_name == 'main'
+    if: github.event_name == 'push'
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
