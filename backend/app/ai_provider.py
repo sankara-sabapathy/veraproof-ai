@@ -87,9 +87,21 @@ class GoogleGeminiProvider(GenAIProvider):
             try:
                 session = aws_cred_manager.get_session()
                 ssm = session.client('ssm', region_name='ap-south-1')
-                response = ssm.get_parameter(Name=f"/veraproof/{os.environ.get('STAGE', 'prod')}/gemini/api_key", WithDecryption=True)
-                api_key = response['Parameter']['Value']
-                logger.info("Successfully fetched Gemini API Key from AWS SSM.")
+                stage = os.environ.get('STAGE', 'prod')
+                param_paths = [
+                    f"/veraproof/{stage}/api/gemini_key",
+                    f"/veraproof/{stage}/gemini/api_key",
+                ]
+                for param_name in param_paths:
+                    try:
+                        response = ssm.get_parameter(Name=param_name, WithDecryption=True)
+                        api_key = response['Parameter']['Value']
+                        logger.info(f"Successfully fetched Gemini API Key from AWS SSM parameter {param_name}.")
+                        break
+                    except Exception:
+                        continue
+                if not api_key:
+                    raise RuntimeError('Gemini API key parameter not found in AWS SSM')
             except Exception as e:
                 logger.error(f"Failed to fetch GEMINI_API_KEY from AWS SSM: {str(e)}")
                 

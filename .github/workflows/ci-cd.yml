@@ -267,7 +267,7 @@ jobs:
           get_required "$PREFIX/google/client_id" google_client_id
           get_required "$PREFIX/google/client_secret" google_client_secret
           get_required "$PREFIX/auth/platform_admin_emails" platform_admin_emails
-          get_required "$PREFIX/gemini/api_key" gemini_api_key
+          get_required "$PREFIX/api/gemini_key" gemini_api_key
           get_required "$PREFIX/backend/aws_access_key_id" backend_aws_access_key_id
           get_required "$PREFIX/backend/aws_secret_access_key" backend_aws_secret_access_key
           get_optional "$PREFIX/observability/otlp_endpoint" otlp_endpoint

@@ -39,7 +39,7 @@ Create these before the first production deployment.
 - `/veraproof/prod/auth/platform_admin_emails`
   - Type: `String`
   - Purpose: comma-separated bootstrap Google email addresses that should be provisioned as first platform admins
-- `/veraproof/prod/gemini/api_key`
+- `/veraproof/prod/api/gemini_key`
   - Type: `SecureString`
   - Purpose: Gemini API key
 - `/veraproof/prod/backend/aws_access_key_id`
