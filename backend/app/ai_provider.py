@@ -63,13 +63,9 @@ def get_ai_pipeline() -> Tuple[VisionProvider, GenAIProvider]:
     
     vision_engine = AmazonRekognitionProvider()
     
-    if provider_name == "gemini":
-        genai_engine = GoogleGeminiProvider()
-    elif provider_name in ("amazon-nova-2-lite", "amazon-nova-lite"):
-        genai_engine = AmazonNova2LiteProvider()
-    else:
-        logger.warning(f"Unknown AI provider '{provider_name}', defaulting to Gemini Flash Lite.")
-        genai_engine = GoogleGeminiProvider()
+    if provider_name != "gemini":
+        logger.warning(f"Unsupported AI provider '{provider_name}', defaulting to Gemini Flash Lite.")
+    genai_engine = GoogleGeminiProvider()
         
     return vision_engine, genai_engine
 
@@ -91,7 +87,7 @@ class GoogleGeminiProvider(GenAIProvider):
             try:
                 session = aws_cred_manager.get_session()
                 ssm = session.client('ssm', region_name='ap-south-1')
-                response = ssm.get_parameter(Name='/veraproof/prod/api/gemini_key', WithDecryption=True)
+                response = ssm.get_parameter(Name=f"/veraproof/{os.environ.get('STAGE', 'prod')}/gemini/api_key", WithDecryption=True)
                 api_key = response['Parameter']['Value']
                 logger.info("Successfully fetched Gemini API Key from AWS SSM.")
             except Exception as e:
@@ -325,6 +321,7 @@ class AmazonNova2LiteProvider(GenAIProvider):
 class AmazonRekognitionProvider(VisionProvider):
     def __init__(self, region_name: str = "us-east-1"):
         session = aws_cred_manager.get_session()
+        self.region_name = region_name
         # Fallback to us-east-1 strictly for global Rekognition endpoints if needed
         self.rekognition = session.client(service_name="rekognition", region_name=region_name)
 
@@ -367,6 +364,7 @@ class AmazonRekognitionProvider(VisionProvider):
             
             # Track spoof detections across frames for profile-aware soft signaling
             spoof_detections = []
+            raw_frame_analysis = []
 
             for index, frame_b64 in enumerate(frames_base64):
                 image_bytes = base64.b64decode(frame_b64)
@@ -376,6 +374,10 @@ class AmazonRekognitionProvider(VisionProvider):
                     MaxLabels=15,
                     MinConfidence=60.0
                 )
+                frame_artifact = {
+                    "frame_index": index,
+                    "detect_labels": response,
+                }
 
                 labels = response.get('Labels', [])
                 if len(labels) > 0:
@@ -394,11 +396,18 @@ class AmazonRekognitionProvider(VisionProvider):
                                 continue
                             
                             logger.warning(f"SPOOF DETECTED BY REKOGNITION (Tier 2): {name} (Conf: {confidence}%)")
+                            raw_frame_analysis.append(frame_artifact)
                             return True, {
                                 "status": "failed",
                                 "spoof_evidence": name,
                                 "confidence": confidence,
-                                "message": f"AWS Rekognition immediately halted evaluation due to severe Presentation Attack anomaly: '{name}'"
+                                "message": f"AWS Rekognition immediately halted evaluation due to severe Presentation Attack anomaly: '{name}'",
+                                "_artifact_rekognition_raw": {
+                                    "provider": "aws_rekognition",
+                                    "region": self.region_name,
+                                    "verification_profile": verification_profile,
+                                    "frames": raw_frame_analysis,
+                                },
                             }
 
                     # Pass 2: Context grouping (up to top 5 prominent items per frame)
@@ -422,6 +431,7 @@ class AmazonRekognitionProvider(VisionProvider):
                             Image={'Bytes': image_bytes},
                             Attributes=['ALL']
                         )
+                        frame_artifact["detect_faces"] = face_response
                         faces = face_response.get('FaceDetails', [])
                         if faces:
                             primary_face = faces[0]  # Use the most prominent face
@@ -453,12 +463,21 @@ class AmazonRekognitionProvider(VisionProvider):
                             })
                     except Exception as face_err:
                         logger.warning(f"DetectFaces failed for frame {index}: {face_err}")
+                        frame_artifact["detect_faces_error"] = str(face_err)
+
+                raw_frame_analysis.append(frame_artifact)
 
             # Calculate vision context payload for GenAI intake
             if valid_frames == 0 or total_frames == 0:
                 return False, {
                     "status": "warning",
-                    "message": "AWS Rekognition (Tier 2) failed to detect any discernable objects or environments."
+                    "message": "AWS Rekognition (Tier 2) failed to detect any discernable objects or environments.",
+                    "_artifact_rekognition_raw": {
+                        "provider": "aws_rekognition",
+                        "region": self.region_name,
+                        "verification_profile": verification_profile,
+                        "frames": raw_frame_analysis,
+                    },
                 }
 
             # Gather the top 5 most frequent items across the entire video timeline
@@ -504,6 +523,13 @@ class AmazonRekognitionProvider(VisionProvider):
             # Include deferred spoof signals so Tier 3 GenAI can weigh them
             if spoof_detections:
                 vision_context["deferred_spoof_indicators"] = spoof_detections
+
+            vision_context["_artifact_rekognition_raw"] = {
+                "provider": "aws_rekognition",
+                "region": self.region_name,
+                "verification_profile": verification_profile,
+                "frames": raw_frame_analysis,
+            }
 
             return False, vision_context
 

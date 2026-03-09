@@ -10,7 +10,8 @@ export class UIController {
       result: document.getElementById('result-page'),
       error: document.getElementById('error-page')
     };
-    this.instructionTimer = null;
+    this.overlayTimer = null;
+    this.recordingTimer = null;
     this.countdownAnimationClass = 'animate-pop-a';
   }
 
@@ -91,40 +92,105 @@ export class UIController {
       }
     }
 
-    // Handle dynamic duration timer
-    if (this.instructionTimer) {
-      clearInterval(this.instructionTimer);
-      this.instructionTimer = null;
+    if (countdownOverlay) {
+      countdownOverlay.classList.add('hidden');
     }
 
-    if (countdownOverlay && countdownTimerElement) {
-      if (phaseData.duration && phaseData.phase === 'instruction') {
-        countdownOverlay.classList.remove('hidden');
+    if (countdownTimerElement) {
+      countdownTimerElement.classList.remove('animate-pop-a', 'animate-pop-b');
+    }
+  }
 
-        let secondsRemaining = Math.ceil(phaseData.duration / 1000);
+  async runPreparationCountdown(totalSeconds = 5) {
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownTimerElement = document.getElementById('countdown-timer');
 
-        countdownTimerElement.textContent = secondsRemaining;
-        this.restartCountdownAnimation(countdownTimerElement);
+    if (!countdownOverlay || !countdownTimerElement) {
+      return;
+    }
 
-        this.instructionTimer = setInterval(() => {
-          secondsRemaining--;
-          if (secondsRemaining > 0) {
-            countdownTimerElement.textContent = secondsRemaining;
-            this.restartCountdownAnimation(countdownTimerElement);
-          } else {
-            clearInterval(this.instructionTimer);
-            this.instructionTimer = null;
-            countdownOverlay.classList.add('hidden');
-          }
-        }, 1000);
-      } else {
-        countdownOverlay.classList.add('hidden');
+    this.stopPreparationCountdown();
+
+    await new Promise((resolve) => {
+      let secondsRemaining = Math.max(1, Math.ceil(totalSeconds));
+      countdownOverlay.classList.remove('hidden');
+      countdownTimerElement.textContent = secondsRemaining;
+      this.restartCountdownAnimation(countdownTimerElement);
+
+      this.overlayTimer = setInterval(() => {
+        secondsRemaining -= 1;
+
+        if (secondsRemaining > 0) {
+          countdownTimerElement.textContent = secondsRemaining;
+          this.restartCountdownAnimation(countdownTimerElement);
+          return;
+        }
+
+        this.stopPreparationCountdown();
+        resolve();
+      }, 1000);
+    });
+  }
+
+  stopPreparationCountdown() {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = null;
+    }
+
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownTimerElement = document.getElementById('countdown-timer');
+
+    if (countdownOverlay) {
+      countdownOverlay.classList.add('hidden');
+    }
+
+    if (countdownTimerElement) {
+      countdownTimerElement.classList.remove('animate-pop-a', 'animate-pop-b');
+    }
+  }
+
+  startRecordingTimer(totalSeconds) {
+    const indicator = document.getElementById('recording-indicator');
+    const recordingTime = document.getElementById('recording-time');
+
+    if (!indicator || !recordingTime) {
+      return;
+    }
+
+    this.stopRecordingTimer();
+
+    let secondsRemaining = Math.max(0, Math.ceil(totalSeconds));
+    indicator.classList.remove('hidden');
+    recordingTime.textContent = `${secondsRemaining}s`;
+
+    this.recordingTimer = setInterval(() => {
+      secondsRemaining -= 1;
+      recordingTime.textContent = `${Math.max(secondsRemaining, 0)}s`;
+
+      if (secondsRemaining <= 0) {
+        clearInterval(this.recordingTimer);
+        this.recordingTimer = null;
       }
+    }, 1000);
+  }
+
+  stopRecordingTimer() {
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+
+    const indicator = document.getElementById('recording-indicator');
+    if (indicator) {
+      indicator.classList.add('hidden');
     }
   }
 
   restartCountdownAnimation(countdownTimerElement) {
     countdownTimerElement.classList.remove('animate-pop-a', 'animate-pop-b');
+    // Force a reflow so the browser restarts the countdown animation on each tick.
+    void countdownTimerElement.offsetWidth;
     this.countdownAnimationClass =
       this.countdownAnimationClass === 'animate-pop-a' ? 'animate-pop-b' : 'animate-pop-a';
     countdownTimerElement.classList.add(this.countdownAnimationClass);
@@ -286,9 +352,21 @@ export class UIController {
           window.location.href = url.toString();
         };
       } else {
-        redirectBtn.textContent = 'Close';
+        redirectBtn.textContent = 'Done';
         redirectBtn.onclick = () => {
           window.close();
+
+          window.setTimeout(() => {
+            if (window.closed) {
+              return;
+            }
+
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.replace('/');
+            }
+          }, 150);
         };
       }
       redirectBtn.classList.remove('hidden');

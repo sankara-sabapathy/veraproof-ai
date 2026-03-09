@@ -225,7 +225,8 @@ body {
     font-weight: 800;
     color: white;
     text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-    opacity: 0;
+    opacity: 1;
+    transform: scale(1);
 }
 
 .animate-pop-a {
@@ -238,18 +239,18 @@ body {
 
 @keyframes popIn {
     0% {
-        transform: scale(0.5);
-        opacity: 0;
+        transform: scale(0.8);
+        opacity: 0.65;
     }
 
     50% {
-        transform: scale(1.2);
+        transform: scale(1.15);
         opacity: 1;
     }
 
     100% {
         transform: scale(1);
-        opacity: 0;
+        opacity: 1;
     }
 }
 
@@ -479,5 +480,10 @@ input:focus-visible {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    #countdown-timer {
+        opacity: 1 !important;
+        transform: none !important;
     }
 }

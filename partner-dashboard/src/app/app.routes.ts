@@ -12,6 +12,10 @@ export const routes: Routes = [
         loadComponent: () => import('./components/login/login.component').then(m => m.LoginComponent)
       },
       {
+        path: 'callback',
+        loadComponent: () => import('./components/auth-callback/auth-callback.component').then(m => m.AuthCallbackComponent)
+      },
+      {
         path: 'signup',
         loadComponent: () => import('./components/signup/signup.component').then(m => m.SignupComponent)
       },
@@ -73,6 +77,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/branding/branding-editor/branding-editor.component').then(m => m.BrandingEditorComponent)
       },
       {
+        path: 'users',
+        loadComponent: () => import('./features/users/user-management/user-management.component').then(m => m.UserManagementComponent)
+      },
+      {
         path: 'admin',
         canActivate: [canActivateAdmin],
         children: [
@@ -88,6 +96,10 @@ export const routes: Routes = [
           {
             path: 'tenants/:id',
             loadComponent: () => import('./features/admin/tenant-detail/tenant-detail.component').then(m => m.TenantDetailComponent)
+          },
+          {
+            path: 'users',
+            loadComponent: () => import('./features/admin/platform-users/platform-users.component').then(m => m.PlatformUsersComponent)
           },
           {
             path: 'platform-stats',
@@ -107,4 +119,3 @@ export const routes: Routes = [
     redirectTo: 'dashboard'
   }
 ];
-

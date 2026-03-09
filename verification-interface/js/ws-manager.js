@@ -2,11 +2,13 @@
  * WSManager - Manages WebSocket connection for real-time communication
  */
 export class WSManager {
-  constructor(sessionId, apiUrl) {
+  constructor(sessionId, apiUrl, wsToken = null) {
     this.sessionId = sessionId;
     this.apiUrl = apiUrl || this.getDefaultApiUrl();
+    this.wsToken = wsToken;
     this.ws = null;
     this.messageCallback = null;
+    this.pendingMessages = [];
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000; // Start with 1 second
@@ -53,7 +55,8 @@ export class WSManager {
    */
   async connect() {
     return new Promise((resolve, reject) => {
-      const wsUrl = `${this.apiUrl}/api/v1/ws/verify/${this.sessionId}`;
+      const tokenQuery = this.wsToken ? `?ws_token=${encodeURIComponent(this.wsToken)}` : "";
+      const wsUrl = `${this.apiUrl}/api/v1/ws/verify/${this.sessionId}${tokenQuery}`;
 
       console.log('Connecting to WebSocket:', wsUrl);
 
@@ -76,6 +79,8 @@ export class WSManager {
             }
             if (this.messageCallback) {
               this.messageCallback(message);
+            } else {
+              this.pendingMessages.push(message);
             }
           } catch (error) {
             console.error('Failed to parse WebSocket message:', error);
@@ -171,6 +176,12 @@ export class WSManager {
    */
   onMessage(callback) {
     this.messageCallback = callback;
+
+    if (this.pendingMessages.length > 0) {
+      const queuedMessages = [...this.pendingMessages];
+      this.pendingMessages = [];
+      queuedMessages.forEach((message) => this.messageCallback(message));
+    }
   }
 
   /**

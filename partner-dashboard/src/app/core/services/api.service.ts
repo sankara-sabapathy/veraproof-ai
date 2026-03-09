@@ -11,31 +11,22 @@ export class ApiService {
   private http = inject(HttpClient);
   private readonly baseUrl = environment.apiUrl;
 
-  /**
-   * Generic GET request
-   */
   get<T>(endpoint: string, params?: any): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const httpParams = this.buildHttpParams(params);
-    return this.http.get<T>(url, { params: httpParams }).pipe(
+    return this.http.get<T>(url, { params: httpParams, withCredentials: true }).pipe(
       retry(1),
       catchError(this.handleError)
     );
   }
 
-  /**
-   * Generic POST request with optional configuration
-   */
   post<T>(endpoint: string, body: any, options?: any): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    return this.http.post(url, body, options).pipe(
+    return this.http.post(url, body, { withCredentials: true, ...(options || {}) }).pipe(
       catchError(this.handleError)
     ) as Observable<T>;
   }
 
-  /**
-   * Build HttpParams from object
-   */
   private buildHttpParams(params?: any): HttpParams {
     let httpParams = new HttpParams();
     if (params) {
@@ -48,50 +39,34 @@ export class ApiService {
     return httpParams;
   }
 
-  /**
-   * Generic PUT request
-   */
   put<T>(endpoint: string, body: any): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    return this.http.put<T>(url, body).pipe(
+    return this.http.put<T>(url, body, { withCredentials: true }).pipe(
       catchError(this.handleError)
     );
   }
 
-  /**
-   * Generic DELETE request
-   */
   delete<T>(endpoint: string): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    return this.http.delete<T>(url).pipe(
+    return this.http.delete<T>(url, { withCredentials: true }).pipe(
       catchError(this.handleError)
     );
   }
 
-  /**
-   * File upload request
-   */
   upload<T>(endpoint: string, file: File): Observable<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const formData = new FormData();
     formData.append('file', file);
-
-    return this.http.post<T>(url, formData).pipe(
+    return this.http.post<T>(url, formData, { withCredentials: true }).pipe(
       catchError(this.handleError)
     );
   }
 
-  /**
-   * Handle HTTP errors
-   */
   private handleError(error: HttpErrorResponse): Observable<never> {
     let errorMessage = 'An unexpected error occurred';
-
     if (error.error instanceof ErrorEvent) {
-      // Client-side error
       errorMessage = `Error: ${error.error.message}`;
     } else {
-      // Server-side error
       if (error.status === 0) {
         errorMessage = 'Unable to connect to server. Please check your connection.';
       } else if (error.status === 400) {
@@ -113,7 +88,6 @@ export class ApiService {
       url: error.url,
       timestamp: new Date().toISOString()
     });
-
     return throwError(() => new Error(errorMessage));
   }
 }

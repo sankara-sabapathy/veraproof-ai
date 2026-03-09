@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TenantDatabaseManager:
     """Database manager with tenant context for row-level security"""
-    
+
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
 
@@ -29,11 +29,10 @@ class TenantDatabaseManager:
             decoder=json.loads,
             schema='pg_catalog'
         )
-    
+
     async def connect(self):
         """Initialize database connection pool"""
         try:
-            # Add timeout to prevent hanging
             self.pool = await asyncio.wait_for(
                 asyncpg.create_pool(
                     settings.database_url,
@@ -42,13 +41,10 @@ class TenantDatabaseManager:
                     command_timeout=60,
                     init=self._init_connection
                 ),
-                timeout=5.0  # 5 second timeout
+                timeout=5.0
             )
             logger.info("Database connection pool created")
-            
-            # Auto-initialize database schema
             await self.initialize_schema()
-            
         except asyncio.TimeoutError:
             logger.error("Database connection timed out")
             if settings.environment == "development":
@@ -63,36 +59,34 @@ class TenantDatabaseManager:
                 self.pool = None
             else:
                 raise
-                
+
     async def initialize_schema(self):
-        """Initialize database schema from init.sql in production"""
-        if settings.environment.lower() not in ["prod", "production", "staging"]:
-            return
-            
+        """Apply additive schema updates from init.sql whenever a database pool is available."""
         if not self.pool:
             return
-            
+
         try:
             import os
-            # Get path to init.sql relative to database.py
             sql_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db", "init.sql")
-            
             if not os.path.exists(sql_path):
                 logger.warning(f"Database initialization script not found at {sql_path}")
                 return
-                
-            with open(sql_path, "r") as f:
+
+            with open(sql_path, "r", encoding="utf-8-sig") as f:
                 init_script = f.read()
-                
-            # Execute the script to ensure tables exist
+
             async with self.pool.acquire() as conn:
-                await conn.execute(init_script)
+                advisory_lock_id = 847321905114
+                await conn.fetchval("SELECT pg_advisory_lock($1)", advisory_lock_id)
+                try:
+                    await conn.execute(init_script)
+                finally:
+                    await conn.fetchval("SELECT pg_advisory_unlock($1)", advisory_lock_id)
             logger.info("Successfully executed database initialization script (init.sql)")
-            
         except Exception as e:
             logger.error(f"Failed to execute database initialization script: {e}")
             raise
-    
+
     async def disconnect(self):
         """Close database connection pool"""
         if self.pool:
@@ -100,71 +94,57 @@ class TenantDatabaseManager:
             logger.info("Database connection pool closed")
         else:
             logger.info("No database pool to close")
-    
+
+    async def _apply_context(self, conn: asyncpg.Connection, tenant_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None):
+        context = context or {}
+        effective_tenant = tenant_id or context.get("tenant_id")
+        if effective_tenant:
+            await conn.execute("SELECT set_config('app.current_tenant', $1, true)", str(effective_tenant))
+        actor_id = context.get("actor_id")
+        if actor_id:
+            await conn.execute("SELECT set_config('app.current_actor', $1, true)", str(actor_id))
+        actor_type = context.get("actor_type")
+        if actor_type:
+            await conn.execute("SELECT set_config('app.current_actor_type', $1, true)", str(actor_type))
+
     @asynccontextmanager
-    async def get_connection(self, tenant_id: Optional[str] = None):
+    async def get_connection(self, tenant_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None):
         """Get database connection with optional tenant context"""
         if not self.pool:
             raise RuntimeError("Database pool not initialized")
-        
+
         async with self.pool.acquire() as conn:
-            # Set tenant context for RLS if tenant_id provided
-            if tenant_id:
-                await conn.execute(
-                    "SET LOCAL app.current_tenant = $1",
-                    tenant_id
-                )
+            await self._apply_context(conn, tenant_id=tenant_id, context=context)
             yield conn
-    
-    async def execute_query(
-        self,
-        query: str,
-        *args,
-        tenant_id: Optional[str] = None
-    ) -> str:
-        """Execute a query with automatic tenant filtering"""
+
+    async def execute_query(self, query: str, *args, tenant_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> str:
         if not self.pool:
             logger.warning("Database not available - skipping query execution")
             return "SKIPPED"
-        async with self.get_connection(tenant_id) as conn:
+        async with self.get_connection(tenant_id=tenant_id, context=context) as conn:
             return await conn.execute(query, *args)
-    
-    async def fetch_one(
-        self,
-        query: str,
-        *args,
-        tenant_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
-        """Fetch one row with automatic tenant filtering"""
+
+    async def fetch_one(self, query: str, *args, tenant_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         if not self.pool:
             logger.warning("Database not available - returning None")
             return None
-        async with self.get_connection(tenant_id) as conn:
+        async with self.get_connection(tenant_id=tenant_id, context=context) as conn:
             row = await conn.fetchrow(query, *args)
             return dict(row) if row else None
-    
-    async def fetch_all(
-        self,
-        query: str,
-        *args,
-        tenant_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
-        """Fetch all rows with automatic tenant filtering"""
+
+    async def fetch_all(self, query: str, *args, tenant_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         if not self.pool:
             logger.warning("Database not available - returning empty list")
             return []
-        async with self.get_connection(tenant_id) as conn:
+        async with self.get_connection(tenant_id=tenant_id, context=context) as conn:
             rows = await conn.fetch(query, *args)
             return [dict(row) for row in rows]
-    
-    async def fetch_val(
-        self,
-        query: str,
-        *args,
-        tenant_id: Optional[str] = None
-    ) -> Any:
-        """Fetch single value with automatic tenant filtering"""
-        async with self.get_connection(tenant_id) as conn:
+
+    async def fetch_val(self, query: str, *args, tenant_id: Optional[str] = None, context: Optional[Dict[str, Any]] = None) -> Any:
+        if not self.pool:
+            logger.warning("Database not available - returning None")
+            return None
+        async with self.get_connection(tenant_id=tenant_id, context=context) as conn:
             return await conn.fetchval(query, *args)
 
 

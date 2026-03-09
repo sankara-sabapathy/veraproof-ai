@@ -68,8 +68,8 @@
                     </ng-template>
                     <ng-template let-option pTemplate="selectedItem">
                         <div class="profile-selected">
-                            <i [class]="option.icon" class="profile-selected-icon"></i>
-                            <span>{{ option.label }}</span>
+                            <i [class]="option?.icon || 'pi pi-shield'" class="profile-selected-icon"></i>
+                            <span>{{ option?.label || 'Standard Liveness' }}</span>
                         </div>
                     </ng-template>
                 </p-dropdown>

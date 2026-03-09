@@ -24,16 +24,11 @@ export class AppComponent implements OnInit, OnDestroy {
   private primeNGConfigService = inject(PrimeNGConfigService);
 
   ngOnInit(): void {
-    // Initialize PrimeNG configuration
     this.primeNGConfigService.initializeConfig();
-    
-    // Load saved theme preference
     this.themeService.loadTheme();
-    
-    // Enforce HTTPS in production
     this.securityService.enforceHttps();
+    void this.authService.initializeAuth().subscribe();
 
-    // Start inactivity monitoring if user is authenticated
     this.authService.isAuthenticated$.subscribe(isAuthenticated => {
       if (isAuthenticated) {
         this.inactivityService.startMonitoring();

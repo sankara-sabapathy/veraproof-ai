@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from '../services/auth.service';
 
@@ -8,15 +8,9 @@ describe('AuthGuard', () => {
   let guard: AuthGuard;
   let authService: jasmine.SpyObj<AuthService>;
   let router: jasmine.SpyObj<Router>;
-  let isAuthenticatedSubject: BehaviorSubject<boolean>;
 
   beforeEach(() => {
-    isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-
-    const authServiceSpy = jasmine.createSpyObj('AuthService', ['isAdmin'], {
-      isAuthenticated$: isAuthenticatedSubject.asObservable()
-    });
-
+    const authServiceSpy = jasmine.createSpyObj('AuthService', ['initializeAuth']);
     const routerSpy = jasmine.createSpyObj('Router', ['navigate']);
 
     TestBed.configureTestingModule({
@@ -46,7 +40,7 @@ describe('AuthGuard', () => {
     });
 
     it('should allow access when user is authenticated', (done) => {
-      isAuthenticatedSubject.next(true);
+      authService.initializeAuth.and.returnValue(of({ authenticated: true } as any));
 
       guard.canActivate(route, state).subscribe(result => {
         expect(result).toBe(true);
@@ -56,7 +50,7 @@ describe('AuthGuard', () => {
     });
 
     it('should deny access when user is not authenticated', (done) => {
-      isAuthenticatedSubject.next(false);
+      authService.initializeAuth.and.returnValue(of({ authenticated: false } as any));
 
       guard.canActivate(route, state).subscribe(result => {
         expect(result).toBe(false);
@@ -67,24 +61,10 @@ describe('AuthGuard', () => {
       });
     });
 
-    it('should preserve return URL in query params', (done) => {
-      const protectedUrl = '/api-keys';
-      state = { url: protectedUrl } as RouterStateSnapshot;
-      isAuthenticatedSubject.next(false);
-
-      guard.canActivate(route, state).subscribe(result => {
-        expect(result).toBe(false);
-        expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], {
-          queryParams: { returnUrl: protectedUrl }
-        });
-        done();
-      });
-    });
-
     it('should preserve complex URLs with query params', (done) => {
       const complexUrl = '/sessions?status=complete&date_from=2024-01-01';
       state = { url: complexUrl } as RouterStateSnapshot;
-      isAuthenticatedSubject.next(false);
+      authService.initializeAuth.and.returnValue(of({ authenticated: false } as any));
 
       guard.canActivate(route, state).subscribe(result => {
         expect(result).toBe(false);
@@ -95,37 +75,13 @@ describe('AuthGuard', () => {
       });
     });
 
-    it('should handle authentication state changes', (done) => {
-      // Start unauthenticated
-      isAuthenticatedSubject.next(false);
-
-      guard.canActivate(route, state).subscribe(result => {
-        expect(result).toBe(false);
-        done();
-      });
-    });
-
-    it('should handle root path redirect', (done) => {
-      state = { url: '/' } as RouterStateSnapshot;
-      isAuthenticatedSubject.next(false);
+    it('should deny access when auth bootstrap errors', (done) => {
+      authService.initializeAuth.and.returnValue(throwError(() => new Error('boom')));
 
       guard.canActivate(route, state).subscribe(result => {
         expect(result).toBe(false);
         expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], {
-          queryParams: { returnUrl: '/' }
-        });
-        done();
-      });
-    });
-
-    it('should handle nested routes', (done) => {
-      state = { url: '/admin/tenants/123' } as RouterStateSnapshot;
-      isAuthenticatedSubject.next(false);
-
-      guard.canActivate(route, state).subscribe(result => {
-        expect(result).toBe(false);
-        expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], {
-          queryParams: { returnUrl: '/admin/tenants/123' }
+          queryParams: { returnUrl: '/dashboard' }
         });
         done();
       });

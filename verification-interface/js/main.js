@@ -1,12 +1,12 @@
 /**
  * Main entry point for VeraProof AI Verification Interface
  */
-import { DeviceDetector } from './device-detector.js?v=12';
-import { VideoCapture } from './video-capture.js?v=12';
-import { IMUCollector } from './imu-collector.js?v=12';
-import { WSManager } from './ws-manager.js?v=12';
-import { ChallengeController } from './challenge-controller.js?v=12';
-import { UIController } from './ui-controller.js?v=12';
+import { DeviceDetector } from './device-detector.js?v=13';
+import { VideoCapture } from './video-capture.js?v=13';
+import { IMUCollector } from './imu-collector.js?v=13';
+import { WSManager } from './ws-manager.js?v=13';
+import { ChallengeController } from './challenge-controller.js?v=13';
+import { UIController } from './ui-controller.js?v=16';
 
 class VerificationApp {
   constructor() {
@@ -17,6 +17,7 @@ class VerificationApp {
     this.challengeController = null;
     this.sessionId = null;
     this.returnUrl = null;
+    this.wsToken = null;
     this.imuBuffer = [];
     this.imuBatchSize = 10; // Send IMU data in batches of 10 samples
     this.consentDialogCleanup = null;
@@ -31,6 +32,7 @@ class VerificationApp {
     const params = new URLSearchParams(window.location.search);
     this.sessionId = params.get('session_id');
     this.returnUrl = params.get('return_url');
+    this.wsToken = params.get('ws_token');
 
     // If no session_id, show landing page
     if (!this.sessionId) {
@@ -133,7 +135,27 @@ class VerificationApp {
 
     if (!app || !modal) return;
 
+    const modalHost = modal.parentElement;
+    const modalPage = modal.closest('.page');
+
     Array.from(app.children).forEach((child) => {
+      if (modalOpen) {
+        if (child === modalPage) {
+          child.removeAttribute('aria-hidden');
+          child.removeAttribute('inert');
+        } else {
+          child.setAttribute('aria-hidden', 'true');
+          child.setAttribute('inert', '');
+        }
+      } else {
+        child.removeAttribute('aria-hidden');
+        child.removeAttribute('inert');
+      }
+    });
+
+    if (!modalHost) return;
+
+    Array.from(modalHost.children).forEach((child) => {
       if (child === modal) return;
 
       if (modalOpen) {
@@ -307,17 +329,17 @@ class VerificationApp {
       this.imuCollector = new IMUCollector(60); // 60Hz sampling
 
       // Initialize WebSocket manager
-      this.wsManager = new WSManager(this.sessionId);
+      this.wsManager = new WSManager(this.sessionId, undefined, this.wsToken);
 
       // Test backend connection first (for self-signed cert acceptance)
       await this.testBackendConnection();
 
-      await this.wsManager.connect();
-
-      // Initialize challenge controller
+      // Initialize challenge controller before the websocket connects so
+      // incoming playbook messages always have a live handler target.
       this.challengeController = new ChallengeController(this.wsManager);
 
-      // Setup event handlers
+      // Setup event handlers before the websocket connects. The backend starts
+      // the playbook immediately after connect, so the UI must already be listening.
       this.setupEventHandlers();
 
       return true;
@@ -383,6 +405,28 @@ class VerificationApp {
     }
   }
 
+  async renderInstruction(message) {
+    const lens = message.payload?.lens;
+
+    if (lens) {
+      try {
+        const newStream = await this.videoCapture.switchCamera(lens);
+        if (newStream) {
+          this.ui.setupVideoPreview(newStream);
+        }
+      } catch (error) {
+        console.warn(`Camera switch to ${lens} failed; continuing with current stream.`, error);
+        this.ui.showStatusMessage('Camera switch was unavailable on this device. Continuing verification.', 'info');
+      }
+    }
+
+    this.challengeController.executeInstruction(message.payload);
+
+    if (this.wsManager?.ws?.readyState === WebSocket.OPEN) {
+      this.wsManager.ws.send(JSON.stringify({ type: 'instruction_acknowledged' }));
+    }
+  }
+
   /**
    * Setup event handlers
    */
@@ -431,17 +475,15 @@ class VerificationApp {
         this.ui.applyBranding(message.payload);
         break;
 
+      case 'playbook_started':
+        this.ui.startRecordingTimer(message.payload?.session_duration || 15);
+        break;
+
       case 'instruction':
-        // A single instruction payload from the Playbook
-        // Swap camera lens before updating the UI
-        if (message.payload && message.payload.lens) {
-          this.videoCapture.switchCamera(message.payload.lens).then((newStream) => {
-            // Refresh the video preview with the new camera stream
-            if (newStream) this.ui.setupVideoPreview(newStream);
-            this.challengeController.executeInstruction(message.payload);
-            // Send acknowledgement ping so backend confirms UI delivery
-            this.wsManager.ws.send(JSON.stringify({ type: 'instruction_acknowledged' }));
-          }).catch(err => console.error('Hardware flip failed', err));
+        // A single instruction payload from the Playbook.
+        // Render the instruction even if camera switching fails on the device.
+        if (message.payload) {
+          this.renderInstruction(message);
         }
         break;
 
@@ -482,9 +524,11 @@ class VerificationApp {
 
       this.ui.showInstructions({
         title: 'Get Ready',
-        instruction: 'Preparing your verification environment...',
+        instruction: 'Recording will begin after the countdown completes.',
         phase: 'baseline'
       });
+
+      await this.ui.runPreparationCountdown(5);
 
       // Start the video pipeline recording the blob (async: waits for any pending camera switch)
       await this.videoCapture.start();
@@ -492,8 +536,11 @@ class VerificationApp {
       // Start IMU loop
       this.imuCollector.start();
 
-      // Enter waiting mode while backend dictates instruction sequence
+      // Enter waiting mode before opening the websocket so the first
+      // backend playbook instruction lands on a ready verification interface.
       this.challengeController.startChallenge();
+
+      await this.wsManager.connect();
 
     } catch (error) {
       console.error('Verification run error:', error);
@@ -549,8 +596,8 @@ class VerificationApp {
       clearInterval(this.recordingInterval);
     }
 
-    const indicator = document.getElementById('recording-indicator');
-    if (indicator) indicator.classList.add('hidden');
+    this.ui.stopPreparationCountdown();
+    this.ui.stopRecordingTimer();
   }
 
   /**

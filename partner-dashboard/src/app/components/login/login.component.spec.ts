@@ -10,24 +10,37 @@ describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
   let authService: jasmine.SpyObj<AuthService>;
-  let router: jasmine.SpyObj<Router>;
+  let router: Router;
 
   beforeEach(async () => {
-    const authServiceSpy = jasmine.createSpyObj('AuthService', ['login']);
+    const authServiceSpy = jasmine.createSpyObj('AuthService', ['login', 'startGoogleLogin', 'getAuthProviders', 'initializeAuth']);
+    authServiceSpy.getAuthProviders.and.returnValue(of({ google: false, local: true }));
+    authServiceSpy.initializeAuth.and.returnValue(of({ authenticated: false } as any));
 
     await TestBed.configureTestingModule({
       imports: [
-        LoginComponent, 
+        LoginComponent,
         ReactiveFormsModule,
         RouterTestingModule
       ],
       providers: [
-        { provide: AuthService, useValue: authServiceSpy }
+        { provide: AuthService, useValue: authServiceSpy },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              queryParamMap: {
+                get: () => null
+              }
+            }
+          }
+        }
       ]
     }).compileComponents();
 
     authService = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
-    router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+    router = TestBed.inject(Router);
+    spyOn(router, 'navigateByUrl').and.resolveTo(true);
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -50,29 +63,45 @@ describe('LoginComponent', () => {
       expect(component.loginForm.valid).toBeFalsy();
     });
 
-    describe('Email Validation', () => {
-      it('should show "Email is required" error when email is empty and touched', () => {
-        const emailControl = component.email;
-        emailControl?.markAsTouched();
-        fixture.detectChanges();
-        expect(component.getEmailError()).toBe('Email is required');
-      });
-
-      it('should show "Please enter a valid email address" for invalid email format', () => {
-        const emailControl = component.email;
-        emailControl?.setValue('invalid-email');
-        emailControl?.markAsTouched();
-        fixture.detectChanges();
-        expect(component.getEmailError()).toBe('Please enter a valid email address');
-      });
-
-      it('should accept valid email format', () => {
-        const emailControl = component.email;
-        emailControl?.setValue('test@example.com');
-        emailControl?.markAsTouched();
-        fixture.detectChanges();
-        expect(emailControl?.valid).toBeTruthy();
-      });
+    it('should show email required error when email is empty and touched', () => {
+      const emailControl = component.email;
+      emailControl?.markAsTouched();
+      fixture.detectChanges();
+      expect(component.getEmailError()).toBe('Email is required');
     });
+
+    it('should show invalid email error for malformed email', () => {
+      const emailControl = component.email;
+      emailControl?.setValue('invalid-email');
+      emailControl?.markAsTouched();
+      fixture.detectChanges();
+      expect(component.getEmailError()).toBe('Please enter a valid email address');
+    });
+  });
+
+  it('should call local login when form is valid', () => {
+    authService.login.and.returnValue(of({ user: { user_id: 'u1', tenant_id: 't1', email: 'admin@veraproof.ai', role: 'Admin' } } as any));
+    component.loginForm.setValue({ email: 'admin@veraproof.ai', password: 'Admin@123', rememberMe: false });
+
+    component.onSubmit();
+
+    expect(authService.login).toHaveBeenCalledWith('admin@veraproof.ai', 'Admin@123');
+  });
+
+  it('should start google login when local auth is unavailable', () => {
+    component.authProviders = { google: true, local: false };
+
+    component.onSubmit();
+
+    expect(authService.startGoogleLogin).toHaveBeenCalled();
+  });
+
+  it('should surface login errors', () => {
+    authService.login.and.returnValue(throwError(() => new Error('Invalid email or password')));
+    component.loginForm.setValue({ email: 'admin@veraproof.ai', password: 'Admin@123', rememberMe: false });
+
+    component.onSubmit();
+
+    expect(component.errorMessage).toBe('Invalid email or password');
   });
 });

@@ -6,7 +6,9 @@ export interface User {
   user_id: string;
   tenant_id: string;
   email: string;
-  role: 'Admin' | 'Master_Admin';
+  role: 'Admin' | 'Master_Admin' | 'org_admin' | 'platform_admin';
+  roles?: string[];
+  permissions?: string[];
 }
 
 export interface AuthResponse {
@@ -14,6 +16,18 @@ export interface AuthResponse {
   refresh_token: string;
   token_type: string;
   user: User;
+}
+
+export interface AuthSessionState {
+  authenticated: boolean;
+  auth_type?: string | null;
+  csrf_token?: string | null;
+  user?: User | null;
+}
+
+export interface AuthProviders {
+  google: boolean;
+  local: boolean;
 }
 
 export interface LoginRequest {
@@ -87,6 +101,28 @@ export interface Session {
   video_s3_key: string | null;
   imu_data_s3_key: string | null;
   optical_flow_s3_key: string | null;
+}
+
+export interface SessionArtifactRecord {
+  artifact_id: string;
+  session_id: string;
+  tenant_id: string;
+  artifact_type: string;
+  provider: string | null;
+  file_name: string;
+  content_type: string;
+  storage_key: string;
+  size_bytes: number | null;
+  sha256: string | null;
+  metadata: Record<string, any>;
+  encryption_mode?: string | null;
+  encryption_key_id?: string | null;
+  created_at: string;
+}
+
+export interface SessionArtifactDownload {
+  artifact: SessionArtifactRecord;
+  url: string;
 }
 
 export interface VerificationCommand {

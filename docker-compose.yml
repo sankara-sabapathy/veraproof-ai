@@ -1,7 +1,6 @@
-version: '3.9'
+﻿version: '3.9'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: veraproof-postgres
@@ -15,14 +14,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U veraproof" ]
+      test: ["CMD-SHELL", "pg_isready -U veraproof"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - veraproof-network
 
-  # LocalStack for AWS services (S3)
   localstack:
     image: localstack/localstack:latest
     container_name: veraproof-localstack
@@ -36,7 +34,6 @@ services:
     networks:
       - veraproof-network
 
-  # Backend API
   backend:
     build:
       context: ./backend
@@ -48,12 +45,18 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_REGION: us-east-1
-      ARTIFACTS_BUCKET: veraproof-artifacts
-      BRANDING_BUCKET: veraproof-branding
+      S3_BUCKET_NAME: veraproof-artifacts
       JWT_SECRET: local-dev-secret-change-in-production
       JWT_ALGORITHM: HS256
       JWT_EXPIRATION_HOURS: 1
       REFRESH_TOKEN_EXPIRATION_DAYS: 30
+      APP_SESSION_SECRET: local-dev-session-secret-change-in-production
+      APP_ENCRYPTION_KEY: local-dev-encryption-key-change-in-production
+      WS_TOKEN_EXPIRATION_SECONDS: 900
+      REQUIRE_WS_TOKEN: false
+      SESSION_COOKIE_SAMESITE: lax
+      SESSION_COOKIE_SECURE: false
+      GOOGLE_OAUTH_ENABLED: false
       ENVIRONMENT: development
       STAGE: local
       BACKEND_URL: http://localhost:${BACKEND_HTTP_PORT:-8100}
@@ -69,11 +72,11 @@ services:
       USE_MOCK_SAGEMAKER: true
       USE_MOCK_RAZORPAY: true
       USE_LOCAL_AUTH: true
-      COGNITO_USER_POOL_ID: local
-      COGNITO_CLIENT_ID: local
+      VERAPROOF_AI_MODEL_ID: gemini
+      GEMINI_MODEL_ID: gemini-3.1-flash-lite-preview
       OTEL_EXPORTER_OTLP_ENDPOINT: ""
       OTEL_EXPORTER_OTLP_HEADERS: ""
-      OTEL_SERVICE_NAME: "veraproof-backend-local"
+      OTEL_SERVICE_NAME: veraproof-backend-local
     ports:
       - "8100:8000"
       - "8444:8444"
@@ -84,6 +87,7 @@ services:
         condition: service_started
     volumes:
       - ./backend/app:/app/app
+      - ./backend/db:/app/db
       - ./backend/cert.pem:/app/cert.pem
       - ./backend/key.pem:/app/key.pem
       - ./backend/run_both.py:/app/run_both.py
@@ -91,7 +95,7 @@ services:
     networks:
       - veraproof-network
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -99,7 +103,6 @@ services:
 volumes:
   postgres_data:
   localstack_data:
-
 
 networks:
   veraproof-network:

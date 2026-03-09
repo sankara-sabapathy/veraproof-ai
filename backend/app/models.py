@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
 
@@ -36,7 +36,7 @@ class IMUData(BaseModel):
 
 class VerificationCommand(BaseModel):
     text: str
-    lens: str = "user"  # user or environment
+    lens: str = "user"
     duration: int
 
 
@@ -51,6 +51,24 @@ class CreateSessionResponse(BaseModel):
     session_id: str
     session_url: str
     expires_at: datetime
+    ws_token: Optional[str] = None
+
+
+class SessionArtifactRecord(BaseModel):
+    artifact_id: str
+    session_id: str
+    tenant_id: str
+    artifact_type: str
+    provider: Optional[str] = None
+    file_name: str
+    content_type: str
+    storage_key: str
+    size_bytes: Optional[int] = None
+    sha256: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+    encryption_mode: Optional[str] = None
+    encryption_key_id: Optional[str] = None
+    created_at: datetime
 
 
 class VerificationResult(BaseModel):
@@ -137,3 +155,19 @@ class ColorConfig(BaseModel):
     primary_color: str
     secondary_color: str
     button_color: str
+
+
+class AuthenticatedUser(BaseModel):
+    user_id: str
+    tenant_id: str
+    email: str
+    role: str
+    roles: List[str] = []
+    permissions: List[str] = []
+
+
+class AuthSessionResponse(BaseModel):
+    authenticated: bool
+    user: Optional[AuthenticatedUser] = None
+    csrf_token: Optional[str] = None
+    auth_type: Optional[str] = None

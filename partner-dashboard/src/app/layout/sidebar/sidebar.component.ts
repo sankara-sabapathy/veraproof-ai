@@ -9,7 +9,7 @@ interface NavItem {
   label: string;
   icon: string;
   route: string;
-  adminOnly?: boolean;
+  permission?: string;
 }
 
 @Component({
@@ -26,6 +26,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   @Output() navItemClick = new EventEmitter<void>();
 
   visibleNavItems: NavItem[] = [];
+  adminNavItems: NavItem[] = [];
   showAdminSection = false;
   private routerSubscription?: Subscription;
 
@@ -37,7 +38,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     { label: 'Analytics', icon: 'pi pi-chart-line', route: '/analytics' },
     { label: 'Billing', icon: 'pi pi-file', route: '/billing' },
     { label: 'Webhooks', icon: 'pi pi-link', route: '/webhooks' },
-    { label: 'Branding', icon: 'pi pi-palette', route: '/branding' }
+    { label: 'Branding', icon: 'pi pi-palette', route: '/branding' },
+    { label: 'Users', icon: 'pi pi-users', route: '/users', permission: 'org.members.manage' }
   ];
 
   constructor(
@@ -50,7 +52,6 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(() => {
-        // Active state is handled via isActiveRoute() in template
       });
   }
 
@@ -59,8 +60,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   private buildNavItems(): void {
-    this.visibleNavItems = this.navigationItems.filter(item => !item.adminOnly);
+    this.visibleNavItems = this.navigationItems.filter(item => !item.permission || this.authService.hasPermission(item.permission));
     this.showAdminSection = this.authService.isAdmin();
+    this.adminNavItems = this.showAdminSection
+      ? [
+          { label: 'Tenants', icon: 'pi pi-building', route: '/admin/tenants' },
+          { label: 'Platform Users', icon: 'pi pi-user-plus', route: '/admin/users' },
+        ]
+      : [];
   }
 
   isActiveRoute(route: string): boolean {
@@ -74,4 +81,3 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.navItemClick.emit();
   }
 }
-

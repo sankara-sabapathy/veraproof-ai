@@ -1,0 +1,90 @@
+<div class="users-page">
+  <div class="page-header">
+    <div>
+      <h1>Organization Users</h1>
+      <p>Manage tenant users, roles, and pending invitations.</p>
+    </div>
+  </div>
+
+  <p-card header="Invite User" styleClass="panel-card invite-card">
+    <div class="invite-row">
+      <input pInputText type="email" [(ngModel)]="inviteEmail" placeholder="user@company.com" />
+      <p-dropdown [options]="roleOptions" [(ngModel)]="inviteRole" optionLabel="label" optionValue="value"></p-dropdown>
+      <button pButton type="button" label="Invite" [loading]="inviteLoading" (click)="inviteUser()"></button>
+    </div>
+    <p class="help-text">The invited user signs in with Google using the same email and is added to this tenant automatically.</p>
+  </p-card>
+
+  <div class="grid-layout">
+    <p-card header="Members" styleClass="panel-card">
+      <div class="table-shell" *ngIf="!loading; else membersLoading">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let member of members">
+              <td>
+                <div class="primary-cell">{{ member.email }}</div>
+                <div class="secondary-cell" *ngIf="member.full_name">{{ member.full_name }}</div>
+              </td>
+              <td>
+                <p-tag [value]="roleLabel(member.role_slug)"></p-tag>
+              </td>
+              <td>
+                <p-tag [value]="member.status"></p-tag>
+              </td>
+              <td class="actions-cell">
+                <button pButton type="button" label="Admin" class="p-button-text p-button-sm" (click)="changeRole(member, 'org_admin')"></button>
+                <button pButton type="button" label="Viewer" class="p-button-text p-button-sm" (click)="changeRole(member, 'org_viewer')"></button>
+                <button pButton type="button" [label]="member.status === 'active' ? 'Deactivate' : 'Activate'" class="p-button-text p-button-sm" (click)="toggleMemberStatus(member)"></button>
+              </td>
+            </tr>
+            <tr *ngIf="members.length === 0">
+              <td colspan="4" class="empty-state">No members found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </p-card>
+
+    <p-card header="Pending Invitations" styleClass="panel-card">
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Expires</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let invitation of invitations">
+              <td>{{ invitation.email }}</td>
+              <td>{{ roleLabel(invitation.role_slug) }}</td>
+              <td><p-tag [value]="invitation.status"></p-tag></td>
+              <td>{{ invitation.expires_at ? (invitation.expires_at | date:'short') : 'Never' }}</td>
+              <td class="actions-cell">
+                <button *ngIf="invitation.status === 'pending'" pButton type="button" label="Revoke" class="p-button-text p-button-sm" (click)="revokeInvitation(invitation)"></button>
+              </td>
+            </tr>
+            <tr *ngIf="invitations.length === 0">
+              <td colspan="5" class="empty-state">No invitations yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </p-card>
+  </div>
+</div>
+
+<ng-template #membersLoading>
+  <div class="empty-state">Loading members...</div>
+</ng-template>

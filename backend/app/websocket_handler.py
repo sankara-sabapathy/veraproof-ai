@@ -1,5 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, Optional
+import hashlib
 import json
 import logging
 import asyncio
@@ -93,6 +94,13 @@ class VerificationWebSocket:
         session_duration = sum(cmd.get("duration", 0) for cmd in commands)
 
         logger.info(f"Starting Playbook Sequence with {len(commands)} commands over {session_duration}s", extra={"session_id": session_id})
+
+        await self.send_message(session_id, {
+            "type": "playbook_started",
+            "payload": {
+                "session_duration": session_duration
+            }
+        })
         
         # Sequentially stream instructions down to the "Dumb Terminal" frontend
         for index, cmd in enumerate(commands):
@@ -167,6 +175,119 @@ class VerificationWebSocket:
             "type": "error",
             "payload": {"error": error}
         })
+
+    def _split_rekognition_artifact(self, vision_context: Optional[Dict]) -> tuple[Dict, Optional[Dict]]:
+        if not isinstance(vision_context, dict):
+            return {}, None
+
+        sanitized_context = dict(vision_context)
+        artifact_payload = sanitized_context.pop("_artifact_rekognition_raw", None)
+        return sanitized_context, artifact_payload
+
+    async def _register_session_artifact(
+        self,
+        *,
+        tenant_id,
+        session_id: str,
+        artifact_type: str,
+        file_name: str,
+        content_type: str,
+        storage_key: str,
+        artifact_bytes: bytes,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+        encryption_mode: Optional[str] = None,
+        encryption_key_id: Optional[str] = None,
+    ):
+        from app.artifact_manager import artifact_manager
+
+        await artifact_manager.upsert_artifact(
+            session_id=session_id,
+            tenant_id=str(tenant_id),
+            artifact_type=artifact_type,
+            provider=provider,
+            file_name=file_name,
+            content_type=content_type,
+            storage_key=storage_key,
+            size_bytes=len(artifact_bytes),
+            sha256=hashlib.sha256(artifact_bytes).hexdigest(),
+            metadata=metadata or {},
+            encryption_mode=encryption_mode,
+            encryption_key_id=encryption_key_id,
+        )
+
+    async def _store_json_session_artifact(
+        self,
+        *,
+        tenant_id,
+        session_id: str,
+        artifact_type: str,
+        file_name: str,
+        payload: Dict,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+    ) -> Optional[str]:
+        from app.storage import storage_manager
+
+        artifact_bytes = json.dumps(payload, indent=2, default=str).encode('utf-8')
+        storage_key = await storage_manager.store_session_json_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            filename=file_name,
+            payload=payload,
+        )
+        encryption_metadata = await storage_manager.get_object_metadata(storage_key)
+        await self._register_session_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            artifact_type=artifact_type,
+            file_name=file_name,
+            content_type='application/json',
+            storage_key=storage_key,
+            artifact_bytes=artifact_bytes,
+            provider=provider,
+            metadata=metadata,
+            encryption_mode=encryption_metadata.get('vp_mode'),
+            encryption_key_id=encryption_metadata.get('vp_key_id'),
+        )
+        return storage_key
+
+    async def _store_binary_session_artifact(
+        self,
+        *,
+        tenant_id,
+        session_id: str,
+        artifact_type: str,
+        file_name: str,
+        artifact_data: bytes,
+        content_type: str,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+    ) -> Optional[str]:
+        from app.storage import storage_manager
+
+        storage_key = await storage_manager.store_session_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            filename=file_name,
+            artifact_data=artifact_data,
+            content_type=content_type,
+        )
+        encryption_metadata = await storage_manager.get_object_metadata(storage_key)
+        await self._register_session_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            artifact_type=artifact_type,
+            file_name=file_name,
+            content_type=content_type,
+            storage_key=storage_key,
+            artifact_bytes=artifact_data,
+            provider=provider,
+            metadata=metadata,
+            encryption_mode=encryption_metadata.get('vp_mode'),
+            encryption_key_id=encryption_metadata.get('vp_key_id'),
+        )
+        return storage_key
     
     async def handle_video_chunk(self, session_id: str, chunk_data: bytes):
         """Handle incoming video chunk"""
@@ -387,6 +508,24 @@ class VerificationWebSocket:
             # --- TIER 2: VISION SCANNER (AWS Rekognition) ---
             # Pass metadata so Rekognition can resolve the verification_profile for conditional spoof suppression
             is_spoofed, vision_context = await vision_engine.extract_context(frames_b64, metadata)
+            vision_context, rekognition_artifact = self._split_rekognition_artifact(vision_context)
+
+            if session_db and rekognition_artifact:
+                try:
+                    await self._store_json_session_artifact(
+                        tenant_id=session_db['tenant_id'],
+                        session_id=session_id,
+                        artifact_type='rekognition_raw',
+                        file_name='rekognition_raw.json',
+                        payload=rekognition_artifact,
+                        provider='aws_rekognition',
+                        metadata={
+                            'verification_profile': metadata.get('verification_profile', 'standard'),
+                            'frame_count': len(rekognition_artifact.get('frames', [])),
+                        },
+                    )
+                except Exception as artifact_err:
+                    logger.error(f"Failed to persist Rekognition artifact: {artifact_err}", extra={"session_id": session_id})
             
             # --- Compute IMU summary stats for cross-modal validation ---
             imu_context = {"has_data": False}
@@ -569,7 +708,16 @@ class VerificationWebSocket:
             if session_data.get('video_chunks'):
                 try:
                     video_data = b''.join([chunk['data'] for chunk in session_data['video_chunks']])
-                    video_key = await storage_manager.store_video(tenant_id, session_id, video_data)
+                    video_key = await self._store_binary_session_artifact(
+                        tenant_id=tenant_id,
+                        session_id=session_id,
+                        artifact_type='original_video',
+                        file_name='video.webm',
+                        artifact_data=video_data,
+                        content_type='video/webm',
+                        provider='verification_interface',
+                        metadata={'source': 'live_verification'},
+                    )
                     logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "video", "bytes": len(video_data)})
                 except Exception as e:
                     logger.error(f"S3 Interfacing crash formatting WebM file: {e}", extra={"session_id": session_id})
@@ -577,7 +725,15 @@ class VerificationWebSocket:
             # Upload IMU data if available
             if session_data.get('imu_data'):
                 try:
-                    imu_key = await storage_manager.store_imu_data(tenant_id, session_id, session_data['imu_data'])
+                    imu_key = await self._store_json_session_artifact(
+                        tenant_id=tenant_id,
+                        session_id=session_id,
+                        artifact_type='imu_telemetry',
+                        file_name='imu_data.json',
+                        payload=session_data['imu_data'],
+                        provider='verification_interface',
+                        metadata={'sample_count': len(session_data['imu_data'])},
+                    )
                     logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "imu", "length_samples": len(session_data['imu_data'])})
                 except Exception as e:
                     logger.error(f"S3 Interfacing crash formatting IMU JSON file: {e}", extra={"session_id": session_id})

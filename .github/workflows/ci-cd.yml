@@ -1,10 +1,10 @@
-name: VeraProof AI - CI/CD Pipeline
+﻿name: VeraProof AI - CI/CD Pipeline
 
 on:
   push:
-    branches: ['**']  # Trigger on all branches
+    branches: ['**']
   pull_request:
-    branches: ['**']  # Trigger on all branches
+    branches: ['**']
 
 env:
   AWS_REGION: ap-south-1
@@ -12,11 +12,9 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  # Backend Tests
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
-    
     services:
       postgres:
         image: postgres:16-alpine
@@ -31,33 +29,26 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
       localstack:
         image: localstack/localstack:latest
         env:
           SERVICES: s3
         ports:
           - 4566:4566
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-      
-      - name: Install dependencies
+          cache: pip
+      - name: Install backend dependencies
         run: |
           cd backend
           pip install -r requirements.txt
-      
-      - name: Run tests with coverage
+      - name: Run backend tests
         run: |
           cd backend
-          pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=40
+          pytest tests -q --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=40
         env:
           DATABASE_URL: postgresql://veraproof:test_password@localhost:5432/veraproof_test
           AWS_ENDPOINT_URL: http://localhost:4566
@@ -65,11 +56,15 @@ jobs:
           AWS_SECRET_ACCESS_KEY: test
           AWS_REGION: us-east-1
           S3_BUCKET_NAME: veraproof-artifacts-test
-          JWT_SECRET: test-secret-key-for-ci-pipeline-only-not-for-production-use
+          JWT_SECRET: test-secret-key-for-ci-only
           JWT_ALGORITHM: HS256
           JWT_EXPIRATION_HOURS: 1
           REFRESH_TOKEN_EXPIRATION_DAYS: 30
+          APP_SESSION_SECRET: ci-app-session-secret
+          APP_ENCRYPTION_KEY: ci-app-encryption-key
+          GOOGLE_OAUTH_ENABLED: false
           ENVIRONMENT: test
+          STAGE: test
           BACKEND_URL: http://localhost:8100
           FRONTEND_VERIFICATION_URL: http://localhost:8300
           FRONTEND_DASHBOARD_URL: http://localhost:8200
@@ -83,92 +78,74 @@ jobs:
           USE_MOCK_SAGEMAKER: true
           USE_MOCK_RAZORPAY: true
           USE_LOCAL_AUTH: true
-          OTEL_EXPORTER_OTLP_ENDPOINT: ""
-          OTEL_EXPORTER_OTLP_HEADERS: ""
-          OTEL_SERVICE_NAME: "veraproof-backend-test"
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+          VERAPROOF_AI_MODEL_ID: gemini
+          OTEL_EXPORTER_OTLP_ENDPOINT: ''
+          OTEL_EXPORTER_OTLP_HEADERS: ''
+          OTEL_SERVICE_NAME: veraproof-backend-test
+      - uses: codecov/codecov-action@v3
         with:
           file: ./backend/coverage.xml
           flags: backend
           name: backend-coverage
-  
-  # Frontend Tests - TEMPORARILY DISABLED
-  # frontend-tests:
-  #   name: Frontend Tests
-  #   runs-on: ubuntu-latest
-  #   
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     
-  #     - name: Set up Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ env.NODE_VERSION }}
-  #     
-  #     - name: Cache node modules
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: partner-dashboard/node_modules
-  #         key: ${{ runner.os }}-node-${{ hashFiles('partner-dashboard/package-lock.json') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-node-
-  #     
-  #     - name: Install dependencies
-  #       run: |
-  #         cd partner-dashboard
-  #         npm ci
-  #     
-  #     - name: Run linter
-  #       run: |
-  #         cd partner-dashboard
-  #         npx ng lint || echo "Linting completed with warnings"
-  #       continue-on-error: true
-  #     
-  #     - name: Build dashboard
-  #       run: |
-  #         cd partner-dashboard
-  #         npm run build
-  #     
-  #     - name: Run tests
-  #       run: |
-  #         cd partner-dashboard
-  #         npm test -- --watch=false --browsers=ChromeHeadlessCI --code-coverage
-  #       continue-on-error: false
-  
-  # Security Scan
+
+  dashboard-build:
+    name: Dashboard Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: partner-dashboard/package-lock.json
+      - name: Install dashboard dependencies
+        run: |
+          cd partner-dashboard
+          npm ci
+      - name: Build dashboard
+        run: |
+          cd partner-dashboard
+          npm run build
+
+  verification-interface-check:
+    name: Verification Interface Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Check verification interface scripts
+        run: |
+          cd verification-interface
+          node --check ./js/main.js
+          node --check ./js/ws-manager.js
+          node --check ./js/ui-controller.js
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
+      - uses: actions/checkout@v4
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
         continue-on-error: true
-      
-      - name: Upload Trivy results to GitHub Security
+      - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: trivy-results.sarif
         continue-on-error: true
-  
-  # Deploy Infrastructure
+
   deploy-infrastructure:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
-    needs: [backend-tests, security-scan]
-    if: github.event_name == 'push'
-    
+    needs: [backend-tests, dashboard-build, verification-interface-check, security-scan]
+    if: github.event_name == 'push' && github.ref_name == 'main'
     outputs:
       lightsail-service: ${{ steps.outputs.outputs.lightsail-service }}
       dashboard-bucket: ${{ steps.outputs.outputs.dashboard-bucket }}
@@ -177,46 +154,29 @@ jobs:
       verification-distribution: ${{ steps.outputs.outputs.verification-distribution }}
       dashboard-url: ${{ steps.outputs.outputs.dashboard-url }}
       verification-url: ${{ steps.outputs.outputs.verification-url }}
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install CDK
+      - name: Install CDK dependencies
         run: |
           npm install -g aws-cdk
           cd infrastructure
           pip install -r requirements.txt
-      
       - name: Determine stage
         id: stage
-        run: |
-          echo "stage=prod" >> $GITHUB_OUTPUT
-      
-      - name: Get AWS Account ID
+        run: echo "stage=prod" >> $GITHUB_OUTPUT
+      - name: Get AWS account id
         id: account
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           echo "id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-      
-      - name: CDK Diff
-        run: |
-          cd infrastructure
-          cdk diff --context stage=${{ steps.stage.outputs.stage }} --context account=${{ steps.account.outputs.id }}
-        continue-on-error: true
-      
       - name: CDK Deploy
         run: |
           cd infrastructure
@@ -225,15 +185,10 @@ jobs:
             --context account=${{ steps.account.outputs.id }} \
             --require-approval never \
             --outputs-file cdk-outputs.json
-      
       - name: Extract outputs
         id: outputs
         run: |
           cd infrastructure
-          
-          echo "CDK outputs file content:"
-          cat cdk-outputs.json
-          
           LIGHTSAIL_SERVICE=$(jq -r '.["Veraproof-Lightsail-Stack-${{ steps.stage.outputs.stage }}"]["LightsailContainerService${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           DASHBOARD_BUCKET=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["DashboardBucketName${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           VERIFICATION_BUCKET=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationBucketName${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
@@ -241,11 +196,6 @@ jobs:
           VERIFICATION_DIST=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationDistributionID${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           DASHBOARD_URL=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["DashboardURL${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
           VERIFICATION_URL=$(jq -r '.["Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }}"]["VerificationURL${{ steps.stage.outputs.stage }}"]' cdk-outputs.json)
-          
-          echo "Extracted values:"
-          echo "LIGHTSAIL_SERVICE=$LIGHTSAIL_SERVICE"
-          echo "DASHBOARD_BUCKET=$DASHBOARD_BUCKET"
-          
           echo "lightsail-service=$LIGHTSAIL_SERVICE" >> $GITHUB_OUTPUT
           echo "dashboard-bucket=$DASHBOARD_BUCKET" >> $GITHUB_OUTPUT
           echo "verification-bucket=$VERIFICATION_BUCKET" >> $GITHUB_OUTPUT
@@ -253,37 +203,27 @@ jobs:
           echo "verification-distribution=$VERIFICATION_DIST" >> $GITHUB_OUTPUT
           echo "dashboard-url=$DASHBOARD_URL" >> $GITHUB_OUTPUT
           echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
-          echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
-  
-  # Build and Deploy Backend to Lightsail
+
   deploy-backend:
     name: Deploy Backend to Lightsail
     runs-on: ubuntu-latest
     needs: [deploy-infrastructure]
-    if: github.event_name == 'push'
-    
+    if: github.event_name == 'push' && github.ref_name == 'main'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
       - name: Determine stage
         id: stage
-        run: |
-          echo "stage=prod" >> $GITHUB_OUTPUT
-      
-      - name: Get AWS Account ID
+        run: echo "stage=prod" >> $GITHUB_OUTPUT
+      - name: Get AWS account id
         id: account
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
           echo "id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-      
       - name: Get database credentials
         id: db-creds
         run: |
@@ -292,156 +232,116 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --query 'masterUserPassword' \
             --output text)
-          
           DB_ENDPOINT=$(aws lightsail get-relational-database \
             --relational-database-name veraproof-db-${{ steps.stage.outputs.stage }} \
             --region ${{ env.AWS_REGION }} \
             --query 'relationalDatabase.masterEndpoint.address' \
             --output text)
-          
-          # URL encode the password to handle special characters
-          ENCODED_PASSWORD=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$DB_PASSWORD', safe=''))")
-          
-          echo "::add-mask::$DB_PASSWORD"
-          echo "::add-mask::$ENCODED_PASSWORD"
+          ENCODED_PASSWORD=$(printf '%s' "$DB_PASSWORD" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read(), safe=''))")
+          echo ::add-mask::$DB_PASSWORD
+          echo ::add-mask::$ENCODED_PASSWORD
           echo "password=$ENCODED_PASSWORD" >> $GITHUB_OUTPUT
-          echo "raw_password=$DB_PASSWORD" >> $GITHUB_OUTPUT
           echo "endpoint=$DB_ENDPOINT" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
+      - name: Fetch deployment parameters
+        id: params
+        run: |
+          set -euo pipefail
+          get_required() {
+            local name="$1"
+            local key="$2"
+            local value
+            value=$(aws ssm get-parameter --name "$name" --with-decryption --query 'Parameter.Value' --output text)
+            echo "::add-mask::$value"
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          }
+          get_optional() {
+            local name="$1"
+            local key="$2"
+            local value
+            value=$(aws ssm get-parameter --name "$name" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          }
+          PREFIX="/veraproof/${{ steps.stage.outputs.stage }}"
+          get_required "$PREFIX/security/app_session_secret" app_session_secret
+          get_required "$PREFIX/security/app_encryption_key" app_encryption_key
+          get_required "$PREFIX/google/client_id" google_client_id
+          get_required "$PREFIX/google/client_secret" google_client_secret
+          get_required "$PREFIX/auth/platform_admin_emails" platform_admin_emails
+          get_required "$PREFIX/gemini/api_key" gemini_api_key
+          get_required "$PREFIX/backend/aws_access_key_id" backend_aws_access_key_id
+          get_required "$PREFIX/backend/aws_secret_access_key" backend_aws_secret_access_key
+          get_optional "$PREFIX/observability/otlp_endpoint" otlp_endpoint
+          get_optional "$PREFIX/observability/otlp_headers" otlp_headers
+      - uses: docker/setup-buildx-action@v3
       - name: Build Docker image
         run: |
           cd backend
           docker build -t veraproof-api:${{ github.sha }} .
-      
-      - name: Install Lightsail Control Plugin
+      - name: Install lightsailctl
         run: |
-          # Install lightsailctl plugin for AWS CLI
           curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/tmp/lightsailctl"
           sudo mv /tmp/lightsailctl /usr/local/bin/lightsailctl
           sudo chmod +x /usr/local/bin/lightsailctl
-          
-          # Verify AWS CLI is available
-          aws --version
-      
-      - name: Push to Lightsail
+      - name: Push image to Lightsail
         id: push-image
         run: |
           SERVICE_NAME="${{ needs.deploy-infrastructure.outputs.lightsail-service }}"
-          echo "Service name: $SERVICE_NAME"
-          echo "Region: ${{ env.AWS_REGION }}"
-          
-          # Use AWS CLI with lightsailctl plugin to push the image
           aws lightsail push-container-image \
             --service-name "$SERVICE_NAME" \
             --label veraproof-api \
             --image veraproof-api:${{ github.sha }} \
             --region ${{ env.AWS_REGION }} 2>&1 | tee push-output.txt
-          
-          # Check if push was successful
-          if [ ${PIPESTATUS[0]} -ne 0 ]; then
-            echo "Error: AWS Lightsail push failed"
+          IMAGE_NAME=$(grep -oE ':[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[0-9]+' push-output.txt | head -n1)
+          if [ -z "$IMAGE_NAME" ]; then
+            echo "Failed to extract Lightsail image name"
             cat push-output.txt
             exit 1
           fi
-          
-          echo ""
-          echo "=== Extracting image name ==="
-          
-          # Extract the image reference from the output
-          # The output contains a line like: "Refer to this image as ":service-name.label.X" in deployments."
-          IMAGE_NAME=$(grep -oE ':[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[0-9]+' push-output.txt | head -n1)
-          
-          if [ -z "$IMAGE_NAME" ]; then
-            echo "Error: Could not extract image name from output"
-            echo "Full output was:"
-            cat push-output.txt
-            echo ""
-            echo "Trying alternative extraction methods..."
-            
-            # Try alternative pattern with quotes
-            IMAGE_NAME=$(grep "Refer to this image" push-output.txt | grep -oE '":[^"]+"' | tr -d '"' | head -n1)
-            
-            if [ -z "$IMAGE_NAME" ]; then
-              echo "Alternative extraction also failed"
-              exit 1
-            fi
-          fi
-          
           echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          echo "Successfully extracted image: $IMAGE_NAME"
-      
       - name: Create deployment configuration
         run: |
-          # Generate JWT secret
+          set -euo pipefail
           JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
-          
-          # Get API URL
           API_URL=$(aws lightsail get-container-services \
             --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
             --region ${{ env.AWS_REGION }} \
             --query 'containerServices[0].url' \
             --output text)
-            
-          # Strip trailing slash from API_URL
           API_URL=${API_URL%/}
-          
-          # Fetch Grafana OpenTelemetry Tokens from AWS Systems Manager Parameter Store
-          echo "Fetching OpenTelemetry credentials from SSM..."
-          OTLP_ENDPOINT=$(aws ssm get-parameter \
-            --name "/veraproof/${{ steps.stage.outputs.stage }}/grafana/otlp_endpoint" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text || echo "")
-            
-          OTLP_HEADERS=$(aws ssm get-parameter \
-            --name "/veraproof/${{ steps.stage.outputs.stage }}/grafana/otlp_headers" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text || echo "")
-
-          # Fetch Backend AssumeRole User Credentials from AWS Systems Manager Parameter Store
-          echo "Fetching Backend AWS Credentials from SSM..."
-          BACKEND_AWS_ACCESS_KEY_ID=$(aws ssm get-parameter \
-            --name "/veraproof/${{ steps.stage.outputs.stage }}/backend/aws_access_key_id" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text || echo "")
-
-          BACKEND_AWS_SECRET_ACCESS_KEY=$(aws ssm get-parameter \
-            --name "/veraproof/${{ steps.stage.outputs.stage }}/backend/aws_secret_access_key" \
-            --with-decryption \
-            --query "Parameter.Value" \
-            --output text || echo "")
-          
+          GOOGLE_REDIRECT_URI="https://$API_URL/api/v1/auth/google/callback"
           cat > deployment.json <<EOF
           {
             "containers": {
               "app": {
                 "image": "${{ steps.push-image.outputs.image }}",
-                "ports": {
-                  "8000": "HTTP"
-                },
+                "ports": {"8000": "HTTP"},
                 "environment": {
                   "STAGE": "${{ steps.stage.outputs.stage }}",
                   "ENVIRONMENT": "production",
                   "AWS_REGION": "${{ env.AWS_REGION }}",
                   "AWS_ENDPOINT_URL": "",
-                  "DATABASE_URL": "postgresql://veraproof_admin:${{ steps.db-creds.outputs.password }}@${{ steps.db-creds.outputs.endpoint }}:5432/veraproof?sslmode=require",
-                  "COGNITO_USER_POOL_ID": "ap-south-1_l4nlq0n8y",
-                  "COGNITO_CLIENT_ID": "2b7tq4gj7426iamis9snrrh2fo",
+                  "DATABASE_URL": "postgresql://veraproof_admin:${{ steps.db-creds.outputs.password }}@$DB_ENDPOINT:5432/veraproof?sslmode=require",
                   "S3_BUCKET_NAME": "veraproof-artifacts-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
-                  "BRANDING_BUCKET": "veraproof-branding-${{ steps.stage.outputs.stage }}-${{ steps.account.outputs.id }}",
                   "JWT_SECRET": "$JWT_SECRET",
                   "JWT_ALGORITHM": "HS256",
                   "JWT_EXPIRATION_HOURS": "1",
                   "REFRESH_TOKEN_EXPIRATION_DAYS": "30",
+                  "APP_SESSION_SECRET": "${{ steps.params.outputs.app_session_secret }}",
+                  "APP_ENCRYPTION_KEY": "${{ steps.params.outputs.app_encryption_key }}",
+                  "GOOGLE_OAUTH_ENABLED": "true",
+                  "GOOGLE_CLIENT_ID": "${{ steps.params.outputs.google_client_id }}",
+                  "GOOGLE_CLIENT_SECRET": "${{ steps.params.outputs.google_client_secret }}",
+                  "GOOGLE_REDIRECT_URI": "$GOOGLE_REDIRECT_URI",
+                  "GOOGLE_OAUTH_SCOPES": "openid email profile",
+                  "PLATFORM_ADMIN_EMAILS": "${{ steps.params.outputs.platform_admin_emails }}",
+                  "SESSION_COOKIE_SECURE": "true",
+                  "SESSION_COOKIE_SAMESITE": "none",
+                  "WS_TOKEN_EXPIRATION_SECONDS": "900",
+                  "REQUIRE_WS_TOKEN": "true",
                   "BACKEND_URL": "https://$API_URL",
                   "FRONTEND_DASHBOARD_URL": "${{ needs.deploy-infrastructure.outputs.dashboard-url }}",
                   "FRONTEND_VERIFICATION_URL": "${{ needs.deploy-infrastructure.outputs.verification-url }}",
-                  "CORS_ORIGINS": "${{ needs.deploy-infrastructure.outputs.dashboard-url }},${{ needs.deploy-infrastructure.outputs.verification-url }},http://localhost:4200,http://localhost:3000",
+                  "CORS_ORIGINS": "${{ needs.deploy-infrastructure.outputs.dashboard-url }},${{ needs.deploy-infrastructure.outputs.verification-url }}",
                   "MAX_CONCURRENT_SESSIONS": "10",
                   "API_RATE_LIMIT_PER_MINUTE": "100",
                   "SESSION_EXPIRATION_MINUTES": "15",
@@ -452,11 +352,12 @@ jobs:
                   "USE_MOCK_RAZORPAY": "true",
                   "USE_LOCAL_AUTH": "false",
                   "VERAPROOF_AI_MODEL_ID": "gemini",
-                  "OTEL_EXPORTER_OTLP_ENDPOINT": "$OTLP_ENDPOINT",
-                  "OTEL_EXPORTER_OTLP_HEADERS": "$OTLP_HEADERS",
+                  "GEMINI_API_KEY": "${{ steps.params.outputs.gemini_api_key }}",
+                  "OTEL_EXPORTER_OTLP_ENDPOINT": "${{ steps.params.outputs.otlp_endpoint }}",
+                  "OTEL_EXPORTER_OTLP_HEADERS": "${{ steps.params.outputs.otlp_headers }}",
                   "OTEL_SERVICE_NAME": "veraproof-backend-${{ steps.stage.outputs.stage }}",
-                  "AWS_ACCESS_KEY_ID": "$BACKEND_AWS_ACCESS_KEY_ID",
-                  "AWS_SECRET_ACCESS_KEY": "$BACKEND_AWS_SECRET_ACCESS_KEY"
+                  "AWS_ACCESS_KEY_ID": "${{ steps.params.outputs.backend_aws_access_key_id }}",
+                  "AWS_SECRET_ACCESS_KEY": "${{ steps.params.outputs.backend_aws_secret_access_key }}"
                 }
               }
             },
@@ -474,327 +375,152 @@ jobs:
             }
           }
           EOF
-          
-          echo "Deployment configuration created"
-          cat deployment.json
-      
+        env:
+          DB_ENDPOINT: ${{ steps.db-creds.outputs.endpoint }}
       - name: Deploy to Lightsail
         run: |
           aws lightsail create-container-service-deployment \
             --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
             --cli-input-json file://deployment.json \
             --region ${{ env.AWS_REGION }}
-          
-          echo "Deployment initiated"
-      
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for deployment to become active..."
-          for i in {1..30}; do
-            STATE=$(aws lightsail get-container-services \
-              --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
-              --region ${{ env.AWS_REGION }} \
-              --query 'containerServices[0].currentDeployment.state' \
-              --output text)
-            
-            echo "Deployment state: $STATE (attempt $i/30)"
-            
-            if [ "$STATE" == "ACTIVE" ]; then
-              echo "✓ Backend deployment successful!"
-              exit 0
-            elif [ "$STATE" == "FAILED" ]; then
-              echo "✗ Backend deployment failed!"
-              exit 1
-            fi
-            
-            sleep 20
-          done
-          
-          echo "✗ Deployment timeout after 10 minutes"
-          exit 1
-  
-  # Deploy Frontend
+
   deploy-frontend:
     name: Deploy Frontend
     runs-on: ubuntu-latest
     needs: [deploy-infrastructure, deploy-backend]
-    if: github.event_name == 'push'
-    
+    if: github.event_name == 'push' && github.ref_name == 'main'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-      
-      - name: Cache node modules
-        uses: actions/cache@v3
-        with:
-          path: partner-dashboard/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('partner-dashboard/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      
+          cache: npm
+          cache-dependency-path: partner-dashboard/package-lock.json
       - name: Determine stage
         id: stage
-        run: |
-          echo "stage=prod" >> $GITHUB_OUTPUT
-      
+        run: echo "stage=prod" >> $GITHUB_OUTPUT
       - name: Install dashboard dependencies
         run: |
           cd partner-dashboard
-          npm ci --legacy-peer-deps
-      
+          npm ci
       - name: Get backend API URL
         id: api-url
         run: |
-          # Get Lightsail service URL
           API_URL=$(aws lightsail get-container-services \
-            --service-name veraproof-api-${{ steps.stage.outputs.stage }} \
+            --service-name ${{ needs.deploy-infrastructure.outputs.lightsail-service }} \
             --region ${{ env.AWS_REGION }} \
             --query 'containerServices[0].url' \
             --output text)
-          
-          API_URL=${API_URL%/} # Remove trailing slash to prevent //api/...
-          
-          echo "Backend API URL: $API_URL"
-          echo "url=$API_URL" >> $GITHUB_OUTPUT
-      
-      - name: Update environment file with backend URL
+          API_URL=${API_URL%/}
+          echo "url=https://$API_URL" >> $GITHUB_OUTPUT
+      - name: Update production environment file
         run: |
-          cd partner-dashboard/src/environments
-          
-          # Update production environment file with actual backend URL
-          cat > environment.prod.ts <<EOF
+          cat > partner-dashboard/src/environments/environment.prod.ts <<EOF
           export const environment = {
             production: true,
-            apiUrl: '${{ steps.api-url.outputs.url }}',
-            cognito: {
-              userPoolId: 'ap-south-1_l4nlq0n8y',
-              clientId: '2b7tq4gj7426iamis9snrrh2fo',
-              region: 'ap-south-1'
-            }
+            apiUrl: '${{ steps.api-url.outputs.url }}'
           };
           EOF
-          
-          echo "Updated environment.prod.ts:"
-          cat environment.prod.ts
-      
       - name: Build dashboard
         run: |
           cd partner-dashboard
           npm run build
-          echo "Dashboard build complete"
-          ls -la dist/partner-dashboard/browser/
-      
       - name: Deploy dashboard to S3
         run: |
-          echo "Deploying dashboard to S3..."
-          
-          # Upload all files except index.html and JSON with long cache
           aws s3 sync partner-dashboard/dist/partner-dashboard/browser \
             s3://${{ needs.deploy-infrastructure.outputs.dashboard-bucket }}/ \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
             --exclude "*.json"
-          
-          # Upload index.html and config files with no-cache
           aws s3 sync partner-dashboard/dist/partner-dashboard/browser \
             s3://${{ needs.deploy-infrastructure.outputs.dashboard-bucket }}/ \
             --cache-control "no-cache, no-store, must-revalidate" \
             --include "index.html" \
             --include "*.json"
-          
-          echo "✓ Dashboard deployed to S3"
-      
-      - name: Invalidate dashboard CloudFront cache
+      - name: Invalidate dashboard cache
         run: |
-          echo "Invalidating CloudFront cache..."
           aws cloudfront create-invalidation \
             --distribution-id ${{ needs.deploy-infrastructure.outputs.dashboard-distribution }} \
-            --paths "/*"
-          echo "✓ Dashboard CloudFront cache invalidated"
-      
+            --paths '/*'
       - name: Deploy verification interface to S3
         run: |
-          echo "Deploying verification interface to S3..."
-          
-          if [ -d "verification-interface" ]; then
-            cd verification-interface
-            
-            # Generate config.js from template
-            echo "Generating config.js with production values..."
-            sed -e "s|{{API_URL}}|${{ steps.api-url.outputs.url }}|g" \
-                -e "s|{{ENVIRONMENT}}|production|g" \
-                -e "s|{{VERSION}}|${{ github.sha }}|g" \
-                config.template.js > config.js
-            
-            echo "Generated config.js:"
-            cat config.js
-            
-            cd ..
-            
-            # Upload all files except index.html, config.js, config.template.js and README with long cache
-            aws s3 sync verification-interface \
-              s3://${{ needs.deploy-infrastructure.outputs.verification-bucket }}/ \
-              --delete \
-              --cache-control "public, max-age=31536000, immutable" \
-              --exclude "index.html" \
-              --exclude "config.js" \
-              --exclude "config.template.js" \
-              --exclude "README.md"
-            
-            # Upload index.html and config.js with no-cache (to force frequent re-fetching of these entrypoints)
-            aws s3 sync verification-interface \
-              s3://${{ needs.deploy-infrastructure.outputs.verification-bucket }}/ \
-              --cache-control "no-cache, no-store, must-revalidate" \
-              --include "index.html" \
-              --include "config.js"
-            
-            echo "✓ Verification interface deployed to S3"
-          else
-            echo "⚠ Warning: verification-interface directory not found, skipping..."
-          fi
-      
-      - name: Invalidate verification CloudFront cache
+          cd verification-interface
+          sed -e "s|{{API_URL}}|${{ steps.api-url.outputs.url }}|g" \
+              -e "s|{{ENVIRONMENT}}|production|g" \
+              -e "s|{{VERSION}}|${{ github.sha }}|g" \
+              config.template.js > config.js
+          cd ..
+          aws s3 sync verification-interface \
+            s3://${{ needs.deploy-infrastructure.outputs.verification-bucket }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "config.js" \
+            --exclude "config.template.js" \
+            --exclude "README.md"
+          aws s3 sync verification-interface \
+            s3://${{ needs.deploy-infrastructure.outputs.verification-bucket }}/ \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --include "index.html" \
+            --include "config.js"
+      - name: Invalidate verification cache
         run: |
-          echo "Invalidating CloudFront cache..."
           aws cloudfront create-invalidation \
             --distribution-id ${{ needs.deploy-infrastructure.outputs.verification-distribution }} \
-            --paths "/*"
-          echo "✓ Verification CloudFront cache invalidated"
-  
-  # Smoke Tests
+            --paths '/*'
+
   smoke-tests:
     name: Smoke Tests
     runs-on: ubuntu-latest
     needs: [deploy-backend, deploy-frontend]
-    if: github.event_name == 'push'
-    
+    if: github.event_name == 'push' && github.ref_name == 'main'
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      
       - name: Determine stage
         id: stage
-        run: |
-          echo "stage=prod" >> $GITHUB_OUTPUT
-      
+        run: echo "stage=prod" >> $GITHUB_OUTPUT
       - name: Get deployment URLs
         id: urls
         run: |
-          # Get API URL from Lightsail
           API_URL=$(aws lightsail get-container-services \
             --service-name veraproof-api-${{ steps.stage.outputs.stage }} \
             --region ${{ env.AWS_REGION }} \
             --query 'containerServices[0].url' \
             --output text)
-          
-          API_URL=${API_URL%/} # Remove trailing slash to prevent //health
-          
-          # Get Dashboard URL from CloudFormation
+          API_URL=${API_URL%/}
           DASHBOARD_URL=$(aws cloudformation describe-stacks \
             --stack-name Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }} \
             --region ${{ env.AWS_REGION }} \
             --query "Stacks[0].Outputs[?OutputKey=='DashboardURL${{ steps.stage.outputs.stage }}'].OutputValue" \
             --output text)
-          
-          # Get Verification URL from CloudFormation
           VERIFICATION_URL=$(aws cloudformation describe-stacks \
             --stack-name Veraproof-Frontend-Stack-${{ steps.stage.outputs.stage }} \
             --region ${{ env.AWS_REGION }} \
             --query "Stacks[0].Outputs[?OutputKey=='VerificationURL${{ steps.stage.outputs.stage }}'].OutputValue" \
             --output text)
-          
-          echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+          echo "api-url=https://$API_URL" >> $GITHUB_OUTPUT
           echo "dashboard-url=$DASHBOARD_URL" >> $GITHUB_OUTPUT
           echo "verification-url=$VERIFICATION_URL" >> $GITHUB_OUTPUT
-      
-      - name: Test API health endpoint
+      - name: Test API health
         run: |
-          echo "Testing API: ${{ steps.urls.outputs.api-url }}/health"
-          
-          # Wait for API to be ready (CloudFront propagation)
           sleep 30
-          
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.api-url }}/health)
-          
-          if [ $response -eq 200 ]; then
-            echo "✓ API health check passed (200 OK)"
-          else
-            echo "✗ API health check failed with status $response"
-            exit 1
-          fi
-      
-      - name: Test API root endpoint
+          curl -f -s ${{ steps.urls.outputs.api-url }}/health > /dev/null
+      - name: Test API root
         run: |
-          echo "Testing API root: ${{ steps.urls.outputs.api-url }}/"
-          
-          if curl -f -s ${{ steps.urls.outputs.api-url }}/ > /dev/null; then
-            echo "✓ API root endpoint accessible"
-          else
-            echo "✗ API root endpoint failed"
-            exit 1
-          fi
-      
-      - name: Test dashboard endpoint
+          curl -f -s ${{ steps.urls.outputs.api-url }}/ > /dev/null
+      - name: Test dashboard
         run: |
-          echo "Testing Dashboard: ${{ steps.urls.outputs.dashboard-url }}"
-          
-          # Wait for CloudFront cache invalidation
-          sleep 30
-          
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.dashboard-url }})
-          
-          if [ $response -eq 200 ]; then
-            echo "✓ Dashboard accessible (200 OK)"
-          else
-            echo "⚠ Dashboard returned status $response (may need more time for CloudFront)"
-          fi
-      
-      - name: Test verification interface endpoint
+          curl -f -s ${{ steps.urls.outputs.dashboard-url }} > /dev/null
+      - name: Test verification interface
         run: |
-          echo "Testing Verification Interface: ${{ steps.urls.outputs.verification-url }}"
-          
-          response=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.verification-url }})
-          
-          if [ $response -eq 200 ]; then
-            echo "✓ Verification interface accessible (200 OK)"
-          else
-            echo "⚠ Verification interface returned status $response (may need more time for CloudFront)"
-          fi
-      
-      - name: Deployment summary
-        run: |
-          echo ""
-          echo "========================================="
-          echo "Deployment Complete!"
-          echo "========================================="
-          echo ""
-          echo "API URL: ${{ steps.urls.outputs.api-url }}"
-          echo "Dashboard URL: ${{ steps.urls.outputs.dashboard-url }}"
-          echo "Verification URL: ${{ steps.urls.outputs.verification-url }}"
-          echo ""
-          echo "Note: CloudFront cache invalidation may take 2-3 minutes to propagate globally."
-          echo "========================================="
+          curl -f -s ${{ steps.urls.outputs.verification-url }} > /dev/null

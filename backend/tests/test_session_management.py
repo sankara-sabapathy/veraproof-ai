@@ -29,6 +29,8 @@ class TestSessionManagement:
         assert "created_at" in session
         assert "expires_at" in session
         assert session["session_id"] is not None
+        assert f"session_id={session['session_id']}" in session["session_url"]
+        assert "return_url=https%3A%2F%2Fexample.com%2Fcallback" in session["session_url"]
     
     @pytest.mark.asyncio
     async def test_get_session(self):

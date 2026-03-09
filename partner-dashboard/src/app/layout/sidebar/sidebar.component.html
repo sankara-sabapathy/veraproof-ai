@@ -14,10 +14,10 @@
   <div class="nav-section" *ngIf="showAdminSection">
     <span class="nav-label">Administration</span>
     <ul class="nav-list">
-      <li class="nav-item" [class.active]="isActiveRoute('/admin')">
-        <a routerLink="/admin" (click)="onNavItemClicked()">
-          <i class="pi pi-users"></i>
-          <span>Admin</span>
+      <li *ngFor="let item of adminNavItems" class="nav-item" [class.active]="isActiveRoute(item.route)">
+        <a [routerLink]="item.route" (click)="onNavItemClicked()">
+          <i [class]="item.icon"></i>
+          <span>{{ item.label }}</span>
         </a>
       </li>
     </ul>

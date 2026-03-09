@@ -1,152 +1,76 @@
 <div class="session-details-page" *ngIf="!loading && session">
-  <!-- ── Page Header ──────────────────────────────────────── -->
-  <div class="page-header">
-    <div class="header-left">
+  <header class="page-header">
+    <div class="page-title">
       <button class="back-btn" (click)="goBack()">
-        <i class="pi pi-arrow-left"></i> Sessions
+        <i class="pi pi-arrow-left"></i>
+        <span>Sessions</span>
       </button>
-      <div class="header-title">
-        <h1>Session Details</h1>
+      <div>
+        <h1>Session details</h1>
         <div class="session-id-row">
           <span class="session-id">{{ session.session_id }}</span>
-          <button class="copy-id-btn" (click)="copyToClipboard(session.session_id, 'Session ID')" title="Copy ID">
+          <button class="copy-id-btn" (click)="copyToClipboard(session.session_id, 'Session ID')" title="Copy session ID">
             <i class="pi pi-copy"></i>
           </button>
         </div>
       </div>
     </div>
-    <div class="header-right">
+
+    <div class="page-meta">
       <span class="created-date">
-        <i class="pi pi-calendar"></i>{{ session.created_at | date:'medium' }}
+        <i class="pi pi-calendar"></i>
+        {{ session.created_at | date:'medium' }}
       </span>
-      <span class="status-badge" [ngClass]="getStatusBadgeClass(session.state)">
+      <span class="status-badge" [ngClass]="getStatusBadgeClass(session.verification_status || session.state)">
         <span class="status-dot"></span>
-        {{ session.state | uppercase }}
+        {{ getDisplayState() | uppercase }}
       </span>
     </div>
-  </div>
+  </header>
 
-  <!-- ── Score Summary Strip ──────────────────────────────── -->
-  <div class="scores-strip">
-    <div class="score-card score-physics">
-      <span class="score-label">Tier 1: Physics</span>
+  <section class="scores-strip">
+    <article class="score-card">
+      <span class="score-label">Tier 1 physics</span>
       <span class="score-value" [style.color]="getScoreColor(getPhysicsScore())">
-        {{ getPhysicsScore() != null ? getPhysicsScore() : '—' }}<span class="score-suffix"
-          *ngIf="getPhysicsScore() != null">/100</span>
+        {{ getPhysicsScore() != null ? getPhysicsScore() : '--' }}
       </span>
-      <span class="score-sub">Gyro vs Optical Flow</span>
-    </div>
+      <span class="score-sub">Gyro vs optical flow</span>
+    </article>
 
-    <div class="score-card score-ai">
-      <span class="score-label">Tier 2: Vision</span>
+    <article class="score-card">
+      <span class="score-label">Tier 2 vision</span>
       <span class="score-value" [style.color]="getScoreColor(getVisionScore())">
-        {{ getVisionScore() != null ? getVisionScore() : '—' }}<span class="score-suffix"
-          *ngIf="getVisionScore() != null">/100</span>
+        {{ getVisionScore() != null ? getVisionScore() : '--' }}
       </span>
-      <span class="score-sub">AWS Rekognition Context</span>
-    </div>
+      <span class="score-sub">AWS Rekognition context</span>
+    </article>
 
-    <div class="score-card score-unified">
-      <span class="score-label">Tier 3: GenAI</span>
+    <article class="score-card">
+      <span class="score-label">Tier 3 forensic</span>
       <span class="score-value" [style.color]="getScoreColor(getUnifiedScore())">
-        {{ getUnifiedScore() != null ? getUnifiedScore() : '—' }}<span class="score-suffix"
-          *ngIf="getUnifiedScore() != null">/100</span>
+        {{ getUnifiedScore() != null ? getUnifiedScore() : '--' }}
       </span>
-      <span class="score-sub">Gemini Forensic Trust Score</span>
-    </div>
+      <span class="score-sub">Unified trust outcome</span>
+    </article>
 
-    <div class="score-card score-correlation">
-      <span class="score-label">Pearson Correlation</span>
-      <span class="score-value" style="color: #0891b2;">
-        {{ session.correlation_value != null ? session.correlation_value.toFixed(3) : '—' }}
+    <article class="score-card">
+      <span class="score-label">Correlation</span>
+      <span class="score-value correlation-value">
+        {{ session.correlation_value != null ? session.correlation_value.toFixed(3) : '--' }}
       </span>
-      <span class="score-sub">IMU vs Optical Flow</span>
-    </div>
-  </div>
+      <span class="score-sub">Sensor motion sync</span>
+    </article>
+  </section>
 
-  <!-- ── Two-Column: Session Info + AI Forensics ──────────── -->
-  <div class="two-col-grid">
-    <!-- Session Information -->
-    <div class="section-card">
-      <div class="section-header">
-        <div class="section-icon icon-info"><i class="pi pi-info-circle"></i></div>
-        <h2>Session Information</h2>
-      </div>
-      <div class="section-body">
-        <div class="detail-grid">
-          <div class="detail-row">
-            <span class="detail-label">Session ID</span>
-            <span class="detail-value">{{ session.session_id | slice:0:8 }}…</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Created At</span>
-            <span class="detail-value" style="font-family: inherit;">{{ session.created_at | date:'medium' }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">State</span>
-            <span class="detail-value" style="font-family: inherit;">
-              <span class="status-badge" [ngClass]="getStatusBadgeClass(session.state)"
-                style="font-size: 11px; padding: 4px 10px;">
-                <span class="status-dot"></span>{{ session.state | uppercase }}
-              </span>
-            </span>
-          </div>
-          <div class="detail-row" *ngIf="session.metadata?.return_url">
-            <span class="detail-label">Return URL</span>
-            <span class="detail-value">{{ session.metadata.return_url }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- AI Forensics Analysis -->
-    <div class="section-card" *ngIf="session.reasoning || session.ai_explanation; else noAiCard">
-      <div class="section-header">
-        <div class="section-icon icon-ai"><i class="pi pi-sparkles"></i></div>
-        <h2>GenAI Forensic Report</h2>
-      </div>
-      <div class="section-body">
-        <div class="ai-callout callout-reasoning" *ngIf="session.reasoning">
-          <strong>Tier 3 AI Justification</strong>
-          <div
-            style="white-space: pre-wrap; margin-top: 8px; font-family: 'Inter', sans-serif; line-height: 1.5; color: #cbd5e1;">
-            {{ session.reasoning }}
-          </div>
-        </div>
-        <div class="ai-callout callout-ai" *ngIf="session.ai_explanation?.summary">
-          <strong>Vision Engine Hint</strong>
-          <div style="white-space: pre-wrap; margin-top: 8px;">
-            {{ session.ai_explanation.summary }}
-          </div>
-        </div>
-      </div>
-    </div>
-    <ng-template #noAiCard>
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-icon icon-ai"><i class="pi pi-eye"></i></div>
-          <h2>AI Forensics Analysis</h2>
-        </div>
-        <div class="section-body">
-          <div class="empty-state" style="padding: 24px;">
-            <i class="empty-icon pi pi-sparkles" style="font-size: 32px;"></i>
-            <p>AI analysis data not yet available</p>
-          </div>
-        </div>
-      </div>
-    </ng-template>
-  </div>
-
-  <!-- ── Verification Timeline ────────────────────────────── -->
-  <div class="section-card">
+  <section class="section-card">
     <div class="section-header">
-      <div class="section-icon icon-timeline"><i class="pi pi-clock"></i></div>
-      <h2>Verification Timeline</h2>
+      <h2>Verification timeline</h2>
+      <p>Observed milestones across the verification pipeline.</p>
     </div>
     <div class="section-body">
       <div class="custom-timeline">
         <div class="timeline-item" *ngFor="let event of timelineEvents">
-          <div class="timeline-dot" [style.color]="event.color" [style.background]="event.color"></div>
+          <div class="timeline-dot" [style.background]="event.color"></div>
           <div class="timeline-body">
             <span class="timeline-label">{{ event.status }}</span>
             <span class="timeline-date">{{ event.date | date:'short' }}</span>
@@ -154,133 +78,200 @@
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ── Video Evidence ───────────────────────────────────── -->
-  <div class="section-card" *ngIf="session.video_s3_key">
+  <section class="detail-grid-layout">
+    <article class="section-card">
+      <div class="section-header">
+        <h2>Session information</h2>
+        <p>Verification metadata and transport state.</p>
+      </div>
+      <div class="section-body">
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span class="detail-label">Session ID</span>
+            <span class="detail-value detail-value-mono">{{ session.session_id }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">{{ session.created_at | date:'medium' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">{{ getDisplayState() }}</span>
+          </div>
+          <div class="detail-row" *ngIf="session.return_url">
+            <span class="detail-label">Return URL</span>
+            <span class="detail-value detail-value-wrap">{{ session.return_url }}</span>
+          </div>
+          <div class="detail-row" *ngIf="session.metadata['verification_profile']">
+            <span class="detail-label">Verification profile</span>
+            <span class="detail-value">{{ session.metadata['verification_profile'] }}</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="section-card">
+      <div class="section-header">
+        <h2>Forensic reasoning</h2>
+        <p>Generated rationale from the multi-tier verification stack.</p>
+      </div>
+      <div class="section-body">
+        <div class="reasoning-block" *ngIf="session.reasoning; else noReasoning">
+          <p>{{ session.reasoning }}</p>
+        </div>
+
+        <div class="reasoning-secondary" *ngIf="session.ai_explanation?.['summary']">
+          <span class="detail-label">Model summary</span>
+          <p>{{ session.ai_explanation?.['summary'] }}</p>
+        </div>
+
+        <ng-template #noReasoning>
+          <div class="empty-inline">
+            <i class="pi pi-hourglass"></i>
+            <p>Final AI reasoning is not available yet.</p>
+          </div>
+        </ng-template>
+      </div>
+    </article>
+  </section>
+
+  <section class="section-card" *ngIf="hasVideoEvidence()">
     <div class="section-header">
-      <div class="section-icon icon-video"><i class="pi pi-video"></i></div>
-      <h2>Video Evidence</h2>
+      <h2>Video evidence</h2>
+      <p>Secure playback for the original verification source.</p>
     </div>
     <div class="section-body">
-      <div *ngIf="videoLoading" class="video-loading">
+      <div *ngIf="videoLoading" class="video-state">
         <div class="loading-spinner"></div>
-        <p>Loading secure video stream…</p>
+        <p>Loading video...</p>
       </div>
-      <div *ngIf="videoError && !videoLoading" class="video-error">
-        <i class="error-icon pi pi-exclamation-circle"></i>
-        <p>Video recording is unavailable. Storage may have been reset after the session was created.</p>
-        <button class="btn-action" (click)="videoError = false; loadVideoArtifact()">
-          <i class="pi pi-refresh"></i> Retry
+      <div *ngIf="videoError && !videoLoading" class="video-state">
+        <i class="pi pi-exclamation-circle"></i>
+        <p>Video playback is unavailable right now.</p>
+        <button class="back-btn" (click)="loadVideoArtifact()">
+          <i class="pi pi-refresh"></i>
+          <span>Retry</span>
         </button>
       </div>
       <div *ngIf="videoUrl && !videoLoading && !videoError" class="video-wrapper">
-        <video [src]="videoUrl" controls playsinline></video>
+        <video [src]="videoUrl" controls playsinline preload="metadata"></video>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ── Artifacts ────────────────────────────────────────── -->
-  <div class="section-card">
+  <section class="section-card">
     <div class="section-header">
-      <div class="section-icon icon-artifacts"><i class="pi pi-download"></i></div>
-      <h2>Session Artifacts</h2>
+      <h2>Evidence package</h2>
+      <p>Downloadable artifacts and stored provider outputs for this session.</p>
     </div>
     <div class="section-body">
-      <div *ngIf="hasArtifacts(); else noArtifacts" class="artifacts-list">
-        <!-- Video artifact -->
-        <div class="artifact-card" *ngIf="session.video_s3_key">
-          <div class="artifact-icon icon-video"><i class="pi pi-video"></i></div>
-          <div class="artifact-info">
-            <div class="artifact-name">Verification Recording</div>
-            <div class="artifact-desc">WebM video capture</div>
-          </div>
-          <div class="artifact-actions">
-            <button class="btn-action" (click)="downloadArtifactAsFile('video', 'verification-recording.webm')">
-              <i class="pi pi-download"></i> Download
-            </button>
-          </div>
+      <div class="evidence-toolbar">
+        <p class="toolbar-copy">Report and bundle generation are available once forensic analysis completes.</p>
+        <div class="toolbar-actions">
+          <button
+            pButton
+            type="button"
+            label="Download report"
+            icon="pi pi-file-pdf"
+            class="p-button-outlined"
+            [loading]="isActionBusy('report')"
+            [disabled]="!canDownload(reportCard)"
+            (click)="reportCard && handleCardDownload(reportCard)"></button>
+          <button
+            pButton
+            type="button"
+            label="Download all artifacts"
+            icon="pi pi-download"
+            [loading]="isActionBusy('bundle')"
+            [disabled]="!canDownload(bundleCard)"
+            (click)="bundleCard && handleCardDownload(bundleCard)"></button>
         </div>
+      </div>
 
-        <!-- IMU Data artifact -->
-        <div class="artifact-card" *ngIf="session.imu_data_s3_key">
-          <div class="artifact-icon icon-imu"><i class="pi pi-chart-line"></i></div>
-          <div class="artifact-info">
-            <div class="artifact-name">IMU Telemetry Data</div>
-            <div class="artifact-desc">Gyroscope & accelerometer JSON</div>
-          </div>
-          <div class="artifact-actions">
-            <button class="btn-action" (click)="toggleImuViewer()">
-              <i class="pi" [ngClass]="showImuData ? 'pi-eye-slash' : 'pi-eye'"></i>
-              {{ showImuData ? 'Hide' : 'View' }}
-            </button>
-            <button class="btn-action" (click)="downloadArtifactAsFile('imu', 'imu-telemetry.json')">
-              <i class="pi pi-download"></i> Download
-            </button>
-          </div>
-        </div>
+      <div class="evidence-loading" *ngIf="evidenceLoading">
+        <div class="loading-spinner"></div>
+        <p>Refreshing artifact inventory...</p>
+      </div>
 
-        <!-- Optical Flow artifact -->
-        <div class="artifact-card" *ngIf="session.optical_flow_s3_key">
-          <div class="artifact-icon icon-flow"><i class="pi pi-image"></i></div>
-          <div class="artifact-info">
-            <div class="artifact-name">Optical Flow Analysis</div>
-            <div class="artifact-desc">Flow vector data</div>
+      <div class="artifact-list" *ngIf="!evidenceLoading && hasEvidenceArtifacts(); else noArtifacts">
+        <div class="artifact-row" *ngFor="let card of evidenceCards">
+          <div class="artifact-summary">
+            <div>
+              <h3>{{ card.label }}</h3>
+              <p>{{ card.description }}</p>
+            </div>
+            <span class="artifact-status" [attr.data-status]="card.status">{{ artifactStatusLabel(card) }}</span>
           </div>
+
+          <div class="artifact-meta" *ngIf="card.artifact">
+            <span>{{ card.artifact.file_name }}</span>
+            <span>{{ formatBytes(card.artifact.size_bytes) }}</span>
+          </div>
+
           <div class="artifact-actions">
-            <button class="btn-action" (click)="downloadArtifactAsFile('flow', 'optical-flow.json')">
-              <i class="pi pi-download"></i> Download
-            </button>
+            <button
+              pButton
+              type="button"
+              label="Download"
+              icon="pi pi-download"
+              class="p-button-text"
+              [disabled]="!canDownload(card)"
+              [loading]="isActionBusy(card.key)"
+              (click)="handleCardDownload(card)"></button>
+
+            <button
+              *ngIf="canPreview(card)"
+              pButton
+              type="button"
+              [label]="isPreviewOpen(card.key) ? 'Hide preview' : 'Preview JSON'"
+              icon="pi pi-eye"
+              class="p-button-text"
+              [disabled]="!card.available"
+              (click)="togglePreview(card)"></button>
           </div>
         </div>
       </div>
 
-      <!-- IMU Data Inline Viewer -->
-      <div class="imu-viewer" *ngIf="showImuData && imuDataContent">
-        <div class="imu-toolbar">
-          <span>IMU Telemetry — JSON</span>
-          <div class="imu-actions">
-            <button class="btn-toolbar" (click)="copyToClipboard(imuDataContent, 'IMU data')">
-              <i class="pi pi-copy"></i> Copy
-            </button>
-          </div>
+      <div class="preview-panel" *ngIf="previewTitle">
+        <div class="preview-head">
+          <h3>{{ previewTitle }}</h3>
+          <button class="copy-id-btn" *ngIf="previewContent" (click)="copyToClipboard(previewContent, previewTitle)">
+            <i class="pi pi-copy"></i>
+          </button>
         </div>
-        <div class="imu-data-block">
-          <pre>{{ imuDataContent }}</pre>
-        </div>
-      </div>
-      <div class="imu-viewer" *ngIf="showImuData && imuDataLoading">
-        <div class="video-loading" style="padding: 24px;">
+        <div class="evidence-loading" *ngIf="previewLoading">
           <div class="loading-spinner"></div>
-          <p>Loading IMU data…</p>
+          <p>Loading preview...</p>
         </div>
+        <pre *ngIf="!previewLoading && previewContent">{{ previewContent }}</pre>
       </div>
 
       <ng-template #noArtifacts>
         <div class="empty-state">
-          <i class="empty-icon pi pi-inbox"></i>
-          <p>No artifacts available for this session</p>
-          <small>Artifacts are generated after verification is complete</small>
+          <i class="pi pi-inbox"></i>
+          <p>No artifacts available for this session yet.</p>
+          <small>Artifacts appear after media export and forensic analysis complete.</small>
         </div>
       </ng-template>
     </div>
-  </div>
+  </section>
 </div>
 
-<!-- ── Loading State ────────────────────────────────────── -->
 <div *ngIf="loading" class="loading-page">
   <p-progressSpinner></p-progressSpinner>
 </div>
 
-<!-- ── Session Not Found ────────────────────────────────── -->
 <div *ngIf="!loading && !session" class="session-details-page">
   <div class="section-card">
     <div class="section-body">
       <div class="empty-state">
-        <i class="empty-icon pi pi-exclamation-triangle" style="color: #f59e0b;"></i>
+        <i class="pi pi-exclamation-triangle"></i>
         <p>Session not found</p>
-        <button class="btn-action" (click)="goBack()">
-          <i class="pi pi-arrow-left"></i> Back to Sessions
+        <button class="back-btn" (click)="goBack()">
+          <i class="pi pi-arrow-left"></i>
+          <span>Back to sessions</span>
         </button>
       </div>
     </div>
