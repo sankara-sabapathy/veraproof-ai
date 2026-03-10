@@ -106,7 +106,7 @@ class DashboardSessionManager:
         roles = {row["role_slug"] for row in rows if row.get("role_slug")}
         permissions = {row["permission_slug"] for row in rows if row.get("permission_slug")}
         if "platform_admin" in roles:
-            permissions.update(LEGACY_ROLE_PERMISSIONS["Master_Admin"])
+            permissions.add("platform.metadata.read")
         if "org_admin" in roles:
             permissions.update(LEGACY_ROLE_PERMISSIONS["Admin"])
         return roles, permissions

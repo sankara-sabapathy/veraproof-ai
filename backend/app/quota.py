@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 from datetime import datetime, timedelta
 import logging
 from app.database import db_manager
@@ -8,6 +8,12 @@ logger = logging.getLogger(__name__)
 
 class UsageQuotaManager:
     """Manages usage quotas and billing"""
+
+    @staticmethod
+    def _calculate_usage_percentage(current_usage: int, monthly_quota: int) -> float:
+        if monthly_quota <= 0:
+            return 0.0 if current_usage <= 0 else 100.0
+        return round((current_usage / monthly_quota) * 100, 2)
     
     async def check_quota(self, tenant_id: str) -> bool:
         """Check if tenant has remaining quota"""
@@ -24,6 +30,13 @@ class UsageQuotaManager:
             # In development, if tenant doesn't exist in DB, allow the request
             # This handles the case where in-memory auth creates users but DB sync fails
             return True
+
+        if result['monthly_quota'] <= 0:
+            logger.info(
+                f"Quota check for {tenant_id}: "
+                f"{result['current_usage']}/{result['monthly_quota']} - No quota configured"
+            )
+            return False
         
         has_quota = result['current_usage'] < result['monthly_quota']
         
@@ -53,7 +66,7 @@ class UsageQuotaManager:
             )
             
             # Check if alert thresholds reached
-            usage_pct = (result['current_usage'] / result['monthly_quota']) * 100
+            usage_pct = self._calculate_usage_percentage(result['current_usage'], result['monthly_quota'])
             
             if usage_pct >= 100:
                 await self.send_quota_alert(tenant_id, 100)
@@ -93,7 +106,7 @@ class UsageQuotaManager:
             }
         
         remaining_quota = result['monthly_quota'] - result['current_usage']
-        usage_percentage = (result['current_usage'] / result['monthly_quota']) * 100
+        usage_percentage = self._calculate_usage_percentage(result['current_usage'], result['monthly_quota'])
         
         return {
             "tenant_id": result['tenant_id'],
@@ -103,7 +116,7 @@ class UsageQuotaManager:
             "remaining_quota": remaining_quota,
             "billing_cycle_start": result['billing_cycle_start'],
             "billing_cycle_end": result['billing_cycle_end'],
-            "usage_percentage": round(usage_percentage, 2)
+            "usage_percentage": usage_percentage
         }
     
     async def reset_monthly_quotas(self):

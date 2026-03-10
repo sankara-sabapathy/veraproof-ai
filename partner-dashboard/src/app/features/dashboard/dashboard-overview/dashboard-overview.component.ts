@@ -9,6 +9,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { DashboardService, DashboardData } from '../services/dashboard.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { AnalyticsService } from '../../analytics/services/analytics.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { UsageChartComponent } from '../../analytics/usage-chart/usage-chart.component';
 import { OutcomeChartComponent } from '../../analytics/outcome-chart/outcome-chart.component';
@@ -50,6 +51,7 @@ export class DashboardOverviewComponent implements OnInit {
     private dashboardService: DashboardService,
     private analyticsService: AnalyticsService,
     private notification: NotificationService,
+    private authService: AuthService,
     private router: Router,
     private datePipe: DatePipe
   ) {
@@ -97,6 +99,10 @@ export class DashboardOverviewComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.authService.isAdmin()) {
+      void this.router.navigate(['/admin/tenants']);
+      return;
+    }
     this.loadDashboard();
   }
 

@@ -26,11 +26,15 @@ export class AuthCallbackComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
 
+  private getPostLoginRoute(): string[] {
+    return this.authService.isAdmin() ? ['/admin/tenants'] : ['/dashboard'];
+  }
+
   ngOnInit(): void {
     this.authService.completeAuthCallback().subscribe({
       next: (session) => {
         if (session.authenticated) {
-          void this.router.navigate(['/dashboard']);
+          void this.router.navigate(this.getPostLoginRoute());
           return;
         }
         void this.router.navigate(['/auth/login'], { queryParams: { error: 'auth_failed' } });
