@@ -1,10 +1,9 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { SidebarModule } from 'primeng/sidebar';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { Observable } from 'rxjs';
-import { map, shareReplay, take } from 'rxjs/operators';
+import { Observable, Subscription } from 'rxjs';
+import { filter, map, shareReplay } from 'rxjs/operators';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { ToolbarComponent } from '../toolbar/toolbar.component';
 
@@ -14,36 +13,88 @@ import { ToolbarComponent } from '../toolbar/toolbar.component';
   imports: [
     CommonModule,
     RouterModule,
-    SidebarModule,
     SidebarComponent,
     ToolbarComponent
   ],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.scss']
 })
-export class MainLayoutComponent implements OnInit {
-  isHandset$: Observable<boolean>;
-  sidebarVisible: boolean;
+export class MainLayoutComponent implements OnInit, OnDestroy {
+  readonly isHandset$: Observable<boolean>;
+  isHandset = false;
+  sidebarVisible = true;
 
-  constructor(private breakpointObserver: BreakpointObserver) {
-    this.sidebarVisible = !this.breakpointObserver.isMatched([Breakpoints.Handset, Breakpoints.Tablet]);
-    this.isHandset$ = this.breakpointObserver.observe([Breakpoints.Handset, Breakpoints.Tablet])
-      .pipe(
-        map(result => result.matches),
-        shareReplay()
-      );
+  private subscriptions = new Subscription();
+
+  constructor(
+    private breakpointObserver: BreakpointObserver,
+    private router: Router
+  ) {
+    const mobileBreakpoints = [Breakpoints.Handset, Breakpoints.Tablet];
+    this.isHandset$ = this.breakpointObserver.observe(mobileBreakpoints).pipe(
+      map((result) => result.matches),
+      shareReplay(1)
+    );
   }
 
-  ngOnInit(): void { }
+  ngOnInit(): void {
+    const mobileBreakpoints = [Breakpoints.Handset, Breakpoints.Tablet];
+
+    this.isHandset = this.breakpointObserver.isMatched(mobileBreakpoints);
+    this.sidebarVisible = !this.isHandset;
+
+    this.subscriptions.add(
+      this.isHandset$.subscribe((matches) => {
+        const wasHandset = this.isHandset;
+        this.isHandset = matches;
+
+        if (this.isHandset && !wasHandset) {
+          this.sidebarVisible = false;
+        }
+
+        if (!this.isHandset && wasHandset) {
+          this.sidebarVisible = true;
+        }
+      })
+    );
+
+    this.subscriptions.add(
+      this.router.events
+        .pipe(filter((event) => event instanceof NavigationEnd))
+        .subscribe(() => {
+          if (this.isHandset) {
+            this.sidebarVisible = false;
+          }
+        })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  get isMobileMenuOpen(): boolean {
+    return this.isHandset && this.sidebarVisible;
+  }
 
   toggleSidebar(): void {
     this.sidebarVisible = !this.sidebarVisible;
   }
 
-  onSidebarNavClick(): void {
-    // Close mobile sidebar after navigation
-    if (this.breakpointObserver.isMatched([Breakpoints.Handset, Breakpoints.Tablet])) {
+  closeSidebar(): void {
+    if (this.isHandset) {
       this.sidebarVisible = false;
     }
   }
+
+  onSidebarNavClick(): void {
+    this.closeSidebar();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    this.closeSidebar();
+  }
 }
+
+

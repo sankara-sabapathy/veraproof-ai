@@ -4,8 +4,8 @@ import { Injectable, signal } from '@angular/core';
 export class ThemeService {
   private currentTheme = signal<'light' | 'dark'>('light');
   private readonly themeHrefByMode: Record<'light' | 'dark', string> = {
-    light: 'assets/themes/lara-light-blue/theme.css',
-    dark: 'assets/themes/lara-dark-blue/theme.css',
+    light: './assets/themes/lara-light-blue/theme.css',
+    dark: './assets/themes/lara-dark-blue/theme.css',
   };
 
   /**
@@ -46,3 +46,4 @@ export class ThemeService {
     this.switchTheme(savedTheme);
   }
 }
+

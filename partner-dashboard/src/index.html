@@ -11,7 +11,28 @@
   <!-- Note: CSP, X-Frame-Options, and other security headers should be set via HTTP headers on the server -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
 
-  <link id="app-theme" rel="stylesheet" href="assets/themes/lara-light-blue/theme.css">
+  <script>
+    (function () {
+      var storedTheme = 'light';
+
+      try {
+        storedTheme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+      } catch (error) {
+        storedTheme = 'light';
+      }
+
+      var themeHref = storedTheme === 'dark'
+        ? './assets/themes/lara-dark-blue/theme.css'
+        : './assets/themes/lara-light-blue/theme.css';
+
+      var themeLink = document.createElement('link');
+      themeLink.id = 'app-theme';
+      themeLink.rel = 'stylesheet';
+      themeLink.href = themeHref;
+      document.head.appendChild(themeLink);
+      document.documentElement.setAttribute('data-theme', storedTheme);
+    })();
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

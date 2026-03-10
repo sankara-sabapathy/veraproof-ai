@@ -1,21 +1,24 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { MatCardModule } from '@angular/material/card';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { skip, takeUntil } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { DropdownModule } from 'primeng/dropdown';
+import { CardModule } from 'primeng/card';
+import { ProgressBarModule } from 'primeng/progressbar';
 import { AnalyticsStateService } from '../services/analytics-state.service';
 import { AnalyticsService } from '../services/analytics.service';
-import { AnalyticsStats, OutcomeDistribution, UsageTrendData, ReportParams } from '../../../core/models/interfaces';
+import { AnalyticsStats, OutcomeDistribution, ReportParams, TenantEnvironmentSummary, UsageTrendData } from '../../../core/models/interfaces';
 import { NotificationService } from '../../../core/services/notification.service';
+import { TenantEnvironmentService } from '../../../core/services/tenant-environment.service';
 import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import { UsageChartComponent } from '../usage-chart/usage-chart.component';
 import { OutcomeChartComponent } from '../outcome-chart/outcome-chart.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { ContentStateComponent } from '../../../shared/components/content-state/content-state.component';
+import { getUsagePresentation } from '../../../shared/utils/ui-presenters';
 
 @Component({
   selector: 'app-analytics-overview',
@@ -23,15 +26,16 @@ import { LoadingSpinnerComponent } from '../../../shared/components/loading-spin
   imports: [
     CommonModule,
     FormsModule,
-    MatCardModule,
-    MatProgressBarModule,
-    MatIconModule,
     ButtonModule,
     DropdownModule,
+    CardModule,
+    ProgressBarModule,
     StatCardComponent,
     UsageChartComponent,
     OutcomeChartComponent,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    PageHeaderComponent,
+    ContentStateComponent
   ],
   templateUrl: './analytics-overview.component.html',
   styleUrls: ['./analytics-overview.component.scss']
@@ -40,6 +44,7 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
   private analyticsStateService = inject(AnalyticsStateService);
   private analyticsService = inject(AnalyticsService);
   private notificationService = inject(NotificationService);
+  private tenantEnvironmentService = inject(TenantEnvironmentService);
   private destroy$ = new Subject<void>();
 
   stats: AnalyticsStats | null = null;
@@ -48,8 +53,8 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
   selectedPeriod: 'daily' | 'weekly' | 'monthly' = 'daily';
   loading = false;
   error: string | null = null;
+  activeEnvironment: TenantEnvironmentSummary | null = null;
 
-  // Period options for PrimeNG Dropdown
   periodOptions = [
     { label: 'Daily', value: 'daily' },
     { label: 'Weekly', value: 'weekly' },
@@ -57,7 +62,6 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
   ];
 
   ngOnInit(): void {
-    // Subscribe to state changes
     this.analyticsStateService.stats$
       .pipe(takeUntil(this.destroy$))
       .subscribe(stats => this.stats = stats);
@@ -82,7 +86,14 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(error => this.error = error);
 
-    // Load all analytics data
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(environment => this.activeEnvironment = environment);
+
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(skip(1), takeUntil(this.destroy$))
+      .subscribe(() => this.refresh());
+
     this.analyticsStateService.loadAll();
   }
 
@@ -91,40 +102,31 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  /**
-   * Get usage percentage for progress bar
-   */
-  get usagePercentage(): number {
-    if (!this.stats || this.stats.monthly_quota === 0) {
-      return 0;
-    }
-    return Math.min(100, (this.stats.current_usage / this.stats.monthly_quota) * 100);
+  get pageSubtitle(): string {
+    return `Review verification trends, outcomes, and quota usage for ${this.usage.environmentLabel.toLowerCase()}.`;
   }
 
-  /**
-   * Check if quota warning should be displayed (>= 80%)
-   */
+  get usage() {
+    return getUsagePresentation(this.stats, this.activeEnvironment);
+  }
+
   get showQuotaWarning(): boolean {
-    return this.usagePercentage >= 80;
+    return this.usage.usagePercentage >= 80;
   }
 
-  /**
-   * Get quota warning color
-   */
+  get usagePercentage(): number {
+    return this.usage.usagePercentage;
+  }
+
   get quotaWarningColor(): 'warn' | 'accent' {
     return this.usagePercentage >= 100 ? 'warn' : 'accent';
   }
 
-  /**
-   * Handle period change
-   */
+
   onPeriodChange(period: 'daily' | 'weekly' | 'monthly'): void {
     this.analyticsStateService.loadUsageTrend(period);
   }
 
-  /**
-   * Export analytics report as CSV
-   */
   exportCSV(): void {
     const params: ReportParams = {
       date_from: this.getDateFrom(),
@@ -144,9 +146,10 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Download blob as file
-   */
+  refresh(): void {
+    this.analyticsStateService.loadAll();
+  }
+
   private downloadFile(blob: Blob, filename: string): void {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -156,9 +159,6 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
     window.URL.revokeObjectURL(url);
   }
 
-  /**
-   * Get date from based on selected period
-   */
   private getDateFrom(): string {
     const date = new Date();
     switch (this.selectedPeriod) {
@@ -175,27 +175,15 @@ export class AnalyticsOverviewComponent implements OnInit, OnDestroy {
     return this.formatDate(date);
   }
 
-  /**
-   * Get current date as date_to
-   */
   private getDateTo(): string {
     return this.formatDate(new Date());
   }
 
-  /**
-   * Format date as YYYY-MM-DD
-   */
   private formatDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
-
-  /**
-   * Refresh all analytics data
-   */
-  refresh(): void {
-    this.analyticsStateService.loadAll();
-  }
 }
+

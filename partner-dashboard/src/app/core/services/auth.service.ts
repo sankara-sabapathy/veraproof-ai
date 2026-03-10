@@ -6,6 +6,7 @@ import { catchError, delayWhen, finalize, retryWhen, scan, shareReplay, tap } fr
 import { environment } from '../../../environments/environment';
 import { AuthProviders, AuthResponse, AuthSessionState, LoginRequest, SignupRequest, User } from '../models/interfaces';
 import { SecurityService } from './security.service';
+import { TenantEnvironmentService } from './tenant-environment.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private securityService = inject(SecurityService);
+  private tenantEnvironmentService = inject(TenantEnvironmentService);
 
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -90,10 +92,12 @@ export class AuthService {
           this.securityService.setCsrfToken(response.csrf_token || '');
           this.currentUserSubject.next(response.user);
           this.isAuthenticatedSubject.next(true);
+          this.tenantEnvironmentService.hydrateFromSession(response);
         } else {
           this.currentUserSubject.next(null);
           this.isAuthenticatedSubject.next(false);
           this.securityService.clearCsrfToken();
+          this.tenantEnvironmentService.clear();
         }
         this.authReadySubject.next(true);
       }),
@@ -101,6 +105,7 @@ export class AuthService {
         this.currentUserSubject.next(null);
         this.isAuthenticatedSubject.next(false);
         this.securityService.clearCsrfToken();
+        this.tenantEnvironmentService.clear();
         this.authReadySubject.next(true);
         return of({ authenticated: false } as AuthSessionState);
       }),
@@ -234,6 +239,8 @@ export class AuthService {
       auth_type: user ? 'session_cookie' : null,
       csrf_token: this.securityService.getCsrfToken(),
       user,
+      active_environment: this.tenantEnvironmentService.getActiveEnvironment(),
+      available_environments: this.tenantEnvironmentService.getAvailableEnvironments(),
     };
   }
 
@@ -241,6 +248,7 @@ export class AuthService {
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
     this.securityService.clearCsrfToken();
+    this.tenantEnvironmentService.clear();
     this.authReadySubject.next(true);
   }
 
@@ -260,18 +268,15 @@ export class AuthService {
     return throwError(() => new Error(errorMessage));
   }
 
-  private retryWithBackoff(errors: Observable<any>): Observable<any> {
+  private retryWithBackoff(errors: Observable<HttpErrorResponse>): Observable<number> {
     return errors.pipe(
       scan((retryCount, error) => {
-        if (error.status >= 400 && error.status < 500 && error.status !== 429) {
-          throw error;
-        }
-        if (retryCount >= 3) {
+        if (retryCount >= 2 || error.status < 500) {
           throw error;
         }
         return retryCount + 1;
       }, 0),
-      delayWhen(retryCount => timer(Math.pow(2, retryCount - 1) * 1000))
+      delayWhen(retryCount => timer(retryCount * 1000))
     );
   }
 }

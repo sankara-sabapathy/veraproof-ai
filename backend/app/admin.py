@@ -242,21 +242,71 @@ async def revoke_platform_invitation(invitation_id: str, _admin_context: AuthCon
 
 @router.get("/platform-stats")
 async def get_platform_stats(_admin_context: AuthContext = Depends(require_permission("platform.metadata.read"))):
-    total_tenants_result = await db_manager.fetch_one("SELECT COUNT(*) as count FROM tenants WHERE tenant_id <> $1", _platform_admin_org_id())
-    total_tenants = total_tenants_result['count'] if total_tenants_result else 0
-    total_sessions_result = await db_manager.fetch_one("SELECT COUNT(*) as count FROM sessions")
-    total_sessions = total_sessions_result['count'] if total_sessions_result else 0
+    metrics = await db_manager.fetch_one(
+        """
+        SELECT
+            (SELECT COUNT(*) FROM tenants WHERE tenant_id <> $1) AS total_tenants,
+            (
+                SELECT COUNT(DISTINCT s.tenant_id)
+                FROM sessions s
+                WHERE s.created_at >= NOW() - INTERVAL '30 days'
+            ) AS active_tenants,
+            (SELECT COUNT(*) FROM sessions) AS total_sessions,
+            (
+                SELECT COUNT(*)
+                FROM sessions
+                WHERE created_at >= CURRENT_DATE
+            ) AS sessions_today,
+            (
+                SELECT COUNT(*)
+                FROM sessions
+                WHERE final_trust_score IS NOT NULL AND final_trust_score >= 50
+            ) AS successful_sessions,
+            (
+                SELECT COUNT(*)
+                FROM sessions
+                WHERE final_trust_score IS NOT NULL AND final_trust_score < 50
+            ) AS failed_sessions,
+            (
+                SELECT AVG(final_trust_score)::float
+                FROM sessions
+                WHERE final_trust_score IS NOT NULL
+            ) AS average_trust_score,
+            (
+                SELECT COALESCE(SUM(CASE subscription_tier
+                    WHEN 'Starter' THEN 49
+                    WHEN 'Professional' THEN 199
+                    WHEN 'Pro' THEN 199
+                    WHEN 'Enterprise' THEN 999
+                    ELSE 0
+                END), 0)
+                FROM tenants
+                WHERE tenant_id <> $1
+            ) AS estimated_mrr
+        """,
+        _platform_admin_org_id(),
+    )
+    total_tenants = int(metrics['total_tenants'] or 0) if metrics else 0
+    active_tenants = int(metrics['active_tenants'] or 0) if metrics else 0
+    total_sessions = int(metrics['total_sessions'] or 0) if metrics else 0
+    sessions_today = int(metrics['sessions_today'] or 0) if metrics else 0
+    successful_sessions = int(metrics['successful_sessions'] or 0) if metrics else 0
+    failed_sessions = int(metrics['failed_sessions'] or 0) if metrics else 0
+    scored_sessions = successful_sessions + failed_sessions
+    average_trust_score = round(float(metrics['average_trust_score'] or 0), 2) if metrics else 0.0
+    estimated_mrr = float(metrics['estimated_mrr'] or 0) if metrics else 0.0
     return {
         "total_tenants": total_tenants,
-        "active_tenants": total_tenants,
+        "active_tenants": active_tenants,
         "total_sessions": total_sessions,
-        "sessions_today": 0,
-        "total_revenue": total_tenants * 99,
-        "revenue_this_month": total_tenants * 99,
-        "average_sessions_per_tenant": total_sessions / total_tenants if total_tenants > 0 else 0,
-        "platform_success_rate": 95.5,
+        "sessions_today": sessions_today,
+        "total_revenue": estimated_mrr,
+        "revenue_this_month": estimated_mrr,
+        "average_sessions_per_tenant": round((total_sessions / total_tenants), 2) if total_tenants > 0 else 0,
+        "platform_success_rate": round((successful_sessions / scored_sessions) * 100, 2) if scored_sessions > 0 else 0,
+        "platform_failure_rate": round((failed_sessions / scored_sessions) * 100, 2) if scored_sessions > 0 else 0,
+        "average_trust_score": average_trust_score,
     }
-
 
 @router.get("/system-health")
 async def get_system_health(_admin_context: AuthContext = Depends(require_permission("platform.metadata.read"))):

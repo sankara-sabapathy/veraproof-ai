@@ -1,24 +1,24 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { skip, takeUntil } from 'rxjs/operators';
 import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-import { ChipModule } from 'primeng/chip';
-import { TooltipModule } from 'primeng/tooltip';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { ApiKey } from '../../../core/models/interfaces';
+import { ApiKey, TenantEnvironmentSummary } from '../../../core/models/interfaces';
 import { ApiKeysService } from '../services/api-keys.service';
 import { ApiKeysStateService } from '../services/api-keys-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { TenantEnvironmentService } from '../../../core/services/tenant-environment.service';
 import { ConfirmationDialogService, ConfirmationDialogData } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { ApiKeyCreateDialogComponent } from '../api-key-create-dialog/api-key-create-dialog.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ColDef, ValueFormatterParams } from 'ag-grid-community';
 import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
 import { CopyTextRendererComponent } from '../../../shared/components/data-table/renderers/copy-text-renderer.component';
+import { formatEnvironmentLabel } from '../../../shared/utils/ui-presenters';
 
 @Component({
   selector: 'app-api-keys-list',
@@ -29,9 +29,7 @@ import { CopyTextRendererComponent } from '../../../shared/components/data-table
     DataTableComponent,
     ButtonModule,
     CardModule,
-    ChipModule,
-    TooltipModule,
-    LoadingSpinnerComponent
+    PageHeaderComponent
   ],
   providers: [DialogService, DatePipe],
   templateUrl: './api-keys-list.component.html',
@@ -42,12 +40,15 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
   private apiKeysService = inject(ApiKeysService);
   private stateService = inject(ApiKeysStateService);
   private notificationService = inject(NotificationService);
+  private tenantEnvironmentService = inject(TenantEnvironmentService);
   private confirmationDialog = inject(ConfirmationDialogService);
   private datePipe = inject(DatePipe);
   private destroy$ = new Subject<void>();
 
   apiKeys: ApiKey[] = [];
-  loading$ = this.stateService.loading$;
+  loading = false;
+  errorMessage: string | null = null;
+  activeEnvironment: TenantEnvironmentSummary | null = null;
   columns: ColDef[] = [];
 
   constructor() {
@@ -56,15 +57,13 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
         field: 'environment',
         headerName: 'Environment',
         cellRenderer: (params: any) => {
-          const color = params.value === 'sandbox' ? '#f59e0b' : '#10b981';
-          let html = `<div style="display:flex; align-items:center; gap:6px; font-weight:600; color: var(--vp-text, #1e293b);">
-            <div style="width:8px; height:8px; border-radius:50%; background-color:${color};"></div>
-            ${this.capitalize(params.value)}
-          </div>`;
+          const isProduction = params.value === 'production';
+          const environmentLabel = formatEnvironmentLabel(params.value);
+          let html = `<span class="environment-pill ${isProduction ? 'environment-pill--production' : 'environment-pill--sandbox'}">${environmentLabel}</span>`;
           if (params.data.revoked_at) {
-            html += ` <div class="p-chip p-component" style="background:var(--vp-error-bg);color:var(--vp-error);font-size:11px;padding:2px 8px;font-weight:600;"><span class="p-chip-text">Revoked</span></div>`;
+            html += ' <span class="environment-pill environment-pill--revoked">Revoked</span>';
           }
-          return `<div style="display:flex; gap:8px; align-items:center;">${html}</div>`;
+          return `<div class="environment-cell">${html}</div>`;
         }
       },
       {
@@ -74,9 +73,9 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
         minWidth: 400,
         cellRenderer: CopyTextRendererComponent,
         cellRendererParams: {
-          mask: (val: string) => this.getMaskedKey(val),
-          disabled: (data: any) => this.isRevoked(data),
-          copyCallback: (val: string) => this.copyToClipboard(val)
+          mask: (value: string) => this.getMaskedKey(value),
+          disabled: (data: ApiKey) => this.isRevoked(data),
+          copyCallback: (value: string) => this.copyToClipboard(value)
         }
       },
       {
@@ -88,9 +87,7 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
         field: 'usage_count',
         headerName: 'Usage',
         valueGetter: (params: any) => params.data.usage_count || params.data.total_calls || 0,
-        cellRenderer: (params: any) => {
-          return `<div class="usage-stats"><span class="usage-count">${params.value.toLocaleString()}</span><span class="usage-label" style="font-size:12px;color:#64748b;display:block;">calls</span></div>`;
-        }
+        cellRenderer: (params: any) => `<div class="usage-stats"><span class="usage-count">${params.value.toLocaleString()}</span><span class="usage-label">calls</span></div>`
       },
       {
         field: 'last_used_at',
@@ -117,8 +114,27 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.stateService.keys$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(keys => this.apiKeys = keys);
+
+    this.stateService.loading$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(loading => this.loading = loading);
+
+    this.stateService.error$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(error => this.errorMessage = error);
+
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(environment => this.activeEnvironment = environment);
+
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(skip(1), takeUntil(this.destroy$))
+      .subscribe(() => this.loadApiKeys());
+
     this.loadApiKeys();
-    this.subscribeToState();
   }
 
   ngOnDestroy(): void {
@@ -126,16 +142,13 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private loadApiKeys(): void {
-    this.stateService.loadKeys();
+  get pageSubtitle(): string {
+    const environment = this.activeEnvironment?.display_name || 'the selected environment';
+    return `Manage credential access and key lifecycle for ${environment.toLowerCase()}.`;
   }
 
-  private subscribeToState(): void {
-    this.stateService.keys$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(keys => {
-        this.apiKeys = keys;
-      });
+  loadApiKeys(): void {
+    this.stateService.loadKeys();
   }
 
   onRevokeKey(key: ApiKey): void {
@@ -187,12 +200,16 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
   }
 
   getMaskedKey(key: string): string {
-    if (key.length <= 4) return key;
-    return 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' + key.slice(-4);
+    if (key.length <= 4) {
+      return key;
+    }
+    return '••••••••••••' + key.slice(-4);
   }
 
   formatDate(dateString: string | null): string {
-    if (!dateString) return 'Never';
+    if (!dateString) {
+      return 'Never';
+    }
     return this.datePipe.transform(dateString, 'short') || 'Never';
   }
 
@@ -201,8 +218,7 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
   }
 
   capitalize(str: string): string {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
   }
 
   getMenuItems(key: ApiKey) {
@@ -225,7 +241,9 @@ export class ApiKeysListComponent implements OnInit, OnDestroy {
     });
 
     ref.onClose.subscribe(() => {
-      // Dialog closed, keys are already updated via state service
+      // Keys are updated via the shared state service.
     });
   }
 }
+
+

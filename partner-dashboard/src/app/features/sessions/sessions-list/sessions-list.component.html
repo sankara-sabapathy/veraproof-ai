@@ -1,15 +1,24 @@
-<div class="sessions-list">
-  <div class="header">
-    <h2>Sessions</h2>
-    <p-button label="Create Session" icon="pi pi-plus" (onClick)="createSession()" styleClass="p-button-raised">
-    </p-button>
-  </div>
+<div class="vp-page sessions-list">
+  <app-page-header title="Sessions" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Create Session" icon="pi pi-plus" (onClick)="createSession()"></p-button>
+    </div>
+  </app-page-header>
 
-  <div>
-    <p-card>
-      <app-data-table [columns]="columns" [data]="sessions" [loading]="loading"
-        searchPlaceholder="Search sessions by ID or status...">
-      </app-data-table>
-    </p-card>
-  </div>
+  <p-card styleClass="sessions-card">
+    <app-data-table
+      [columns]="columns"
+      [data]="sessions"
+      [loading]="loading"
+      [errorMessage]="errorMessage"
+      errorTitle="Sessions unavailable"
+      errorActionLabel="Retry"
+      searchPlaceholder="Search sessions by ID or status..."
+      emptyTitle="No sessions yet"
+      emptyDescription="Create a verification session to begin collecting results in this environment."
+      emptyActionLabel="Create Session"
+      (emptyAction)="createSession()"
+      (errorAction)="loadSessions()">
+    </app-data-table>
+  </p-card>
 </div>

@@ -7,14 +7,21 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
 import { TagModule } from 'primeng/tag';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { ContentStateComponent } from '../../../shared/components/content-state/content-state.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { UserManagementService, OrgMember, OrgRole, UserInvitation } from '../services/user-management.service';
 
+interface RoleOption {
+  label: string;
+  value: string;
+}
+
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardModule, ButtonModule, InputTextModule, DropdownModule, TagModule],
+  imports: [CommonModule, FormsModule, CardModule, ButtonModule, InputTextModule, DropdownModule, TagModule, PageHeaderComponent, ContentStateComponent],
   templateUrl: './user-management.component.html',
   styleUrls: ['./user-management.component.scss']
 })
@@ -25,6 +32,7 @@ export class UserManagementComponent implements OnInit {
   inviteEmail = '';
   inviteRole = 'org_viewer';
   roles: OrgRole[] = [];
+  roleOptions: RoleOption[] = [];
   members: OrgMember[] = [];
   invitations: UserInvitation[] = [];
 
@@ -45,8 +53,20 @@ export class UserManagementComponent implements OnInit {
     this.loadAll();
   }
 
-  get roleOptions() {
-    return this.roles.map((role) => ({ label: role.description || role.role_slug, value: role.role_slug }));
+  get pageSubtitle(): string {
+    return 'Manage tenant membership, roles, and invitation lifecycle using the same org-scoped access model as the rest of the dashboard.';
+  }
+
+  get activeMembersCount(): number {
+    return this.members.filter((member) => member.status === 'active').length;
+  }
+
+  get adminCount(): number {
+    return this.members.filter((member) => member.role_slug === 'org_admin').length;
+  }
+
+  get pendingInvitationCount(): number {
+    return this.invitations.filter((invitation) => invitation.status === 'pending').length;
   }
 
   loadAll(): void {
@@ -54,6 +74,14 @@ export class UserManagementComponent implements OnInit {
     this.userManagement.listOrgRoles(this.orgId).subscribe({
       next: (roles) => {
         this.roles = roles.filter((role) => !role.is_platform_role);
+        this.roleOptions = this.roles.map((role) => ({
+          label: role.description || role.role_slug,
+          value: role.role_slug,
+        }));
+
+        if (!this.roleOptions.some((role) => role.value === this.inviteRole)) {
+          this.inviteRole = this.roleOptions[0]?.value || 'org_viewer';
+        }
       },
       error: () => this.notification.error('Failed to load organization roles'),
     });
@@ -90,7 +118,7 @@ export class UserManagementComponent implements OnInit {
       next: () => {
         this.inviteLoading = false;
         this.inviteEmail = '';
-        this.inviteRole = this.roles[0]?.role_slug || 'org_viewer';
+        this.inviteRole = this.roleOptions[0]?.value || 'org_viewer';
         this.notification.success('Invitation created');
         this.loadAll();
       },
@@ -140,5 +168,58 @@ export class UserManagementComponent implements OnInit {
 
   roleLabel(roleSlug: string): string {
     return this.roles.find((role) => role.role_slug === roleSlug)?.description || roleSlug;
+  }
+
+  roleSeverity(roleSlug: string): 'info' | 'success' | 'secondary' {
+    if (roleSlug === 'org_admin') {
+      return 'info';
+    }
+    if (roleSlug === 'org_analyst') {
+      return 'success';
+    }
+    return 'secondary';
+  }
+
+  memberStatusLabel(status: string): string {
+    if (status === 'active') {
+      return 'Active';
+    }
+    if (status === 'inactive') {
+      return 'Inactive';
+    }
+    return status;
+  }
+
+  memberStatusSeverity(status: string): 'success' | 'warning' | 'secondary' {
+    if (status === 'active') {
+      return 'success';
+    }
+    if (status === 'inactive') {
+      return 'warning';
+    }
+    return 'secondary';
+  }
+
+  invitationStatusLabel(status: string): string {
+    if (status === 'pending') {
+      return 'Pending';
+    }
+    if (status === 'revoked') {
+      return 'Revoked';
+    }
+    if (status === 'accepted') {
+      return 'Accepted';
+    }
+    return status;
+  }
+
+  invitationStatusSeverity(status: string): 'warning' | 'secondary' | 'success' {
+    if (status === 'pending') {
+      return 'warning';
+    }
+    if (status === 'accepted') {
+      return 'success';
+    }
+    return 'secondary';
   }
 }

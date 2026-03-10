@@ -27,7 +27,7 @@ export class AuthCallbackComponent implements OnInit {
   private router = inject(Router);
 
   private getPostLoginRoute(): string[] {
-    return this.authService.isAdmin() ? ['/admin/tenants'] : ['/dashboard'];
+    return this.authService.isAdmin() ? ['/admin/platform-stats'] : ['/dashboard'];
   }
 
   ngOnInit(): void {

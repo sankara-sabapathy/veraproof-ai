@@ -5,6 +5,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { SecurityService } from '../services/security.service';
+import { TenantEnvironmentService } from '../services/tenant-environment.service';
 
 export const authInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
@@ -13,12 +14,18 @@ export const authInterceptor: HttpInterceptorFn = (
   const authService = inject(AuthService);
   const securityService = inject(SecurityService);
   const router = inject(Router);
+  const tenantEnvironmentService = inject(TenantEnvironmentService);
 
   if (req.url.includes('amazonaws.com') || req.url.includes('X-Amz-Signature')) {
     return next(req);
   }
 
   let request = req.clone({ withCredentials: true });
+
+  const activeEnvironmentSlug = tenantEnvironmentService.getActiveEnvironmentSlug();
+  if (activeEnvironmentSlug && !isEnvironmentSelectionEndpoint(request.url)) {
+    request = request.clone({ setHeaders: { 'X-VeraProof-Environment': activeEnvironmentSlug } });
+  }
 
   if (isStateChangingRequest(request.method)) {
     const csrfToken = securityService.getCsrfToken();
@@ -50,4 +57,8 @@ function isAuthEndpoint(url: string): boolean {
     url.includes('/auth/google/') ||
     url.includes('/auth/logout')
   );
+}
+
+function isEnvironmentSelectionEndpoint(url: string): boolean {
+  return url.includes('/api/v1/environments/select');
 }

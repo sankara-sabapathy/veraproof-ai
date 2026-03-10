@@ -1,73 +1,83 @@
-<div class="subscription-overview">
-  <p-card *ngIf="subscription$ | async as subscription; else loading">
+<div class="vp-page billing-overview">
+  <app-page-header title="Billing" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="View Plans" [routerLink]="['/billing/plans']" severity="primary"></p-button>
+      <p-button label="View Invoices" [routerLink]="['/billing/invoices']" severity="secondary" [text]="true"></p-button>
+    </div>
+  </app-page-header>
+
+  <app-loading-spinner *ngIf="loading && !subscription" message="Loading subscription details..."></app-loading-spinner>
+
+  <app-content-state
+    *ngIf="errorMessage && !loading && !subscription"
+    title="Billing details unavailable"
+    [description]="errorMessage"
+    icon="pi-wallet"
+    actionLabel="Retry"
+    tone="error"
+    (action)="loadSubscription()">
+  </app-content-state>
+
+  <p-card *ngIf="subscription && !loading" styleClass="billing-card">
     <ng-template pTemplate="header">
-      <div class="card-header">Current Subscription</div>
+      <div class="section-header">
+        <div>
+          <h2>Current Subscription</h2>
+          <p>{{ usage.environmentLabel }} usage and plan details for the active billing cycle.</p>
+        </div>
+        <p-chip [label]="subscription.subscription_tier" styleClass="plan-chip"></p-chip>
+      </div>
     </ng-template>
     <ng-template pTemplate="content">
       <div class="subscription-details">
         <div class="detail-row">
-          <span class="label">Plan:</span>
-          <p-chip [label]="subscription.subscription_tier" styleClass="plan-chip"></p-chip>
+          <span class="label">Monthly Quota</span>
+          <span class="value">{{ usage.monthlyQuota | number }} verifications</span>
         </div>
         <div class="detail-row">
-          <span class="label">Monthly Quota:</span>
-          <span class="value">{{ subscription.monthly_quota | number }} verifications</span>
+          <span class="label">Current Usage</span>
+          <span class="value">{{ usage.currentUsage | number }} / {{ usage.monthlyQuota | number }}</span>
         </div>
         <div class="detail-row">
-          <span class="label">Current Usage:</span>
-          <span class="value">{{ subscription.current_usage | number }} / {{ subscription.monthly_quota | number }}</span>
+          <span class="label">Remaining</span>
+          <span class="value">{{ usage.remainingQuota | number }} verifications</span>
         </div>
-        <div class="detail-row">
-          <span class="label">Remaining:</span>
-          <span class="value">{{ subscription.remaining_quota | number }} verifications</span>
-        </div>
-        
+
         <div class="quota-progress">
-          <p-progressBar 
-            [value]="subscription.usage_percentage"
-            [showValue]="false"
-            [styleClass]="'usage-' + getUsageColor(subscription.usage_percentage)">
-          </p-progressBar>
-          <span class="progress-label">{{ subscription.usage_percentage | number:'1.0-1' }}% used</span>
+          <p-progressBar [value]="usage.usagePercentage" [showValue]="false"></p-progressBar>
+          <span class="progress-label">{{ usage.usagePercentage | number:'1.0-0' }}% used</span>
         </div>
 
         <p-divider></p-divider>
 
         <div class="detail-row">
-          <span class="label">Billing Cycle:</span>
-          <span class="value">{{ subscription.billing_cycle_start | date }} - {{ subscription.billing_cycle_end | date }}</span>
+          <span class="label">Billing Cycle</span>
+          <span class="value">{{ billingCycleStart | date }} - {{ billingCycleEnd | date }}</span>
         </div>
         <div class="detail-row">
-          <span class="label">Next Renewal:</span>
+          <span class="label">Next Renewal</span>
           <span class="value">{{ subscription.next_renewal_date | date }}</span>
         </div>
         <div class="detail-row">
-          <span class="label">Estimated Cost:</span>
+          <span class="label">Estimated Cost</span>
           <span class="value">\${{ subscription.estimated_cost | number:'1.2-2' }}</span>
         </div>
       </div>
 
-      <div class="actions" *ngIf="subscription.usage_percentage >= 80">
-        <p-card styleClass="warning-card">
-          <ng-template pTemplate="content">
-            <div class="warning-content">
-              <i class="pi pi-exclamation-triangle warning-icon"></i>
-              <p>You've used {{ subscription.usage_percentage | number:'1.0-1' }}% of your monthly quota. Consider upgrading your plan or purchasing additional credits.</p>
-            </div>
-          </ng-template>
-        </p-card>
+      <div *ngIf="usage.usagePercentage >= 80" class="warning-card">
+        <div class="warning-content">
+          <i class="pi pi-exclamation-triangle warning-icon"></i>
+          <p>
+            <span *ngIf="usage.usagePercentage < 100">Usage is approaching the monthly quota for this environment. Consider adding credits before the current cycle ends.</span>
+            <span *ngIf="usage.usagePercentage >= 100">This environment has reached its monthly quota. Add credits to avoid interruption.</span>
+          </p>
+        </div>
       </div>
     </ng-template>
     <ng-template pTemplate="footer">
       <div class="card-actions">
-        <p-button label="View Plans" [routerLink]="['/billing/plans']" severity="primary"></p-button>
-        <p-button label="Buy Credits (500)" (onClick)="buyCredits(500)" severity="secondary"></p-button>
-        <p-button label="View Invoices" [routerLink]="['/billing/invoices']" severity="secondary" [text]="true"></p-button>
+        <p-button label="Buy Credits (500)" (onClick)="buyCredits(500)" severity="primary"></p-button>
       </div>
     </ng-template>
   </p-card>
-
-  <ng-template #loading>
-    <app-loading-spinner message="Loading subscription details..."></app-loading-spinner>
-  </ng-template>
 </div>

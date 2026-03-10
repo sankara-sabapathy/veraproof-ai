@@ -1,21 +1,18 @@
-<div class="analysis-workbench">
-  <header class="page-header">
-    <div>
-      <p class="eyebrow">Fraud Analysis</p>
-      <h2>Upload media and run offline forensic scoring.</h2>
-      <p class="lede">
-        Send a single image or video through the same fraud-analysis stack used by the backend and inspect the result here.
-      </p>
+<div class="vp-page analysis-workbench">
+  <app-page-header title="Fraud Analysis" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <button pButton type="button" label="Refresh" icon="pi pi-refresh" class="p-button-outlined"
+        [loading]="refreshing" (click)="loadJobs(false)"></button>
     </div>
-
-    <button pButton type="button" label="Refresh" icon="pi pi-refresh" class="p-button-outlined"
-      [loading]="refreshing" (click)="loadJobs(false)"></button>
-  </header>
+  </app-page-header>
 
   <section class="workbench-grid">
-    <article class="upload-panel">
+    <article class="panel-card upload-panel">
       <div class="panel-head">
-        <h3>New analysis</h3>
+        <div>
+          <h2>New Analysis</h2>
+          <p>Upload one source artifact and optional metadata to start an asynchronous job.</p>
+        </div>
         <span class="hint">PNG, JPG, WEBP, WEBM, MP4, MOV, OGG</span>
       </div>
 
@@ -46,10 +43,10 @@
       </div>
     </article>
 
-    <aside class="detail-panel" *ngIf="selectedJob; else emptyDetail">
+    <aside class="panel-card detail-panel" *ngIf="selectedJob; else emptyDetail">
       <div class="panel-head detail-head">
         <div>
-          <h3>{{ selectedJob.source_filename }}</h3>
+          <h2>{{ selectedJob.source_filename }}</h2>
           <p>{{ selectedJob.media_type | titlecase }} · {{ selectedJob.content_type }} · {{ formatBytes(selectedJob.file_size_bytes) }}</p>
         </div>
         <span class="status-pill" [attr.data-status]="selectedJob.status">{{ statusLabel(selectedJob) }}</span>
@@ -78,33 +75,33 @@
       </div>
 
       <div class="detail-copy" *ngIf="selectedJob.reasoning as reasoning">
-        <h4>Reasoning</h4>
+        <h3>Reasoning</h3>
         <p>{{ reasoning }}</p>
       </div>
 
       <div class="detail-copy error-copy" *ngIf="selectedJob.error_message as errorMessage">
-        <h4>Failure detail</h4>
+        <h3>Failure detail</h3>
         <p>{{ errorMessage }}</p>
       </div>
 
       <div class="detail-json" *ngIf="selectedJob.ai_explanation">
-        <h4>AI explanation payload</h4>
+        <h3>AI explanation payload</h3>
         <pre>{{ selectedJob.ai_explanation | json }}</pre>
       </div>
     </aside>
 
     <ng-template #emptyDetail>
-      <aside class="detail-panel empty-panel">
-        <h3>No job selected</h3>
+      <aside class="panel-card detail-panel empty-panel">
+        <h2>No job selected</h2>
         <p>Upload a new file or choose a recent job to inspect its fraud-analysis output.</p>
       </aside>
     </ng-template>
   </section>
 
-  <section class="jobs-panel">
+  <section class="panel-card jobs-panel">
     <div class="panel-head jobs-head">
       <div>
-        <h3>Recent jobs</h3>
+        <h2>Recent Jobs</h2>
         <p *ngIf="hasActiveJobs">Polling for active jobs every 5 seconds.</p>
         <p *ngIf="!hasActiveJobs">Latest 24 uploads for this tenant.</p>
       </div>
@@ -141,7 +138,7 @@
     </div>
 
     <div class="empty-state" *ngIf="!loading && jobs.length === 0">
-      <h3>No uploads yet</h3>
+      <h2>No uploads yet</h2>
       <p>Run the first image or video through the offline fraud-analysis pipeline from this screen.</p>
     </div>
   </section>

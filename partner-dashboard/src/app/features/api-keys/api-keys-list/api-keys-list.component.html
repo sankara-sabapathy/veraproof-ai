@@ -1,14 +1,24 @@
-<div class="api-keys-container">
-  <div class="header">
-    <h2>API Keys</h2>
-    <p-button label="Generate API Key" icon="pi pi-plus" (onClick)="onCreateKey()">
-    </p-button>
-  </div>
+<div class="vp-page api-keys-container">
+  <app-page-header title="API Keys" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Generate API Key" icon="pi pi-plus" (onClick)="onCreateKey()"></p-button>
+    </div>
+  </app-page-header>
 
-  <p-card>
-    <!-- Data Table -->
-    <app-data-table [columns]="columns" [data]="apiKeys" [loading]="(loading$ | async) ?? false"
-      searchPlaceholder="Search API keys...">
+  <p-card styleClass="api-keys-card">
+    <app-data-table
+      [columns]="columns"
+      [data]="apiKeys"
+      [loading]="loading"
+      [errorMessage]="errorMessage"
+      errorTitle="API keys unavailable"
+      errorActionLabel="Retry"
+      searchPlaceholder="Search API keys..."
+      emptyTitle="No API keys generated"
+      emptyDescription="Generate a key when you are ready to connect a client or test the verification API."
+      emptyActionLabel="Generate API Key"
+      (emptyAction)="onCreateKey()"
+      (errorAction)="loadApiKeys()">
     </app-data-table>
   </p-card>
 </div>

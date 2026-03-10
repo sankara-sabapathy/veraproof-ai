@@ -10,6 +10,8 @@ const NAV_ROUTES = [
   { label: 'Billing', path: '/billing' },
   { label: 'Webhooks', path: '/webhooks' },
   { label: 'Branding', path: '/branding' },
+  { label: 'Encryption', path: '/encryption' },
+  { label: 'Users', path: '/users' },
 ];
 
 function assert(condition, message) {
@@ -103,9 +105,9 @@ async function navigateBySidebar(page, label, expectedPath) {
   await waitForAppIdle(page);
   await page.fill('#return_url', 'http://localhost:8200/sessions');
   await page.getByRole('button', { name: 'Create Session' }).click();
-  await page.getByText('Session Created Successfully', { exact: true }).waitFor({ state: 'visible', timeout: 20000 });
+  await page.getByRole('heading', { name: 'Session Ready' }).waitFor({ state: 'visible', timeout: 20000 });
 
-  const createKeyResp = await apiRequest(context, page, 'POST', '/api/v1/api-keys', { environment: 'sandbox' });
+  const createKeyResp = await apiRequest(context, page, 'POST', '/api/v1/api-keys', { environment: 'production' });
   assert(createKeyResp.status() === 200, `api key create returned ${createKeyResp.status()}`);
   const createdKey = await createKeyResp.json();
   const keyId = createdKey.key_id;
@@ -154,3 +156,5 @@ async function navigateBySidebar(page, label, expectedPath) {
   console.error(error.stack || error.message || String(error));
   process.exit(1);
 });
+
+

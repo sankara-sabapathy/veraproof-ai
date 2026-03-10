@@ -1,10 +1,23 @@
-.layout-container {
+.layout-shell {
   height: 100vh;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
+  background: var(--vp-bg, #f8fafc);
 }
 
-/* ── Desktop Sidebar ── */
+.layout-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.layout-shell.menu-open .main-content {
+  overflow: hidden;
+  touch-action: none;
+}
+
 .layout-sidebar {
   width: var(--vp-sidebar-width, 260px);
   background: var(--vp-surface, #ffffff);
@@ -14,39 +27,71 @@
   z-index: 100;
 }
 
-/* ── Mobile Sidebar Overlay ── */
-::ng-deep .mobile-sidebar {
-  width: var(--vp-sidebar-width, 260px) !important;
-
-  .p-sidebar-content {
-    padding: 0;
-    height: 100%;
-  }
-
-  .p-sidebar-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--vp-border-light, #f1f5f9);
-  }
-}
-
-/* ── Content Area ── */
-.layout-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-width: 0;
-}
-
 .main-content {
   flex: 1;
   overflow-y: auto;
   background-color: var(--vp-bg, #f8fafc);
+  min-width: 0;
 }
 
-/* ── Responsive ── */
+.mobile-nav-layer {
+  position: fixed;
+  inset: var(--vp-toolbar-height, 56px) 0 0 0;
+  z-index: 950;
+  pointer-events: none;
+}
+
+.mobile-nav-layer.open {
+  pointer-events: auto;
+}
+
+.mobile-nav-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mobile-nav-backdrop.visible {
+  opacity: 1;
+}
+
+.mobile-sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(84vw, 320px);
+  max-width: 100%;
+  background: var(--vp-surface, #ffffff);
+  border-right: 1px solid var(--vp-border, #e2e8f0);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.14);
+  transform: translateX(calc(-100% - 1.5rem));
+  transition: transform 0.22s ease;
+  overflow-y: auto;
+}
+
+.mobile-sidebar.open {
+  transform: translateX(0);
+}
+
 @media (max-width: 959px) {
-  .layout-sidebar {
+  .mobile-nav-layer {
+    inset: var(--vp-toolbar-height, 56px) 0 0 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .mobile-sidebar {
+    width: min(88vw, 320px);
+  }
+}
+
+@media (min-width: 960px) {
+  .mobile-nav-layer {
     display: none;
   }
 }

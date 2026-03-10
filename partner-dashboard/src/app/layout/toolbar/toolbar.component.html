@@ -1,10 +1,10 @@
 <header class="vp-toolbar">
   <div class="toolbar-left">
-    <button *ngIf="showMenuButton" class="nav-toggle" (click)="onMenuToggle()" aria-label="Toggle menu">
+    <button *ngIf="showMenuButton" type="button" class="nav-toggle" [class.active]="menuOpen" (click)="onMenuToggle()" aria-label="Toggle menu" [attr.aria-expanded]="menuOpen">
       <i class="pi pi-bars"></i>
     </button>
 
-    <a routerLink="/dashboard" class="brand">
+    <a [routerLink]="brandRoute$ | async" class="brand">
       <div class="brand-logo">
         <i class="pi pi-shield"></i>
       </div>
@@ -23,6 +23,25 @@
   </div>
 
   <div class="toolbar-right">
+    <ng-container *ngIf="showEnvironmentSwitcher$ | async">
+      <div class="environment-switcher" *ngIf="(availableEnvironments$ | async) as environments">
+        <span class="switcher-label">Environment</span>
+        <div class="switcher-segment" *ngIf="(activeEnvironment$ | async) as activeEnvironment">
+          <button
+            *ngFor="let environment of environments"
+            type="button"
+            class="segment-option"
+            [class.active]="isEnvironmentActive(activeEnvironment, environment)"
+            [class.billable]="environment.is_billable"
+            [disabled]="switchingEnvironment"
+            (click)="onSelectEnvironment(environment)">
+            <span class="segment-title">{{ environment.display_name }}</span>
+            <span class="segment-meta">{{ environment.monthly_quota | number }} quota</span>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
     <button class="user-btn" (click)="userMenu.toggle($event)" aria-label="User menu">
       <i class="pi pi-user"></i>
     </button>
@@ -35,7 +54,7 @@
           </div>
           <div class="user-info">
             <span class="user-email">{{ userEmail$ | async }}</span>
-            <span class="user-role">Partner</span>
+            <span class="user-role">{{ userRoleLabel$ | async }}</span>
           </div>
         </div>
         <p-divider></p-divider>
@@ -43,3 +62,4 @@
     </p-menu>
   </div>
 </header>
+

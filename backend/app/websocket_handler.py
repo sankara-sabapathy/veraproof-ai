@@ -478,6 +478,7 @@ class VerificationWebSocket:
             from app.database import db_manager
             from app.webhooks import webhook_manager
             from app.quota import quota_manager
+            from app.config import settings
             
             # 1. Rebuild video file
             if not session_data.get('video_chunks'):
@@ -504,6 +505,13 @@ class VerificationWebSocket:
             vision_engine, genai_engine = get_ai_pipeline()
             session_db = await session_manager.get_session(session_id)
             metadata = session_db.get("metadata", {}) if session_db else {}
+            if session_db:
+                db_manager.set_request_context(
+                    tenant_id=str(session_db.get('tenant_id')),
+                    environment_id=session_db.get('tenant_environment_id'),
+                    environment_slug=session_db.get('environment'),
+                    actor_type='service_account',
+                )
             
             # --- TIER 2: VISION SCANNER (AWS Rekognition) ---
             # Pass metadata so Rekognition can resolve the verification_profile for conditional spoof suppression
@@ -624,11 +632,25 @@ class VerificationWebSocket:
                     logger.error(f"Failed to decrement quota: {q_err}", extra={"session_id": session_id})
             
             # 6. Webhook Notification
-            tenant_query = "SELECT webhook_url, webhook_secret FROM tenants WHERE tenant_id = $1"
-            tenant_data = await db_manager.fetch_one(tenant_query, tenant_id)
-            
-            if tenant_data and tenant_data.get("webhook_url"):
+            environment_id = session_db.get('tenant_environment_id') if session_db else None
+            webhooks = await db_manager.fetch_all(
+                """
+                SELECT w.webhook_id, w.url, t.webhook_secret
+                FROM webhooks w
+                JOIN tenants t ON t.tenant_id = w.tenant_id
+                WHERE w.tenant_id = $1
+                  AND w.enabled = TRUE
+                  AND ($2::uuid IS NULL OR w.tenant_environment_id = $2)
+                ORDER BY w.created_at ASC
+                """,
+                tenant_id,
+                environment_id,
+            )
+
+            if webhooks:
                 webhook_payload = {
+                    "event": "verification.complete",
+                    "environment": session_db.get('environment') if session_db else None,
                     "session_id": session_id,
                     "verification_status": final_status,
                     "final_trust_score": int(unified_score),
@@ -637,19 +659,21 @@ class VerificationWebSocket:
                     "ai_explanation": ai_explanation,
                     "metadata": session_db.get("metadata", {})
                 }
-                
-                # Make sure exceptions in webhook don't crash the container or background task
-                try:
-                    asyncio.create_task(
-                        webhook_manager.retry_webhook(
-                            tenant_id=str(tenant_id),
-                            webhook_url=tenant_data.get("webhook_url"),
-                            payload=webhook_payload,
-                            api_secret=tenant_data.get("webhook_secret") or "default_secret"
+
+                for webhook in webhooks:
+                    try:
+                        asyncio.create_task(
+                            webhook_manager.retry_webhook(
+                                tenant_id=str(tenant_id),
+                                webhook_url=webhook.get('url'),
+                                payload=webhook_payload,
+                                api_secret=webhook.get('webhook_secret') or settings.app_session_secret,
+                                webhook_id=str(webhook.get('webhook_id')),
+                                event_type='verification.complete',
+                            )
                         )
-                    )
-                except Exception as webhook_err:
-                    logger.error(f"Failed to schedule webhook: {webhook_err}", extra={"session_id": session_id})
+                    except Exception as webhook_err:
+                        logger.error(f"Failed to schedule webhook: {webhook_err}", extra={"session_id": session_id, "webhook_id": str(webhook.get('webhook_id'))})
                 
         except Exception as e:
             # AI failure is fully isolated — it does NOT change the user-facing verification status immediately

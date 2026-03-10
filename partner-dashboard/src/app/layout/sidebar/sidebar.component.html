@@ -1,4 +1,14 @@
-<nav class="vp-sidebar">
+<nav class="vp-sidebar" [class.vp-sidebar--mobile]="isMobile">
+  <div class="mobile-sidebar-header" *ngIf="isMobile">
+    <div class="mobile-sidebar-brand">
+      <span class="mobile-sidebar-title">Navigation</span>
+      <span class="mobile-sidebar-subtitle">Choose a workspace module</span>
+    </div>
+    <button type="button" class="mobile-sidebar-close" (click)="onDismiss()" aria-label="Close navigation menu">
+      <i class="pi pi-times"></i>
+    </button>
+  </div>
+
   <div class="nav-section">
     <span class="nav-label">Main</span>
     <ul class="nav-list">

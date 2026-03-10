@@ -1,20 +1,53 @@
 <div class="data-table-container">
-  <div class="table-toolbar">
+  <div *ngIf="showToolbar" class="table-toolbar">
     <div class="search-wrapper">
       <i class="pi pi-search search-icon"></i>
-      <input type="text" class="search-input" aria-label="Search table" autocomplete="off" [placeholder]="searchPlaceholder" [(ngModel)]="searchTerm"
+      <input
+        type="text"
+        class="search-input"
+        aria-label="Search table"
+        autocomplete="off"
+        [placeholder]="searchPlaceholder"
+        [(ngModel)]="searchTerm"
         (ngModelChange)="onSearchChange()" />
     </div>
   </div>
 
-  <div class="grid-wrapper">
-    <ag-grid-angular [theme]="gridTheme" [rowData]="data" [columnDefs]="columns" [defaultColDef]="defaultColDef"
-      [rowSelection]="rowSelection" [pagination]="true" [paginationPageSize]="pageSize"
-      [paginationPageSizeSelector]="paginationPageSizeSelector" [domLayout]="domLayout" [animateRows]="true"
+  <app-content-state
+    *ngIf="hasError"
+    [title]="errorTitle"
+    [description]="errorMessage || 'There was a problem loading this data.'"
+    [icon]="errorIcon"
+    [actionLabel]="errorActionLabel"
+    tone="error"
+    (action)="errorAction.emit()">
+  </app-content-state>
+
+  <app-content-state
+    *ngIf="isEmpty"
+    [title]="emptyTitle"
+    [description]="emptyDescription"
+    [icon]="emptyIcon"
+    [actionLabel]="emptyActionLabel"
+    (action)="emptyAction.emit()">
+  </app-content-state>
+
+  <div *ngIf="showGrid" class="grid-wrapper">
+    <ag-grid-angular
+      [theme]="gridTheme"
+      [rowData]="data"
+      [columnDefs]="columns"
+      [defaultColDef]="defaultColDef"
+      [rowSelection]="rowSelection"
+      [pagination]="!loading && data.length > 0"
+      [paginationPageSize]="pageSize"
+      [paginationPageSizeSelector]="paginationPageSizeSelector"
+      [domLayout]="domLayout"
+      [animateRows]="true"
       [loading]="loading"
-      [overlayNoRowsTemplate]="'<div class=&quot;no-rows-overlay&quot;><i class=&quot;pi pi-inbox&quot; style=&quot;font-size:40px;color:#94a3b8;margin-bottom:12px;&quot;></i><p style=&quot;color:#64748b;font-size:14px;&quot;>No data available</p></div>'"
-      (gridReady)="onGridReady($event)" (rowClicked)="onRowClicked($event)"
-      (selectionChanged)="onSelectionChanged($event)">
+      (gridReady)="onGridReady($event)"
+      (rowClicked)="onRowClicked($event)"
+      (selectionChanged)="onSelectionChanged()">
     </ag-grid-angular>
   </div>
 </div>

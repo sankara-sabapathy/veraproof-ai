@@ -22,6 +22,7 @@ from app.webhooks import webhook_manager
 from app.storage import storage_manager
 from app.websocket_handler import ws_handler
 from app.database import db_manager
+from app.tenant_environment import DEFAULT_ENVIRONMENT, ensure_tenant_environments, list_tenant_environments, update_environment_quota
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +33,17 @@ router = APIRouter(prefix="/api/v1")
 async def ensure_tenant_exists(tenant_id: str):
     """Ensure tenant exists in database (for development with in-memory auth)"""
     from datetime import datetime, timedelta
-    
-    # Check if tenant exists
+
     check_query = "SELECT tenant_id FROM tenants WHERE tenant_id = $1"
     exists = await db_manager.fetch_one(check_query, tenant_id)
-    
+
     if exists:
-        return  # Tenant already exists
-    
-    # Create tenant
+        await ensure_tenant_environments(tenant_id)
+        return
+
     insert_query = """
         INSERT INTO tenants (
-            tenant_id, email, subscription_tier, 
+            tenant_id, email, subscription_tier,
             monthly_quota, current_usage, billing_cycle_start, billing_cycle_end
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     """
@@ -58,9 +58,31 @@ async def ensure_tenant_exists(tenant_id: str):
             datetime.utcnow().date(),
             (datetime.utcnow() + timedelta(days=30)).date()
         )
+        await ensure_tenant_environments(tenant_id)
         logger.info(f"Created tenant in database: {tenant_id}")
     except Exception as e:
         logger.warning(f"Could not create tenant: {e}")
+
+
+def _current_environment_context() -> tuple[Optional[str], Optional[str]]:
+    context = db_manager.get_request_context()
+    return context.get('environment_id'), context.get('environment_slug')
+
+
+def _serialize_environment(environment: Optional[dict]) -> Optional[dict]:
+    if not environment:
+        return None
+    return {
+        'environment_id': environment['environment_id'],
+        'slug': environment['slug'],
+        'display_name': environment['display_name'],
+        'is_default': environment['is_default'],
+        'is_billable': environment['is_billable'],
+        'monthly_quota': environment['monthly_quota'],
+        'current_usage': environment['current_usage'],
+        'billing_cycle_start': environment['billing_cycle_start'],
+        'billing_cycle_end': environment['billing_cycle_end'],
+    }
 
 
 # Dependency to extract tenant_id from API key
@@ -68,30 +90,32 @@ async def get_tenant_from_api_key(authorization: str = Header(...)) -> str:
     """Extract tenant_id from API key"""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
+
     api_key = authorization.replace("Bearer ", "")
-    
+
     try:
-        tenant_id, environment = await api_key_manager.validate_key(api_key)
-        
-        # Inject tenant_id into the active OTel trace span for global filtering
+        tenant_id, environment, environment_id = await api_key_manager.validate_key(api_key)
+        db_manager.set_request_context(
+            tenant_id=tenant_id,
+            environment_id=environment_id,
+            environment_slug=environment,
+            actor_type='service_account',
+        )
         span = trace.get_current_span()
         if span and span.is_recording():
             span.set_attribute("tenant.id", tenant_id)
             span.set_attribute("tenant.environment", environment)
-            
+
         return tenant_id
     except ValueError:
         logger.warning("Failed authentication via API Key")
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
-# Dependency to extract tenant_id from a dashboard cookie session or legacy JWT
 async def get_tenant_from_jwt(context: AuthContext = Depends(require_authenticated_context)) -> str:
     return str(context.tenant_id)
 
 
-# Dependency to extract tenant_id and role from either cookie session, JWT token, or API key
 async def get_tenant_and_role_from_any_auth(context: AuthContext = Depends(require_authenticated_context)) -> tuple[str, str]:
     role = next(iter(context.roles), "Admin") if context.roles else "Admin"
     return str(context.tenant_id), role
@@ -513,6 +537,7 @@ async def google_callback(request: Request, code: Optional[str] = None, state: O
         user_id=identity["user_id"],
         tenant_id=identity["tenant_id"],
         email=identity["email"],
+        active_environment_slug=DEFAULT_ENVIRONMENT,
     )
     return response
 
@@ -524,6 +549,13 @@ async def auth_session(request: Request, context: AuthContext = Depends(get_auth
 
     csrf_token = request.cookies.get(settings.csrf_cookie_name)
     role = next(iter(context.roles), "Admin") if context.roles else "Admin"
+    available_environments = []
+    active_environment = None
+    if not context.is_platform_admin:
+        available_environments = [_serialize_environment(env) for env in await list_tenant_environments(str(context.tenant_id))]
+        active_environment = next((env for env in available_environments if env['environment_id'] == context.environment_id), None)
+        if not active_environment:
+            active_environment = next((env for env in available_environments if env['slug'] == context.environment_slug), None)
     return {
         "authenticated": True,
         "auth_type": context.auth_type,
@@ -536,7 +568,41 @@ async def auth_session(request: Request, context: AuthContext = Depends(get_auth
             roles=sorted(context.roles),
             permissions=sorted(context.permissions),
         ),
+        "active_environment": active_environment,
+        "available_environments": available_environments,
     }
+
+
+@router.get("/environments")
+async def list_environments(context: AuthContext = Depends(require_authenticated_context)):
+    if context.is_platform_admin:
+        return []
+    return [_serialize_environment(env) for env in await list_tenant_environments(str(context.tenant_id))]
+
+
+@router.post("/environments/select")
+async def select_environment(request: Request, payload: dict, context: AuthContext = Depends(require_authenticated_context)):
+    if context.is_platform_admin:
+        raise HTTPException(status_code=400, detail='Platform admins do not use tenant environments')
+    environment_slug = (payload or {}).get('environment')
+    if not environment_slug:
+        raise HTTPException(status_code=400, detail='environment is required')
+    active_environment = await dashboard_session_manager.update_session_environment(request, environment_slug)
+    if not active_environment:
+        raise HTTPException(status_code=401, detail='Authentication required')
+    db_manager.set_request_context(
+        tenant_id=str(context.tenant_id),
+        environment_id=active_environment['environment_id'],
+        environment_slug=active_environment['slug'],
+        actor_id=context.user_id,
+        actor_type=context.actor_type,
+    )
+    return _serialize_environment(active_environment)
+
+
+@router.get("/auth/runtime-key-status")
+async def get_tenant_runtime_key_status(context: AuthContext = Depends(require_permission("org.members.manage"))):
+    return dashboard_session_manager.get_tenant_runtime_key_status(str(context.tenant_id))
 
 
 @router.post("/auth/runtime-key")
@@ -545,8 +611,13 @@ async def set_tenant_runtime_key(payload: dict, context: AuthContext = Depends(r
     if not passphrase:
         raise HTTPException(status_code=400, detail="passphrase is required")
     dashboard_session_manager.set_tenant_runtime_key(str(context.tenant_id), passphrase)
-    return {"status": "loaded"}
+    return dashboard_session_manager.get_tenant_runtime_key_status(str(context.tenant_id))
 
+
+@router.delete("/auth/runtime-key")
+async def clear_tenant_runtime_key(context: AuthContext = Depends(require_permission("org.members.manage"))):
+    dashboard_session_manager.clear_tenant_runtime_key(str(context.tenant_id))
+    return {"status": "cleared"}
 
 def _assert_same_org(org_id: str, context: AuthContext):
     if str(context.tenant_id) != str(org_id):
@@ -782,6 +853,7 @@ async def signup(request: SignupRequest, response: Response):
             tenant_id=result["user"]["tenant_id"],
             email=result["user"]["email"],
             roles={result["user"]["role"]},
+            active_environment_slug=DEFAULT_ENVIRONMENT,
         )
         return result
     except ValueError as e:
@@ -800,6 +872,7 @@ async def login(request: LoginRequest, response: Response):
             tenant_id=result["user"]["tenant_id"],
             email=result["user"]["email"],
             roles={result["user"]["role"]},
+            active_environment_slug=DEFAULT_ENVIRONMENT,
         )
         return result
     except ValueError as e:
@@ -833,23 +906,28 @@ async def generate_api_key(
     tenant_id: str = Depends(require_tenant_permission("api_keys.manage"))
 ):
     """Generate new API key (requires JWT authentication)"""
-    environment = request.get("environment", "sandbox")
+    environment = request.get("environment") or db_manager.current_environment_slug() or DEFAULT_ENVIRONMENT
     key = await api_key_manager.generate_key(tenant_id, environment)
     return key
 
 
 @router.get("/api-keys")
 async def list_api_keys(tenant_id: str = Depends(require_tenant_permission("api_keys.manage"))):
-    """List API keys for tenant"""
+    """List API keys for the active tenant environment"""
+    environment_id, _environment_slug = _current_environment_context()
     query = """
-        SELECT key_id, api_key, environment, created_at, revoked_at 
+        SELECT key_id, api_key, environment, created_at, revoked_at
         FROM api_keys
         WHERE tenant_id = $1
-        ORDER BY created_at DESC
     """
-    
-    records = await db_manager.fetch_all(query, tenant_id, tenant_id=tenant_id)
-    
+    args = [tenant_id]
+    if environment_id:
+        query += " AND tenant_environment_id = $2"
+        args.append(environment_id)
+    query += " ORDER BY created_at DESC"
+
+    records = await db_manager.fetch_all(query, *args, tenant_id=tenant_id)
+
     keys = []
     for record in records:
         keys.append({
@@ -857,8 +935,8 @@ async def list_api_keys(tenant_id: str = Depends(require_tenant_permission("api_
             "api_key": record["api_key"],
             "environment": record["environment"],
             "created_at": record["created_at"].isoformat() if record["created_at"] else None,
-            "last_used_at": None,  # TODO: Track usage
-            "total_calls": 0,  # TODO: Track usage
+            "last_used_at": None,
+            "total_calls": 0,
             "revoked_at": record["revoked_at"].isoformat() if record["revoked_at"] else None
         })
     return keys
@@ -880,9 +958,9 @@ async def get_key_usage(
     tenant_id: str = Depends(require_tenant_permission("api_keys.manage"))
 ):
     """Get API key usage statistics"""
-    # Return mock usage stats for now
     return {
         "key_id": key_id,
+        "environment": db_manager.current_environment_slug() or DEFAULT_ENVIRONMENT,
         "total_requests": 0,
         "requests_today": 0,
         "requests_this_week": 0,
@@ -943,15 +1021,20 @@ async def reset_branding(tenant_id: str = Depends(require_tenant_permission("bra
 # Webhook Management Endpoints
 @router.get("/webhooks")
 async def list_webhooks(tenant_id: str = Depends(require_tenant_permission("webhooks.manage"))):
-    """List all webhooks for tenant"""
+    """List all webhooks for the active tenant environment"""
+    environment_id, _environment_slug = _current_environment_context()
     query = """
-        SELECT webhook_id, tenant_id, url, enabled, events, 
+        SELECT webhook_id, tenant_id, url, enabled, events,
                created_at, last_triggered_at, success_count, failure_count
         FROM webhooks
         WHERE tenant_id = $1
-        ORDER BY created_at DESC
     """
-    webhooks = await db_manager.fetch_all(query, tenant_id, tenant_id=tenant_id)
+    args = [tenant_id]
+    if environment_id:
+        query += " AND tenant_environment_id = $2"
+        args.append(environment_id)
+    query += " ORDER BY created_at DESC"
+    webhooks = await db_manager.fetch_all(query, *args, tenant_id=tenant_id)
     return webhooks
 
 
@@ -963,18 +1046,20 @@ async def create_webhook(
     """Create a new webhook"""
     import uuid
     from datetime import datetime
-    
+
+    environment_id, _environment_slug = _current_environment_context()
     webhook_id = str(uuid.uuid4())
     query = """
-        INSERT INTO webhooks (webhook_id, tenant_id, url, enabled, events, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING webhook_id, tenant_id, url, enabled, events, created_at, 
+        INSERT INTO webhooks (webhook_id, tenant_id, tenant_environment_id, url, enabled, events, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING webhook_id, tenant_id, url, enabled, events, created_at,
                   last_triggered_at, success_count, failure_count
     """
     webhook = await db_manager.fetch_one(
         query,
         webhook_id,
         tenant_id,
+        environment_id,
         config['url'],
         config.get('enabled', True),
         config.get('events', ['verification.complete']),
@@ -991,22 +1076,24 @@ async def update_webhook(
     tenant_id: str = Depends(require_tenant_permission("webhooks.manage"))
 ):
     """Update webhook configuration"""
+    environment_id, _environment_slug = _current_environment_context()
     query = """
         UPDATE webhooks
         SET url = $1, enabled = $2, events = $3
         WHERE webhook_id = $4 AND tenant_id = $5
-        RETURNING webhook_id, tenant_id, url, enabled, events, created_at,
-                  last_triggered_at, success_count, failure_count
     """
-    webhook = await db_manager.fetch_one(
-        query,
+    args = [
         config['url'],
         config.get('enabled', True),
         config.get('events', ['verification.complete']),
         webhook_id,
         tenant_id,
-        tenant_id=tenant_id
-    )
+    ]
+    if environment_id:
+        query += ' AND tenant_environment_id = $6'
+        args.append(environment_id)
+    query += ' RETURNING webhook_id, tenant_id, url, enabled, events, created_at, last_triggered_at, success_count, failure_count'
+    webhook = await db_manager.fetch_one(query, *args, tenant_id=tenant_id)
     if not webhook:
         raise HTTPException(status_code=404, detail="Webhook not found")
     return webhook
@@ -1018,8 +1105,13 @@ async def delete_webhook(
     tenant_id: str = Depends(require_tenant_permission("webhooks.manage"))
 ):
     """Delete a webhook"""
+    environment_id, _environment_slug = _current_environment_context()
     query = "DELETE FROM webhooks WHERE webhook_id = $1 AND tenant_id = $2"
-    result = await db_manager.execute_query(query, webhook_id, tenant_id, tenant_id=tenant_id)
+    args = [webhook_id, tenant_id]
+    if environment_id:
+        query += " AND tenant_environment_id = $3"
+        args.append(environment_id)
+    await db_manager.execute_query(query, *args, tenant_id=tenant_id)
     return {"message": "Webhook deleted"}
 
 
@@ -1031,17 +1123,24 @@ async def test_webhook(
     """Test webhook delivery"""
     import httpx
     from datetime import datetime
-    
-    # Get webhook
-    query = "SELECT url, enabled FROM webhooks WHERE webhook_id = $1 AND tenant_id = $2"
-    webhook = await db_manager.fetch_one(query, webhook_id, tenant_id, tenant_id=tenant_id)
-    
+
+    environment_id, environment_slug = _current_environment_context()
+    query = "SELECT webhook_id, url, enabled FROM webhooks WHERE webhook_id = $1 AND tenant_id = $2"
+    args = [webhook_id, tenant_id]
+    if environment_id:
+        query += " AND tenant_environment_id = $3"
+        args.append(environment_id)
+    webhook = await db_manager.fetch_one(query, *args, tenant_id=tenant_id)
+
     if not webhook:
         raise HTTPException(status_code=404, detail="Webhook not found")
-    
-    # Send test payload
+
+    if not webhook['enabled']:
+        raise HTTPException(status_code=400, detail="Webhook is disabled")
+
     test_payload = {
         "event": "webhook.test",
+        "environment": environment_slug or DEFAULT_ENVIRONMENT,
         "session_id": "test-session",
         "tier_1_score": 95,
         "tier_2_score": 92,
@@ -1050,14 +1149,14 @@ async def test_webhook(
         "timestamp": datetime.utcnow().isoformat(),
         "metadata": {"test": True}
     }
-    
+
     try:
         start_time = datetime.utcnow()
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(webhook['url'], json=test_payload)
         end_time = datetime.utcnow()
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
-        
+
         return {
             "success": response.status_code < 400,
             "status_code": response.status_code,
@@ -1081,6 +1180,7 @@ async def get_webhook_logs(
     offset: int = 0
 ):
     """Get webhook delivery logs"""
+    environment_id, _environment_slug = _current_environment_context()
     query = """
         SELECT log_id,
                webhook_id,
@@ -1093,21 +1193,28 @@ async def get_webhook_logs(
                retry_count
         FROM webhook_logs
         WHERE webhook_id = $1
-        ORDER BY COALESCE(delivered_at, failed_at, NOW()) DESC
-        LIMIT $2 OFFSET $3
     """
-    logs = await db_manager.fetch_all(query, webhook_id, limit, offset, tenant_id=tenant_id)
+    args = [webhook_id]
+    if environment_id:
+        query += ' AND tenant_environment_id = $2'
+        args.append(environment_id)
+        query += ' ORDER BY COALESCE(delivered_at, failed_at, NOW()) DESC LIMIT $3 OFFSET $4'
+        args.extend([limit, offset])
+    else:
+        query += ' ORDER BY COALESCE(delivered_at, failed_at, NOW()) DESC LIMIT $2 OFFSET $3'
+        args.extend([limit, offset])
+    logs = await db_manager.fetch_all(query, *args, tenant_id=tenant_id)
     return logs
 
 
 # Billing Endpoints
 @router.get("/billing/subscription")
 async def get_subscription(tenant_id: str = Depends(require_tenant_permission("billing.read"))):
-    """Get current subscription"""
+    """Get current subscription for the active tenant environment"""
     stats = await quota_manager.get_usage_stats(tenant_id)
-    # Inject frontend-required fields
     stats["estimated_cost"] = 0.0
     stats["next_renewal_date"] = stats["billing_cycle_end"]
+    stats["environment"] = _serialize_environment(stats.get("environment"))
     return stats
 
 @router.get("/billing/plans")
@@ -1152,9 +1259,7 @@ async def upgrade_subscription(
 ):
     """Upgrade subscription plan (Mocked)"""
     plan_id = request.get("plan_id", "Pro")
-    # Simulate a successful payment by processing the upgrade in DB
     await billing_manager.handle_payment_success("mock_upgrade", tenant_id, plan_id)
-    
     return {"message": "Plan upgraded successfully", "status": "success"}
 
 
@@ -1164,19 +1269,21 @@ async def purchase_credits(
     tenant_id: str = Depends(require_tenant_permission("billing.read"))
 ):
     """Purchase credits (Mocked)"""
-    amount = request.get("amount", 100)
-    
-    # Simulate an immediate successful payment by updating quota
-    query = "UPDATE tenants SET monthly_quota = monthly_quota + $1 WHERE tenant_id = $2"
-    await db_manager.execute_query(query, amount, tenant_id, tenant_id=tenant_id)
-    
+    amount = int(request.get("amount", 100) or 0)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail='amount must be greater than 0')
+
+    environment_slug = db_manager.current_environment_slug() or DEFAULT_ENVIRONMENT
+    updated = await update_environment_quota(tenant_id, environment_slug, monthly_quota_delta=amount)
+    if not updated:
+        raise HTTPException(status_code=404, detail='Environment not found')
+
     return {"message": f"{amount} credits purchased successfully", "status": "success"}
 
 
 @router.get("/billing/invoices")
 async def get_invoices(tenant_id: str = Depends(require_tenant_permission("billing.read"))):
     """Get invoices"""
-    # In production, query from database
     return {"invoices": []}
 
 
@@ -1184,11 +1291,9 @@ async def get_invoices(tenant_id: str = Depends(require_tenant_permission("billi
 @router.get("/analytics/stats")
 async def get_analytics_stats(tenant_id: str = Depends(require_tenant_permission("analytics.read"))):
     """Get analytics statistics"""
-    # Get quota/subscription data
     quota_stats = await quota_manager.get_usage_stats(tenant_id)
-    
-    # Get session analytics from database
-    # For now, return mock data for development when DB unavailable
+    environment_id, environment_slug = _current_environment_context()
+
     analytics_data = {
         "total_sessions": 0,
         "sessions_today": 0,
@@ -1196,57 +1301,62 @@ async def get_analytics_stats(tenant_id: str = Depends(require_tenant_permission
         "sessions_this_month": 0,
         "success_rate": 0.0,
         "average_trust_score": 0.0,
-        # Include quota data
         "current_usage": quota_stats["current_usage"],
         "monthly_quota": quota_stats["monthly_quota"],
-        "usage_percentage": quota_stats["usage_percentage"]
+        "usage_percentage": quota_stats["usage_percentage"],
+        "environment": environment_slug or DEFAULT_ENVIRONMENT,
     }
-    
-    # Try to get real session data from database
+
     try:
-        # Count total sessions
         total_query = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = $1"
-        total_result = await db_manager.fetch_one(total_query, tenant_id, tenant_id=tenant_id)
+        total_args = [tenant_id]
+        if environment_id:
+            total_query += " AND tenant_environment_id = $2"
+            total_args.append(environment_id)
+        total_result = await db_manager.fetch_one(total_query, *total_args, tenant_id=tenant_id)
         if total_result:
             analytics_data["total_sessions"] = total_result["count"]
-        
-        # Count sessions today
-        today_query = """
-            SELECT COUNT(*) as count FROM sessions 
-            WHERE tenant_id = $1 AND DATE(created_at) = CURRENT_DATE
-        """
-        today_result = await db_manager.fetch_one(today_query, tenant_id, tenant_id=tenant_id)
+
+        today_query = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = $1 AND DATE(created_at) = CURRENT_DATE"
+        today_args = [tenant_id]
+        if environment_id:
+            today_query += " AND tenant_environment_id = $2"
+            today_args.append(environment_id)
+        today_result = await db_manager.fetch_one(today_query, *today_args, tenant_id=tenant_id)
         if today_result:
             analytics_data["sessions_today"] = today_result["count"]
-        
-        # Count sessions this week
-        week_query = """
-            SELECT COUNT(*) as count FROM sessions 
-            WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('week', CURRENT_DATE)
-        """
-        week_result = await db_manager.fetch_one(week_query, tenant_id, tenant_id=tenant_id)
+
+        week_query = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('week', CURRENT_DATE)"
+        week_args = [tenant_id]
+        if environment_id:
+            week_query += " AND tenant_environment_id = $2"
+            week_args.append(environment_id)
+        week_result = await db_manager.fetch_one(week_query, *week_args, tenant_id=tenant_id)
         if week_result:
             analytics_data["sessions_this_week"] = week_result["count"]
-        
-        # Count sessions this month
-        month_query = """
-            SELECT COUNT(*) as count FROM sessions 
-            WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('month', CURRENT_DATE)
-        """
-        month_result = await db_manager.fetch_one(month_query, tenant_id, tenant_id=tenant_id)
+
+        month_query = "SELECT COUNT(*) as count FROM sessions WHERE tenant_id = $1 AND created_at >= DATE_TRUNC('month', CURRENT_DATE)"
+        month_args = [tenant_id]
+        if environment_id:
+            month_query += " AND tenant_environment_id = $2"
+            month_args.append(environment_id)
+        month_result = await db_manager.fetch_one(month_query, *month_args, tenant_id=tenant_id)
         if month_result:
             analytics_data["sessions_this_month"] = month_result["count"]
-        
-        # Calculate success rate and average trust score
+
         stats_query = """
-            SELECT 
+            SELECT
                 COUNT(*) FILTER (WHERE final_trust_score >= 50) as success_count,
                 COUNT(*) as total_count,
                 AVG(final_trust_score) as avg_score
-            FROM sessions 
+            FROM sessions
             WHERE tenant_id = $1 AND final_trust_score IS NOT NULL
         """
-        stats_result = await db_manager.fetch_one(stats_query, tenant_id, tenant_id=tenant_id)
+        stats_args = [tenant_id]
+        if environment_id:
+            stats_query += " AND tenant_environment_id = $2"
+            stats_args.append(environment_id)
+        stats_result = await db_manager.fetch_one(stats_query, *stats_args, tenant_id=tenant_id)
         if stats_result and stats_result["total_count"] > 0:
             analytics_data["success_rate"] = round(
                 (stats_result["success_count"] / stats_result["total_count"]) * 100, 2
@@ -1254,7 +1364,7 @@ async def get_analytics_stats(tenant_id: str = Depends(require_tenant_permission
             analytics_data["average_trust_score"] = round(stats_result["avg_score"] or 0, 2)
     except Exception as e:
         logger.warning(f"Could not fetch session analytics: {e}")
-    
+
     return analytics_data
 
 
@@ -1336,6 +1446,12 @@ async def websocket_verify(websocket: WebSocket, session_id: str, ws_token: Opti
     if not session:
         await websocket.close(code=1008, reason="Session not found")
         return
+    db_manager.set_request_context(
+        tenant_id=str(session['tenant_id']),
+        environment_id=session.get('tenant_environment_id'),
+        environment_slug=session.get('environment'),
+        actor_type='service_account',
+    )
     if not dashboard_session_manager.verify_ws_token(session_id, str(session['tenant_id']), ws_token):
         await websocket.close(code=1008, reason="Invalid websocket token")
         return

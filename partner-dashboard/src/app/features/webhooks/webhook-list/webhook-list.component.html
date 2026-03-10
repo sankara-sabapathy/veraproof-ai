@@ -1,16 +1,24 @@
-<div class="webhook-list">
-  <div class="header">
-    <h2>Webhooks</h2>
-    <p-button label="Add Webhook" icon="pi pi-plus" (onClick)="openCreateDialog()">
-    </p-button>
-  </div>
+<div class="vp-page webhook-list">
+  <app-page-header title="Webhooks" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Add Webhook" icon="pi pi-plus" (onClick)="openCreateDialog()"></p-button>
+    </div>
+  </app-page-header>
 
-  <p-card *ngIf="webhooks$ | async as webhooks; else loading">
-    <app-data-table [columns]="columns" [data]="webhooks" [loading]="false" searchPlaceholder="Search webhooks...">
+  <p-card styleClass="webhook-card">
+    <app-data-table
+      [columns]="columns"
+      [data]="webhooks"
+      [loading]="loading"
+      [errorMessage]="errorMessage"
+      errorTitle="Webhooks unavailable"
+      errorActionLabel="Retry"
+      searchPlaceholder="Search webhooks..."
+      emptyTitle="No webhooks configured"
+      emptyDescription="Add a webhook to receive verification events in your own systems."
+      emptyActionLabel="Add Webhook"
+      (emptyAction)="openCreateDialog()"
+      (errorAction)="loadWebhooks()">
     </app-data-table>
   </p-card>
-
-  <ng-template #loading>
-    <app-loading-spinner message="Loading webhooks..."></app-loading-spinner>
-  </ng-template>
 </div>

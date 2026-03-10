@@ -1,31 +1,32 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class SessionState(str, Enum):
-    IDLE = "idle"
-    BASELINE = "baseline"
-    PAN = "pan"
-    RETURN = "return"
-    ANALYZING = "analyzing"
-    COMPLETE = "complete"
+    IDLE = 'idle'
+    BASELINE = 'baseline'
+    PAN = 'pan'
+    RETURN = 'return'
+    ANALYZING = 'analyzing'
+    COMPLETE = 'complete'
 
 
 class VerificationStatus(str, Enum):
-    PENDING_AI = "pending_ai"
-    SUCCESS = "success"
-    FAILED = "failed"
-    TIMEOUT = "timeout"
-    CANCELLED = "cancelled"
+    PENDING_AI = 'pending_ai'
+    SUCCESS = 'success'
+    FAILED = 'failed'
+    TIMEOUT = 'timeout'
+    CANCELLED = 'cancelled'
 
 
 class MediaAnalysisStatus(str, Enum):
-    PENDING = "pending"
-    ANALYZING = "analyzing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    PENDING = 'pending'
+    ANALYZING = 'analyzing'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
 
 
 class IMUData(BaseModel):
@@ -36,7 +37,7 @@ class IMUData(BaseModel):
 
 class VerificationCommand(BaseModel):
     text: str
-    lens: str = "user"
+    lens: str = 'user'
     duration: int
 
 
@@ -125,9 +126,21 @@ class WebhookPayload(BaseModel):
 
 class BrandingConfig(BaseModel):
     logo_url: Optional[str] = None
-    primary_color: str = "#1E40AF"
-    secondary_color: str = "#3B82F6"
-    button_color: str = "#10B981"
+    primary_color: str = '#1E40AF'
+    secondary_color: str = '#3B82F6'
+    button_color: str = '#10B981'
+
+
+class TenantEnvironmentSummary(BaseModel):
+    environment_id: str
+    slug: str
+    display_name: str
+    is_default: bool = False
+    is_billable: bool = False
+    monthly_quota: int = 0
+    current_usage: int = 0
+    billing_cycle_start: Optional[datetime] = None
+    billing_cycle_end: Optional[datetime] = None
 
 
 class UsageStats(BaseModel):
@@ -139,6 +152,7 @@ class UsageStats(BaseModel):
     billing_cycle_start: Optional[datetime]
     billing_cycle_end: Optional[datetime]
     usage_percentage: float
+    environment: Optional[TenantEnvironmentSummary] = None
 
 
 class LoginRequest(BaseModel):
@@ -171,3 +185,5 @@ class AuthSessionResponse(BaseModel):
     user: Optional[AuthenticatedUser] = None
     csrf_token: Optional[str] = None
     auth_type: Optional[str] = None
+    active_environment: Optional[TenantEnvironmentSummary] = None
+    available_environments: List[TenantEnvironmentSummary] = []

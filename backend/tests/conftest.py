@@ -1,21 +1,14 @@
 """
 Pytest configuration and fixtures for VeraProof AI tests
 """
-import pytest
-import asyncio
 from typing import AsyncGenerator
+
+import pytest
 from httpx import AsyncClient
-from app.main import app
+
+from app.auth import api_key_manager, local_auth_manager
 from app.database import db_manager
-from app.auth import local_auth_manager, api_key_manager
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create event loop for async tests"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+from app.main import app
 
 
 @pytest.fixture(scope="function")
@@ -30,45 +23,35 @@ async def test_user():
     """Create test user and return credentials"""
     email = "test@veraproof.ai"
     password = "test123"
-    
-    # Clear existing users
+
     local_auth_manager.users.clear()
-    
-    # Create user
+
     user = await local_auth_manager.signup(email, password)
-    
+
     yield {
         "email": email,
         "password": password,
         "user_id": user["user_id"],
-        "tenant_id": user["tenant_id"]
+        "tenant_id": user["tenant_id"],
     }
-    
-    # Cleanup
+
     local_auth_manager.users.clear()
 
 
 @pytest.fixture(scope="function")
 async def auth_token(test_user):
     """Get JWT token for test user"""
-    result = await local_auth_manager.login(
-        test_user["email"],
-        test_user["password"]
-    )
+    result = await local_auth_manager.login(test_user["email"], test_user["password"])
     return result["access_token"]
 
 
 @pytest.fixture(scope="function")
 async def api_key(test_user):
     """Generate API key for test user"""
-    key = await api_key_manager.generate_key(
-        test_user["tenant_id"],
-        "sandbox"
-    )
-    
+    key = await api_key_manager.generate_key(test_user["tenant_id"], "sandbox")
+
     yield key["api_key"]
-    
-    # Cleanup
+
     api_key_manager.api_keys.clear()
 
 

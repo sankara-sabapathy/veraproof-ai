@@ -4,13 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Subscription, interval } from 'rxjs';
 
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
 import { ChipModule } from 'primeng/chip';
-import { ProgressBarModule } from 'primeng/progressbar';
-import { TooltipModule } from 'primeng/tooltip';
-
 import { NotificationService } from '../../../core/services/notification.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { MediaAnalysisJob } from '../../../core/models/interfaces';
 import { MediaAnalysisService } from '../services/media-analysis.service';
 
@@ -20,12 +17,10 @@ import { MediaAnalysisService } from '../services/media-analysis.service';
   imports: [
     CommonModule,
     FormsModule,
-    CardModule,
     ButtonModule,
     ChipModule,
-    ProgressBarModule,
-    TooltipModule,
     LoadingSpinnerComponent,
+    PageHeaderComponent,
     DatePipe,
     DecimalPipe,
     JsonPipe
@@ -60,6 +55,10 @@ export class MediaAnalysisWorkbenchComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pollSubscription?.unsubscribe();
+  }
+
+  get pageSubtitle(): string {
+    return 'Upload a single image or video, run the offline fraud-analysis pipeline, and inspect scoring output without leaving the dashboard.';
   }
 
   get hasActiveJobs(): boolean {

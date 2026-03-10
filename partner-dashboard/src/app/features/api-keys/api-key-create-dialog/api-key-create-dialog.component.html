@@ -1,55 +1,57 @@
 <div class="dialog-container">
-  <!-- Step 1: Environment Selection (shown before generation) -->
   <div *ngIf="!hasGeneratedKey" class="selection-step">
-    <p class="description">
-      Select the environment for your new API key. Sandbox keys are for testing,
-      while production keys are for live verification sessions.
-    </p>
+    <div class="dialog-intro">
+      <h2>Generate API Key</h2>
+      <p>Select the target environment and create a key for server-side session creation or dashboard-driven integrations.</p>
+    </div>
 
-    <form [formGroup]="createForm">
-      <div class="form-field">
-        <label for="environment" class="field-label">Environment</label>
-        <p-dropdown formControlName="environment" [options]="environmentOptions" optionLabel="label" optionValue="value"
-          inputId="environment" styleClass="full-width" appendTo="body">
-          <ng-template pTemplate="selectedItem" let-option>
-            <div class="environment-option" [ngClass]="'type-' + option.value" *ngIf="option">
-              <i [class]="option.icon"></i>
-              <span>{{ option.label }}</span>
-            </div>
-          </ng-template>
-          <ng-template pTemplate="item" let-option>
-            <div class="environment-option" [ngClass]="'type-' + option.value">
-              <i [class]="option.icon"></i>
-              <div>
-                <div class="option-title">{{ option.label }}</div>
-                <div class="option-description">{{ option.description }}</div>
+    <form [formGroup]="createForm" class="selection-form">
+      <div class="selection-panel">
+        <div class="form-field">
+          <label for="environment" class="field-label">Environment</label>
+          <p-dropdown formControlName="environment" [options]="environmentOptions" optionLabel="label" optionValue="value"
+            inputId="environment" styleClass="full-width" appendTo="body">
+            <ng-template pTemplate="selectedItem" let-option>
+              <div class="environment-option" [ngClass]="'type-' + option.value" *ngIf="option">
+                <i [class]="option.icon"></i>
+                <span>{{ option.label }}</span>
               </div>
-            </div>
-          </ng-template>
-        </p-dropdown>
+            </ng-template>
+            <ng-template pTemplate="item" let-option>
+              <div class="environment-option" [ngClass]="'type-' + option.value">
+                <i [class]="option.icon"></i>
+                <div>
+                  <div class="option-title">{{ option.label }}</div>
+                  <div class="option-description">{{ option.description }}</div>
+                </div>
+              </div>
+            </ng-template>
+          </p-dropdown>
+        </div>
+
+        <div class="environment-guide">
+          <div class="guide-card">
+            <span class="guide-label">Sandbox</span>
+            <p>Use for development, QA, and pre-production validation.</p>
+          </div>
+          <div class="guide-card">
+            <span class="guide-label">Production</span>
+            <p>Use only for live verification traffic and operational workloads.</p>
+          </div>
+        </div>
       </div>
     </form>
   </div>
 
-  <!-- Step 2: Generated Key Display (shown after generation) -->
   <div *ngIf="hasGeneratedKey" class="generated-step">
-    <!-- Security Warning -->
-    <p-card styleClass="warning-card">
-      <ng-template pTemplate="content">
-        <div class="warning-content">
-          <i class="pi pi-info-circle"></i>
-          <div>
-            <strong>API Key Generated Successfully</strong>
-            <p>
-              Copy your API key and store it securely. You'll need this key to authenticate
-              your API requests when creating verification sessions.
-            </p>
-          </div>
-        </div>
-      </ng-template>
-    </p-card>
+    <div class="result-banner">
+      <i class="pi pi-check-circle"></i>
+      <div>
+        <strong>API key generated</strong>
+        <p>Copy the key now and store it securely. For security reasons, this is the only time the full value is shown.</p>
+      </div>
+    </div>
 
-    <!-- API Key Display -->
     <div class="credential-section">
       <label class="credential-label">API Key</label>
       <div class="credential-display">
@@ -61,55 +63,46 @@
       <span class="credential-hint">Use this key in the Authorization header: Bearer YOUR_API_KEY</span>
     </div>
 
-    <!-- Environment Badge -->
-    <div class="environment-badge">
-      <p-chip [label]="(generatedKey?.environment | titlecase) || ''"
-        [icon]="generatedKey?.environment === 'sandbox' ? 'pi pi-flask' : 'pi pi-check-circle'"
-        [styleClass]="generatedKey?.environment === 'sandbox' ? 'sandbox' : 'production'">
-      </p-chip>
+    <div class="result-meta">
+      <div class="meta-card">
+        <span class="meta-label">Environment</span>
+        <p-chip [label]="(generatedKey?.environment | titlecase) || ''"
+          [icon]="generatedKey?.environment === 'sandbox' ? 'pi pi-flask' : 'pi pi-check-circle'"
+          [styleClass]="generatedKey?.environment === 'sandbox' ? 'sandbox' : 'production'">
+        </p-chip>
+      </div>
+      <div class="meta-card">
+        <span class="meta-label">Next Step</span>
+        <p>Update your integration secret store before using the key in a live request path.</p>
+      </div>
     </div>
   </div>
 
-  <!-- Close Warning (shown when trying to close without copying) -->
   <div *ngIf="showCloseWarning" class="close-warning">
-    <p-card styleClass="warning-card danger">
-      <ng-template pTemplate="content">
-        <div class="warning-content">
-          <i class="pi pi-exclamation-triangle"></i>
-          <div>
-            <strong>Are you sure you want to close?</strong>
-            <p>
-              You haven't copied the API key yet. Make sure to copy it before closing.
-            </p>
-          </div>
+    <div class="warning-panel">
+      <div class="warning-content">
+        <i class="pi pi-exclamation-triangle"></i>
+        <div>
+          <strong>Close without copying?</strong>
+          <p>You have not copied the generated key yet. Once this dialog closes, the full value will not be shown again.</p>
         </div>
-      </ng-template>
-    </p-card>
+      </div>
+    </div>
   </div>
 
-  <!-- Dialog Actions -->
   <div class="dialog-actions">
-    <!-- Actions before generation -->
     <ng-container *ngIf="!hasGeneratedKey">
-      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="onClose()" [disabled]="loading">
-      </p-button>
-      <p-button label="Generate" severity="primary" (onClick)="onGenerate()" [disabled]="loading || createForm.invalid"
-        [loading]="loading">
-      </p-button>
+      <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="onClose()" [disabled]="loading"></p-button>
+      <p-button label="Generate Key" severity="primary" (onClick)="onGenerate()" [disabled]="loading || createForm.invalid" [loading]="loading"></p-button>
     </ng-container>
 
-    <!-- Actions after generation -->
     <ng-container *ngIf="hasGeneratedKey && !showCloseWarning">
-      <p-button label="Done" severity="primary" (onClick)="onClose()">
-      </p-button>
+      <p-button label="Done" severity="primary" (onClick)="onClose()"></p-button>
     </ng-container>
 
-    <!-- Actions for close warning -->
     <ng-container *ngIf="showCloseWarning">
-      <p-button label="Go Back" severity="secondary" [text]="true" (onClick)="cancelClose()">
-      </p-button>
-      <p-button label="Close Anyway" severity="danger" (onClick)="confirmClose()">
-      </p-button>
+      <p-button label="Go Back" severity="secondary" [text]="true" (onClick)="cancelClose()"></p-button>
+      <p-button label="Close Anyway" severity="danger" (onClick)="confirmClose()"></p-button>
     </ng-container>
   </div>
 </div>

@@ -34,7 +34,7 @@ export class WebhooksStateService {
   }
 
   setWebhooks(webhooks: Webhook[]): void {
-    this.patchState({ webhooks, loading: false });
+    this.patchState({ webhooks, loading: false, error: null });
   }
 
   setSelectedWebhook(webhook: Webhook | null): void {
@@ -42,7 +42,7 @@ export class WebhooksStateService {
   }
 
   setLogs(logs: WebhookLog[]): void {
-    this.patchState({ logs, loading: false });
+    this.patchState({ logs, loading: false, error: null });
   }
 
   setError(error: string): void {

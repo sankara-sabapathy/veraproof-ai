@@ -1,14 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
-import { SliderModule } from 'primeng/slider';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DropdownModule } from 'primeng/dropdown';
-import { DividerModule } from 'primeng/divider';
 import { TooltipModule } from 'primeng/tooltip';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { SessionsService } from '../services/sessions.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { CreateSessionResponse } from '../../../core/models/interfaces';
@@ -19,15 +18,13 @@ import { environment } from '../../../../environments/environment';
     standalone: true,
     imports: [
         CommonModule,
-        RouterModule,
         ReactiveFormsModule,
         InputTextModule,
         ButtonModule,
-        SliderModule,
         InputNumberModule,
         DropdownModule,
-        DividerModule,
-        TooltipModule
+        TooltipModule,
+        PageHeaderComponent
     ],
     templateUrl: './session-create.component.html',
     styleUrls: ['./session-create.component.scss']
@@ -53,22 +50,26 @@ export class SessionCreateComponent implements OnInit {
         {
             label: 'Standard Liveness',
             value: 'standard',
-            description: 'Full human liveness detection with anti-spoofing',
+            description: 'Full human liveness detection with anti-spoofing.',
             icon: 'pi pi-shield'
         },
         {
             label: 'Static Human',
             value: 'static_human',
-            description: 'Human verification with tolerance for minimal movement',
+            description: 'Human verification with tolerance for minimal movement.',
             icon: 'pi pi-user'
         },
         {
             label: 'Object Originality',
             value: 'object_originality',
-            description: 'Verify physical objects are real and present in 3D space',
+            description: 'Verify physical objects are real and present in 3D space.',
             icon: 'pi pi-box'
         }
     ];
+
+    get pageSubtitle(): string {
+        return 'Create a verification session with a clear callback target, a defined verification profile, and an optional custom playbook for mobile capture.';
+    }
 
     ngOnInit(): void {
         this.createForm = this.fb.group({
@@ -93,9 +94,18 @@ export class SessionCreateComponent implements OnInit {
         );
     }
 
-    get durationProgress(): number {
-        if (this.commands.length === 0) return 0;
-        return Math.min((this.commandsTotalDuration / 60) * 100, 100);
+    get activeProfile() {
+        return this.verificationProfileOptions.find(
+            (option) => option.value === this.createForm?.get('verification_profile')?.value
+        ) ?? this.verificationProfileOptions[0];
+    }
+
+    get hasCustomPlaybook(): boolean {
+        return this.commands.length > 0;
+    }
+
+    get createDisabled(): boolean {
+        return this.loading || this.createForm.invalid || (this.commands.length > 0 && this.commandsTotalDuration < 15);
     }
 
     getDefaultReturnUrl(): string {
@@ -108,12 +118,10 @@ export class SessionCreateComponent implements OnInit {
     addCommand(): void {
         if (this.commands.length >= 5) return;
 
-        const defaultDuration = 5;
-
         const commandForm = this.fb.group({
             text: ['', Validators.required],
             lens: ['user', Validators.required],
-            duration: [defaultDuration, [Validators.required, Validators.min(1)]]
+            duration: [5, [Validators.required, Validators.min(1)]]
         });
 
         commandForm.valueChanges.subscribe(() => this.validateDurations());
@@ -164,7 +172,6 @@ export class SessionCreateComponent implements OnInit {
 
         this.sessionsService.createSession(request).subscribe({
             next: (response) => {
-                // Rewrite URL for local dev to use current hostname
                 if (!environment.production) {
                     try {
                         const urlObj = new URL(response.session_url);

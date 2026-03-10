@@ -1,83 +1,85 @@
-<div class="dashboard-overview">
-  <div class="header">
-    <h2>Dashboard</h2>
-    <div class="quick-actions">
-      <p-button label="Create Session" icon="pi pi-plus" severity="primary" [raised]="true" (onClick)="createSession()">
-      </p-button>
-      <p-button label="Get API Key" icon="pi pi-key" [raised]="true" (onClick)="generateApiKey()">
-      </p-button>
+<div class="vp-page dashboard-overview">
+  <app-page-header
+    title="Dashboard"
+    [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Create Session" icon="pi pi-plus" severity="primary" (onClick)="createSession()"></p-button>
+      <p-button label="API Keys" icon="pi pi-key" severity="secondary" (onClick)="generateApiKey()"></p-button>
     </div>
-  </div>
+  </app-page-header>
 
-  <div *ngIf="dashboardData && !loading; else loadingTemplate">
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-      <app-stat-card title="Sessions Today" [value]="dashboardData.stats.sessions_today" icon="calendar-plus"
-        iconColor="primary">
-      </app-stat-card>
+  <app-loading-spinner *ngIf="loading" message="Loading dashboard..."></app-loading-spinner>
 
-      <app-stat-card title="Sessions This Week" [value]="dashboardData.stats.sessions_this_week" icon="calendar"
-        iconColor="primary">
-      </app-stat-card>
+  <app-content-state
+    *ngIf="!loading && errorMessage"
+    title="Dashboard unavailable"
+    [description]="errorMessage"
+    icon="pi-chart-line"
+    actionLabel="Retry"
+    tone="error"
+    (action)="loadDashboard()">
+  </app-content-state>
 
-      <app-stat-card title="Sessions This Month" [value]="dashboardData.stats.sessions_this_month" icon="chart-bar"
-        iconColor="accent">
-      </app-stat-card>
+  <div *ngIf="dashboardData && !loading && !errorMessage" class="dashboard-content">
+    <section class="stats-grid">
+      <app-stat-card title="Sessions Today" [value]="dashboardData.stats.sessions_today" icon="calendar-plus" iconColor="primary"></app-stat-card>
+      <app-stat-card title="Sessions This Week" [value]="dashboardData.stats.sessions_this_week" icon="calendar" iconColor="primary"></app-stat-card>
+      <app-stat-card title="Sessions This Month" [value]="dashboardData.stats.sessions_this_month" icon="chart-bar" iconColor="accent"></app-stat-card>
+      <app-stat-card title="Success Rate" [value]="(dashboardData.stats.success_rate | number:'1.1-1') + '%'" icon="check-circle" iconColor="primary"></app-stat-card>
+      <app-stat-card title="Avg Trust Score" [value]="dashboardData.stats.average_trust_score | number:'1.1-1'" icon="star-fill" iconColor="accent"></app-stat-card>
+    </section>
 
-      <app-stat-card title="Success Rate" [value]="(dashboardData.stats.success_rate | number:'1.1-1') + '%'"
-        icon="check-circle" iconColor="primary">
-      </app-stat-card>
-
-      <app-stat-card title="Avg Trust Score" [value]="dashboardData.stats.average_trust_score | number:'1.1-1'"
-        icon="star-fill" iconColor="accent">
-      </app-stat-card>
-    </div>
-
-    <!-- Quota Usage -->
-    <p-card styleClass="quota-card">
+    <p-card styleClass="quota-card section-card">
       <ng-template pTemplate="header">
-        <div class="card-header">Monthly Quota Usage</div>
+        <div class="section-header">
+          <div>
+            <h2>Monthly Quota</h2>
+            <p>{{ usage.environmentLabel }} usage for the current billing cycle</p>
+          </div>
+        </div>
       </ng-template>
       <ng-template pTemplate="content">
         <div class="quota-info">
           <div class="quota-numbers">
-            <span class="current">{{ dashboardData.quota.current_usage | number }}</span>
+            <span class="current">{{ usage.currentUsage | number }}</span>
             <span class="separator">/</span>
-            <span class="total">{{ dashboardData.quota.monthly_quota | number }}</span>
+            <span class="total">{{ usage.monthlyQuota | number }}</span>
             <span class="label">verifications</span>
           </div>
           <div class="quota-percentage">
-            {{ dashboardData.quota.usage_percentage | number:'1.0-1' }}% used
+            {{ usage.usagePercentage | number:'1.0-0' }}% used
           </div>
         </div>
-        <p-progressBar [value]="dashboardData.quota.usage_percentage" [showValue]="false">
-        </p-progressBar>
-        <div *ngIf="dashboardData.quota.usage_percentage >= 80" class="quota-warning">
+        <p-progressBar [value]="usage.usagePercentage" [showValue]="false"></p-progressBar>
+        <div *ngIf="usage.usagePercentage >= 80" class="quota-warning">
           <i class="pi pi-exclamation-triangle"></i>
-          <span>You're approaching your monthly quota limit. Consider upgrading your plan.</span>
+          <span>Usage is approaching the monthly limit for this environment.</span>
         </div>
       </ng-template>
     </p-card>
 
-
-
-    <!-- Recent Sessions -->
-    <p-card styleClass="recent-sessions">
+    <p-card styleClass="recent-sessions section-card">
       <ng-template pTemplate="header">
-        <div class="card-header-with-action">
-          <div class="card-header">Recent Sessions</div>
-          <p-button label="View All" [text]="true" routerLink="/sessions">
-          </p-button>
+        <div class="section-header section-header-with-action">
+          <div>
+            <h2>Recent Sessions</h2>
+            <p>The latest verification activity in the selected environment.</p>
+          </div>
+          <p-button label="View All" [text]="true" routerLink="/sessions"></p-button>
         </div>
       </ng-template>
       <ng-template pTemplate="content">
-        <app-data-table [columns]="columns" [data]="dashboardData.recentSessions" [loading]="false">
+        <app-data-table
+          [columns]="columns"
+          [data]="dashboardData.recentSessions"
+          [loading]="false"
+          searchPlaceholder="Search recent sessions..."
+          emptyTitle="No sessions yet"
+          emptyDescription="Create a verification session to start collecting activity and trust scores."
+          emptyActionLabel="Create Session"
+          (emptyAction)="createSession()">
         </app-data-table>
       </ng-template>
     </p-card>
   </div>
-
-  <ng-template #loadingTemplate>
-    <app-loading-spinner message="Loading dashboard..."></app-loading-spinner>
-  </ng-template>
 </div>

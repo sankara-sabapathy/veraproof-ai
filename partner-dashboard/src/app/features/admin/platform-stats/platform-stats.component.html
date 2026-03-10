@@ -53,9 +53,23 @@
       </app-stat-card>
 
       <app-stat-card
-        title="Platform Success Rate"
+        title="Success Rate"
         [value]="(stats.platform_success_rate | number:'1.1-1') + '%'"
         icon="stars"
+        iconColor="primary">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Failure Rate"
+        [value]="(stats.platform_failure_rate | number:'1.1-1') + '%'"
+        icon="error"
+        iconColor="accent">
+      </app-stat-card>
+
+      <app-stat-card
+        title="Avg Trust Score"
+        [value]="stats.average_trust_score | number:'1.1-1'"
+        icon="insights"
         iconColor="primary">
       </app-stat-card>
     </div>

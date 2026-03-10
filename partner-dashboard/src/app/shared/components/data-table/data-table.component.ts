@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -10,6 +10,7 @@ import {
   RowSelectionOptions,
   themeQuartz
 } from 'ag-grid-community';
+import { ContentStateComponent } from '../content-state/content-state.component';
 
 export interface PageEvent {
   pageIndex: number;
@@ -22,9 +23,8 @@ export interface SortEvent {
   order: 'asc' | 'desc';
 }
 
-// Custom AG Grid theme using the v35 Theming API
 const agGridCustomTheme = themeQuartz.withParams({
-  accentColor: '#667eea',
+  accentColor: '#2563eb',
   backgroundColor: '#ffffff',
   foregroundColor: '#1e293b',
   headerBackgroundColor: '#f8fafc',
@@ -51,7 +51,8 @@ const agGridCustomTheme = themeQuartz.withParams({
     CommonModule,
     FormsModule,
     InputTextModule,
-    AgGridAngular
+    AgGridAngular,
+    ContentStateComponent
   ],
   templateUrl: './data-table.component.html',
   styleUrls: ['./data-table.component.scss']
@@ -59,11 +60,20 @@ const agGridCustomTheme = themeQuartz.withParams({
 export class DataTableComponent<T> implements OnInit {
   @Input() columns: ColDef[] = [];
   @Input() data: T[] = [];
-  @Input() totalItems: number = 0;
-  @Input() pageSize: number = 20;
-  @Input() loading: boolean = false;
+  @Input() totalItems = 0;
+  @Input() pageSize = 20;
+  @Input() loading = false;
   @Input() selectionMode?: 'single' | 'multiple';
   @Input() domLayout: 'normal' | 'autoHeight' | 'print' = 'autoHeight';
+  @Input() searchPlaceholder = 'Search across all columns...';
+  @Input() emptyTitle = 'Nothing to review yet';
+  @Input() emptyDescription = 'This table will populate once data is available.';
+  @Input() emptyActionLabel?: string;
+  @Input() emptyIcon = 'pi-inbox';
+  @Input() errorTitle = 'Unable to load this table';
+  @Input() errorMessage?: string | null;
+  @Input() errorActionLabel = 'Retry';
+  @Input() errorIcon = 'pi-exclamation-circle';
 
   @Output() rowClick = new EventEmitter<T>();
   @Output() pageChange = new EventEmitter<PageEvent>();
@@ -71,23 +81,20 @@ export class DataTableComponent<T> implements OnInit {
   @Output() sortChange = new EventEmitter<SortEvent>();
   @Output() rowSelect = new EventEmitter<T>();
   @Output() rowUnselect = new EventEmitter<T>();
+  @Output() emptyAction = new EventEmitter<void>();
+  @Output() errorAction = new EventEmitter<void>();
 
-  @Input() searchPlaceholder: string = 'Search across all columns...';
+  searchTerm = '';
+  private gridApi?: GridApi;
 
-  searchTerm: string = '';
-  private gridApi!: GridApi;
-
-  /** v35 Theming API — passed via [theme] binding */
   public gridTheme = agGridCustomTheme;
 
-  /** v35 rowSelection object syntax */
   public rowSelection: RowSelectionOptions = {
     mode: 'multiRow',
     headerCheckbox: false,
     enableClickSelection: false,
   };
 
-  /** Pagination page size selector must include the default pageSize */
   public paginationPageSizeSelector = [10, 20, 50, 100];
 
   public defaultColDef: ColDef = {
@@ -106,11 +113,30 @@ export class DataTableComponent<T> implements OnInit {
     type: 'fitGridWidth' as const,
   };
 
-  ngOnInit(): void { }
+  ngOnInit(): void {}
 
-  onGridReady(params: GridReadyEvent) {
+  get hasError(): boolean {
+    return Boolean(this.errorMessage && this.errorMessage.trim().length > 0);
+  }
+
+  get isEmpty(): boolean {
+    return !this.loading && !this.hasError && this.data.length === 0;
+  }
+
+  get showToolbar(): boolean {
+    return !this.loading && !this.hasError && this.data.length > 0;
+  }
+
+  get showGrid(): boolean {
+    return this.loading || (!this.hasError && this.data.length > 0);
+  }
+
+  onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
     this.gridApi.sizeColumnsToFit();
+    if (this.searchTerm) {
+      this.gridApi.setGridOption('quickFilterText', this.searchTerm);
+    }
   }
 
   onSearchChange(): void {
@@ -126,13 +152,18 @@ export class DataTableComponent<T> implements OnInit {
     }
   }
 
-  onSelectionChanged(event: any): void {
-    if (!this.gridApi) return;
+  onSelectionChanged(_event?: unknown): void {
+    if (!this.gridApi) {
+      return;
+    }
+
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows && selectedRows.length > 0) {
       this.rowSelect.emit(selectedRows[selectedRows.length - 1]);
-    } else {
-      this.rowUnselect.emit({} as T);
+      return;
     }
+
+    this.rowUnselect.emit({} as T);
   }
 }
+

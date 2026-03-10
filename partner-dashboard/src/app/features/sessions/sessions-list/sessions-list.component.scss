@@ -1,144 +1,70 @@
 .sessions-list {
-  padding: 24px 32px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-
-  h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--vp-text, #1e293b);
-    letter-spacing: -0.3px;
-  }
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-// Data table wrapper
-::ng-deep p-card {
-  .p-card {
-    border: 1px solid var(--vp-border, #e2e8f0);
-    border-radius: var(--vp-radius-lg, 12px);
-    box-shadow: var(--vp-shadow-sm);
-    overflow: hidden;
-
-    .p-card-body {
-      padding: 0 !important;
-    }
-
-    .p-card-content {
-      padding: 0 !important;
-    }
-  }
+.page-actions {
+  display: inline-flex;
+  gap: 0.75rem;
 }
 
-.session-id {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  font-size: 13px;
-  background: var(--vp-bg-alt, #f1f5f9);
-  padding: 6px 10px;
-  border-radius: 6px;
-  color: var(--vp-primary, #667eea);
-  font-weight: 600;
+::ng-deep .sessions-card {
   border: 1px solid var(--vp-border, #e2e8f0);
+  border-radius: var(--vp-radius-lg, 12px);
+  box-shadow: var(--vp-shadow-sm);
+  overflow: hidden;
 }
 
-.trust-score {
-  font-weight: 700;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 6px;
+::ng-deep .sessions-card .p-card-body,
+::ng-deep .sessions-card .p-card-content {
+  padding: 0 !important;
+}
+
+::ng-deep .session-id-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 999px;
   background: var(--vp-bg-alt, #f1f5f9);
+  border: 1px solid var(--vp-border, #e2e8f0);
   color: var(--vp-text, #1e293b);
+  font-family: 'Consolas', 'SF Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.no-score {
-  color: var(--vp-text-muted, #94a3b8);
-  font-style: italic;
-  font-size: 13px;
+::ng-deep .trust-score {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.clickable-row {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background: var(--vp-bg-alt, #f1f5f9) !important;
-  }
+::ng-deep .trust-score--neutral {
+  background: var(--vp-bg-alt, #f1f5f9);
+  color: var(--vp-text-secondary, #64748b);
 }
 
-// Status chip styling
-::ng-deep {
-  .status-chip {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-
-    &.status-idle,
-    &.status-baseline,
-    &.status-pan,
-    &.status-return,
-    &.status-analyzing {
-      background-color: var(--vp-info-bg, #eff6ff);
-      color: var(--vp-info, #3b82f6);
-    }
-
-    &.status-complete {
-      background-color: var(--vp-success-bg, #ecfdf5);
-      color: var(--vp-success, #10b981);
-    }
-
-    &.status-expired {
-      background-color: var(--vp-warning-bg, #fffbeb);
-      color: var(--vp-warning, #f59e0b);
-    }
-
-    &.status-failed {
-      background-color: var(--vp-error-bg, #fef2f2);
-      color: var(--vp-error, #ef4444);
-    }
-  }
-
-  // Custom button styles in header
-  .header p-button button {
-    border-radius: var(--vp-radius, 8px);
-    font-weight: 600;
-    font-size: 13px;
-    padding: 9px 18px !important;
-    min-height: 38px;
-    box-shadow: none !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--vp-shadow-md) !important;
-    }
-  }
+::ng-deep .trust-score--success {
+  background: var(--vp-success-bg, #ecfdf5);
+  color: var(--vp-success, #10b981);
 }
 
-// Responsive
+::ng-deep .trust-score--warning {
+  background: var(--vp-warning-bg, #fffbeb);
+  color: #9a6700;
+}
+
+::ng-deep .trust-score--danger {
+  background: var(--vp-error-bg, #fef2f2);
+  color: var(--vp-error, #ef4444);
+}
+
 @media (max-width: 768px) {
-  .sessions-list {
-    padding: 16px;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-
-    ::ng-deep p-button {
-      width: 100%;
-
-      button {
-        width: 100%;
-      }
-    }
+  .page-actions {
+    width: 100%;
   }
 }

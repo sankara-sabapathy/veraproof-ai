@@ -1,21 +1,23 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { skip, takeUntil } from 'rxjs/operators';
 import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { ChipModule } from 'primeng/chip';
-import { TooltipModule } from 'primeng/tooltip';
 import { WebhooksService, Webhook } from '../services/webhooks.service';
 import { WebhooksStateService } from '../services/webhooks-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { TenantEnvironmentService } from '../../../core/services/tenant-environment.service';
+import { TenantEnvironmentSummary } from '../../../core/models/interfaces';
 import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
-import { WebhookFormComponent } from '../webhook-form/webhook-form.component';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ColDef } from 'ag-grid-community';
 import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
 import { SwitchRendererComponent } from '../../../shared/components/data-table/renderers/switch-renderer.component';
+import { WebhookFormComponent } from '../webhook-form/webhook-form.component';
 
 @Component({
   selector: 'app-webhook-list',
@@ -26,18 +28,19 @@ import { SwitchRendererComponent } from '../../../shared/components/data-table/r
     CardModule,
     ButtonModule,
     DataTableComponent,
-    ChipModule,
-    TooltipModule,
-    LoadingSpinnerComponent
+    PageHeaderComponent
   ],
   providers: [DialogService],
   templateUrl: './webhook-list.component.html',
   styleUrls: ['./webhook-list.component.scss']
 })
-export class WebhookListComponent implements OnInit {
-  webhooks$ = this.webhooksState.webhooks$;
-  loading$ = this.webhooksState.loading$;
+export class WebhookListComponent implements OnInit, OnDestroy {
+  webhooks: Webhook[] = [];
+  loading = false;
+  errorMessage: string | null = null;
+  activeEnvironment: TenantEnvironmentSummary | null = null;
   dialogRef: DynamicDialogRef | undefined;
+  private destroy$ = new Subject<void>();
 
   columns: ColDef[] = [];
 
@@ -45,6 +48,7 @@ export class WebhookListComponent implements OnInit {
     private webhooksService: WebhooksService,
     private webhooksState: WebhooksStateService,
     private notification: NotificationService,
+    private tenantEnvironmentService: TenantEnvironmentService,
     private dialogService: DialogService,
     private confirmationDialog: ConfirmationDialogService
   ) {
@@ -54,11 +58,11 @@ export class WebhookListComponent implements OnInit {
         headerName: 'URL',
         flex: 2,
         cellRenderer: (params: any) => {
-          let html = `<span style="font-family: monospace; font-size: 13px;">${params.value}</span>`;
+          let html = `<span class="code-pill">${params.value}</span>`;
           if (!params.data.enabled) {
-            html += ` <div class="p-chip p-component chip-warn" style="margin-left:8px;"><span class="p-chip-text" style="font-size:11px;">Disabled</span></div>`;
+            html += ` <span class="inline-badge inline-badge--danger">Disabled</span>`;
           }
-          return `<div style="display:flex; align-items:center;">${html}</div>`;
+          return `<div class="table-inline-group">${html}</div>`;
         }
       },
       {
@@ -75,21 +79,22 @@ export class WebhookListComponent implements OnInit {
         headerName: 'Events',
         flex: 1.5,
         cellRenderer: (params: any) => {
-          if (!params.value || !Array.isArray(params.value)) return '';
-          const chips = params.value.map((evt: string) => `<div class="p-chip p-component event-chip" style="margin-right:4px;"><span class="p-chip-text" style="font-size:11px;">${evt}</span></div>`).join('');
-          return `<div style="display:flex; flex-wrap:wrap; align-items:center; height:100%;">${chips}</div>`;
+          if (!params.value || !Array.isArray(params.value)) {
+            return '';
+          }
+          const chips = params.value
+            .map((evt: string) => `<span class="inline-badge inline-badge--neutral">${evt}</span>`)
+            .join('');
+          return `<div class="table-inline-wrap">${chips}</div>`;
         }
       },
       {
         headerName: 'Statistics',
-        width: 150,
+        width: 160,
         valueGetter: (params) => params.data,
         cellRenderer: (params: any) => {
-          const d = params.value;
-          return `<div style="display:flex;gap:12px;font-weight:500;align-items:center;height:100%;">
-             <span style="color:#059669;">✓ ${d?.success_count || 0}</span>
-             <span style="color:#dc2626;">✗ ${d?.failure_count || 0}</span>
-           </div>`;
+          const data = params.value;
+          return `<div class="metric-pair"><span class="metric metric--success">Success ${data?.success_count || 0}</span><span class="metric metric--danger">Failed ${data?.failure_count || 0}</span></div>`;
         }
       },
       {
@@ -102,12 +107,12 @@ export class WebhookListComponent implements OnInit {
           actions: [
             {
               icon: 'pi pi-play',
-              tooltip: 'Test Webhook',
+              tooltip: 'Test webhook',
               actionCallback: (rowData: Webhook) => this.testWebhook(rowData)
             },
             {
               icon: 'pi pi-history',
-              tooltip: 'View Logs',
+              tooltip: 'View logs',
               actionCallback: (rowData: Webhook) => this.viewLogs(rowData)
             },
             {
@@ -127,15 +132,47 @@ export class WebhookListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.webhooksState.webhooks$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(webhooks => this.webhooks = webhooks);
+
+    this.webhooksState.loading$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(loading => this.loading = loading);
+
+    this.webhooksState.error$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(error => this.errorMessage = error);
+
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(environment => this.activeEnvironment = environment);
+
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(skip(1), takeUntil(this.destroy$))
+      .subscribe(() => this.loadWebhooks());
+
     this.loadWebhooks();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  get pageSubtitle(): string {
+    const environment = this.activeEnvironment?.display_name || 'the selected environment';
+    return `Manage outbound event delivery and monitor webhook health for ${environment.toLowerCase()}.`;
   }
 
   loadWebhooks(): void {
     this.webhooksState.setLoading(true);
+    this.webhooksState.clearError();
+
     this.webhooksService.listWebhooks().subscribe({
       next: (webhooks) => this.webhooksState.setWebhooks(webhooks),
       error: (error) => {
-        this.webhooksState.setError(error.message);
+        this.webhooksState.setError(error.message || 'Failed to load webhooks');
         this.notification.error('Failed to load webhooks');
       }
     });
@@ -170,7 +207,6 @@ export class WebhookListComponent implements OnInit {
   }
 
   toggleWebhookDirectly(webhook: Webhook, checked: boolean): void {
-    // Overridden toggle callback for switch renderer 
     const config = {
       url: webhook.url,
       enabled: checked,
@@ -184,25 +220,7 @@ export class WebhookListComponent implements OnInit {
       },
       error: () => {
         this.notification.error('Failed to update webhook');
-        this.loadWebhooks(); // Refresh to rollback
-      }
-    });
-  }
-
-  toggleWebhook(webhook: Webhook): void {
-    const config = {
-      url: webhook.url,
-      enabled: !webhook.enabled,
-      events: webhook.events
-    };
-
-    this.webhooksService.updateWebhook(webhook.webhook_id, config).subscribe({
-      next: () => {
-        this.notification.success(`Webhook ${config.enabled ? 'enabled' : 'disabled'}`);
         this.loadWebhooks();
-      },
-      error: () => {
-        this.notification.error('Failed to update webhook');
       }
     });
   }
@@ -214,9 +232,10 @@ export class WebhookListComponent implements OnInit {
         this.webhooksState.setLoading(false);
         if (result.success) {
           this.notification.success(`Webhook test successful (${result.status_code}, ${result.response_time_ms}ms)`);
-        } else {
-          this.notification.error(`Webhook test failed: ${result.error_message}`);
+          return;
         }
+
+        this.notification.error(`Webhook test failed: ${result.error_message}`);
       },
       error: () => {
         this.webhooksState.setLoading(false);
@@ -228,22 +247,24 @@ export class WebhookListComponent implements OnInit {
   deleteWebhook(webhook: Webhook): void {
     this.confirmationDialog.confirm({
       title: 'Delete Webhook',
-      message: `Are you sure you want to delete this webhook? This action cannot be undone.`,
+      message: 'Are you sure you want to delete this webhook? This action cannot be undone.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
       confirmColor: 'warn'
     }).subscribe(confirmed => {
-      if (confirmed) {
-        this.webhooksService.deleteWebhook(webhook.webhook_id).subscribe({
-          next: () => {
-            this.notification.success('Webhook deleted');
-            this.loadWebhooks();
-          },
-          error: () => {
-            this.notification.error('Failed to delete webhook');
-          }
-        });
+      if (!confirmed) {
+        return;
       }
+
+      this.webhooksService.deleteWebhook(webhook.webhook_id).subscribe({
+        next: () => {
+          this.notification.success('Webhook deleted');
+          this.loadWebhooks();
+        },
+        error: () => {
+          this.notification.error('Failed to delete webhook');
+        }
+      });
     });
   }
 

@@ -491,3 +491,235 @@ INSERT INTO tenants (email, subscription_tier, monthly_quota, current_usage)
 VALUES ('test@veraproof.ai', 'Sandbox', 3, 0)
 ON CONFLICT (email) DO NOTHING;
 
+
+-- Sandbox / Production canonical tenant environments
+CREATE OR REPLACE FUNCTION app.current_environment_uuid()
+RETURNS UUID
+LANGUAGE SQL
+STABLE
+AS $$
+    SELECT NULLIF(current_setting('app.current_environment', true), '')::uuid
+$$;
+
+CREATE TABLE IF NOT EXISTS tenant_environments (
+    tenant_environment_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+    slug VARCHAR(32) NOT NULL CHECK (slug IN ('sandbox', 'production')),
+    display_name VARCHAR(64) NOT NULL,
+    is_default BOOLEAN DEFAULT FALSE,
+    is_billable BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (tenant_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS tenant_environment_quotas (
+    tenant_environment_id UUID PRIMARY KEY REFERENCES tenant_environments(tenant_environment_id) ON DELETE CASCADE,
+    monthly_quota INTEGER DEFAULT 0,
+    current_usage INTEGER DEFAULT 0,
+    billing_cycle_start DATE,
+    billing_cycle_end DATE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS active_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS active_environment_slug VARCHAR(32);
+ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE session_artifacts ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE media_analysis_jobs ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE webhook_logs ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+ALTER TABLE webhooks ADD COLUMN IF NOT EXISTS tenant_environment_id UUID REFERENCES tenant_environments(tenant_environment_id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_tenant_environments_tenant_slug ON tenant_environments(tenant_id, slug);
+CREATE INDEX IF NOT EXISTS idx_sessions_tenant_environment_id ON sessions(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_environment_id ON api_keys(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_session_artifacts_environment_id ON session_artifacts(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_media_analysis_jobs_environment_id ON media_analysis_jobs(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_environment_id ON usage_logs(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_environment_id ON webhook_logs(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_webhooks_environment_id ON webhooks(tenant_environment_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_active_environment_id ON auth_sessions(active_environment_id);
+
+INSERT INTO tenant_environments (tenant_environment_id, tenant_id, slug, display_name, is_default, is_billable, created_at, updated_at)
+SELECT uuid_generate_v4(), t.tenant_id, 'sandbox', 'Sandbox', FALSE, FALSE, NOW(), NOW()
+FROM tenants t
+ON CONFLICT (tenant_id, slug) DO NOTHING;
+
+INSERT INTO tenant_environments (tenant_environment_id, tenant_id, slug, display_name, is_default, is_billable, created_at, updated_at)
+SELECT uuid_generate_v4(), t.tenant_id, 'production', 'Production', TRUE, TRUE, NOW(), NOW()
+FROM tenants t
+ON CONFLICT (tenant_id, slug) DO NOTHING;
+
+UPDATE tenant_environments
+SET is_default = (slug = 'production'),
+    is_billable = (slug = 'production'),
+    updated_at = NOW()
+WHERE is_default IS DISTINCT FROM (slug = 'production')
+   OR is_billable IS DISTINCT FROM (slug = 'production');
+
+INSERT INTO tenant_environment_quotas (
+    tenant_environment_id,
+    monthly_quota,
+    current_usage,
+    billing_cycle_start,
+    billing_cycle_end,
+    created_at,
+    updated_at
+)
+SELECT te.tenant_environment_id,
+       CASE
+           WHEN te.slug = 'production' THEN COALESCE(t.monthly_quota, 0)
+           WHEN COALESCE(t.subscription_tier, 'Sandbox') = 'Enterprise' THEN 1000
+           WHEN COALESCE(t.subscription_tier, 'Sandbox') IN ('Pro', 'Professional') THEN 500
+           WHEN COALESCE(t.subscription_tier, 'Sandbox') = 'Starter' THEN 250
+           ELSE 100
+       END AS monthly_quota,
+       CASE WHEN te.slug = 'production' THEN COALESCE(t.current_usage, 0) ELSE 0 END AS current_usage,
+       COALESCE(t.billing_cycle_start, CURRENT_DATE),
+       COALESCE(t.billing_cycle_end, CURRENT_DATE + INTERVAL '30 days'),
+       NOW(),
+       NOW()
+FROM tenant_environments te
+JOIN tenants t ON t.tenant_id = te.tenant_id
+ON CONFLICT (tenant_environment_id) DO NOTHING;
+
+UPDATE api_keys ak
+SET tenant_environment_id = te.tenant_environment_id
+FROM tenant_environments te
+WHERE ak.tenant_environment_id IS NULL
+  AND te.tenant_id = ak.tenant_id
+  AND te.slug = COALESCE(ak.environment, 'production');
+
+UPDATE sessions s
+SET tenant_environment_id = te.tenant_environment_id
+FROM tenant_environments te
+WHERE s.tenant_environment_id IS NULL
+  AND te.tenant_id = s.tenant_id
+  AND te.slug = 'production';
+
+UPDATE session_artifacts sa
+SET tenant_environment_id = COALESCE(s.tenant_environment_id, te.tenant_environment_id)
+FROM sessions s, tenant_environments te
+WHERE sa.tenant_environment_id IS NULL
+  AND sa.session_id = s.session_id
+  AND te.tenant_id = sa.tenant_id
+  AND te.slug = 'production';
+
+UPDATE media_analysis_jobs maj
+SET tenant_environment_id = te.tenant_environment_id
+FROM tenant_environments te
+WHERE maj.tenant_environment_id IS NULL
+  AND te.tenant_id = maj.tenant_id
+  AND te.slug = 'production';
+
+UPDATE usage_logs ul
+SET tenant_environment_id = COALESCE(s.tenant_environment_id, te.tenant_environment_id)
+FROM sessions s, tenant_environments te
+WHERE ul.tenant_environment_id IS NULL
+  AND ul.session_id = s.session_id
+  AND te.tenant_id = ul.tenant_id
+  AND te.slug = 'production';
+
+UPDATE webhook_logs wl
+SET tenant_environment_id = COALESCE(s.tenant_environment_id, te.tenant_environment_id)
+FROM sessions s, tenant_environments te
+WHERE wl.tenant_environment_id IS NULL
+  AND wl.session_id = s.session_id
+  AND te.tenant_id = wl.tenant_id
+  AND te.slug = 'production';
+
+UPDATE webhook_logs wl
+SET tenant_environment_id = te.tenant_environment_id
+FROM tenant_environments te
+WHERE wl.tenant_environment_id IS NULL
+  AND te.tenant_id = wl.tenant_id
+  AND te.slug = 'production';
+
+UPDATE webhooks w
+SET tenant_environment_id = te.tenant_environment_id
+FROM tenant_environments te
+WHERE w.tenant_environment_id IS NULL
+  AND te.tenant_id = w.tenant_id
+  AND te.slug = 'production';
+
+UPDATE auth_sessions s
+SET active_environment_id = te.tenant_environment_id,
+    active_environment_slug = te.slug
+FROM tenant_environments te
+WHERE s.active_environment_id IS NULL
+  AND te.tenant_id = s.org_id
+  AND te.slug = 'production';
+
+UPDATE auth_sessions
+SET active_environment_slug = 'production'
+WHERE active_environment_id IS NOT NULL
+  AND COALESCE(active_environment_slug, '') = '';
+
+ALTER TABLE tenant_environments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_environments FORCE ROW LEVEL SECURITY;
+ALTER TABLE tenant_environment_quotas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_environment_quotas FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_environments_tenant_isolation ON tenant_environments;
+CREATE POLICY tenant_environments_tenant_isolation ON tenant_environments
+    USING (tenant_id = app.current_tenant_uuid())
+    WITH CHECK (tenant_id = app.current_tenant_uuid());
+
+DROP POLICY IF EXISTS tenant_environment_quotas_tenant_isolation ON tenant_environment_quotas;
+CREATE POLICY tenant_environment_quotas_tenant_isolation ON tenant_environment_quotas
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM tenant_environments te
+            WHERE te.tenant_environment_id = tenant_environment_quotas.tenant_environment_id
+              AND te.tenant_id = app.current_tenant_uuid()
+              AND (app.current_environment_uuid() IS NULL OR te.tenant_environment_id = app.current_environment_uuid())
+        )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1
+            FROM tenant_environments te
+            WHERE te.tenant_environment_id = tenant_environment_quotas.tenant_environment_id
+              AND te.tenant_id = app.current_tenant_uuid()
+              AND (app.current_environment_uuid() IS NULL OR te.tenant_environment_id = app.current_environment_uuid())
+        )
+    );
+
+DROP POLICY IF EXISTS api_keys_tenant_isolation ON api_keys;
+CREATE POLICY api_keys_tenant_isolation ON api_keys
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));
+
+DROP POLICY IF EXISTS sessions_tenant_isolation ON sessions;
+CREATE POLICY sessions_tenant_isolation ON sessions
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));
+
+DROP POLICY IF EXISTS session_artifacts_tenant_isolation ON session_artifacts;
+CREATE POLICY session_artifacts_tenant_isolation ON session_artifacts
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));
+
+DROP POLICY IF EXISTS media_analysis_jobs_tenant_isolation ON media_analysis_jobs;
+CREATE POLICY media_analysis_jobs_tenant_isolation ON media_analysis_jobs
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));
+
+DROP POLICY IF EXISTS usage_logs_tenant_isolation ON usage_logs;
+CREATE POLICY usage_logs_tenant_isolation ON usage_logs
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));
+
+DROP POLICY IF EXISTS webhook_logs_tenant_isolation ON webhook_logs;
+CREATE POLICY webhook_logs_tenant_isolation ON webhook_logs
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));
+
+DROP POLICY IF EXISTS webhooks_tenant_isolation ON webhooks;
+CREATE POLICY webhooks_tenant_isolation ON webhooks
+    USING (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()))
+    WITH CHECK (tenant_id = app.current_tenant_uuid() AND (app.current_environment_uuid() IS NULL OR tenant_environment_id = app.current_environment_uuid()));

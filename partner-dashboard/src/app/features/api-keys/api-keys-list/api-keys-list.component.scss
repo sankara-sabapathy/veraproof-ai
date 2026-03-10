@@ -1,166 +1,85 @@
 .api-keys-container {
-  padding: 24px 32px;
-  max-width: 1400px;
-  margin: 0 auto;
-
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-
-    h2 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--vp-text, #1e293b);
-      letter-spacing: -0.3px;
-    }
-  }
-
-  // Header button styling
-  :host ::ng-deep .header p-button button {
-    border-radius: var(--vp-radius, 8px);
-    font-weight: 600;
-    font-size: 13px;
-    padding: 9px 18px !important;
-    min-height: 38px;
-    box-shadow: none !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--vp-shadow-md) !important;
-    }
-  }
-
-  // Data table wrapper
-  :host ::ng-deep p-card .p-card {
-    border: 1px solid var(--vp-border, #e2e8f0);
-    border-radius: var(--vp-radius-lg, 12px);
-    box-shadow: var(--vp-shadow-sm);
-    overflow: hidden;
-
-    .p-card-body {
-      padding: 0 !important;
-    }
-
-    .p-card-content {
-      padding: 0 !important;
-    }
-  }
-
-  .key-value-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .key-value {
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-      font-size: 13px;
-      background-color: var(--vp-bg-alt, #f1f5f9);
-      padding: 6px 10px;
-      border-radius: 6px;
-      color: var(--vp-text, #1e293b);
-      border: 1px solid var(--vp-border, #e2e8f0);
-      font-weight: 500;
-    }
-  }
-
-  :host ::ng-deep {
-
-    .p-chip.chip-sandbox,
-    .chip-sandbox {
-      background-color: var(--vp-warning-bg, #fffbeb) !important;
-      color: var(--vp-warning, #f59e0b) !important;
-      padding: 6px 14px !important;
-      border-radius: 20px !important;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .p-chip.chip-production,
-    .chip-production {
-      background-color: var(--vp-success-bg, #ecfdf5) !important;
-      color: var(--vp-success, #10b981) !important;
-      padding: 6px 14px !important;
-      border-radius: 20px !important;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .p-chip.chip-revoked,
-    .chip-revoked {
-      background-color: var(--vp-error-bg, #fef2f2) !important;
-      color: var(--vp-error, #ef4444) !important;
-      padding: 6px 14px !important;
-      border-radius: 20px !important;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .menu-item-danger {
-      color: var(--vp-error, #ef4444);
-
-      .p-menuitem-icon {
-        color: var(--vp-error, #ef4444);
-      }
-    }
-  }
-
-  .usage-stats {
-    display: flex;
-    flex-direction: column;
-
-    .usage-count {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--vp-text, #1e293b);
-    }
-
-    .usage-label {
-      font-size: 12px;
-      color: var(--vp-text-muted, #94a3b8);
-      font-weight: 500;
-    }
-  }
-
-  .no-data {
-    text-align: center;
-    padding: 48px 24px;
-
-    .no-data-message {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-
-      p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--vp-text-secondary, #64748b);
-      }
-    }
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-// Responsive
+.page-actions {
+  display: inline-flex;
+  gap: 0.75rem;
+}
+
+::ng-deep .api-keys-card {
+  border: 1px solid var(--vp-border, #e2e8f0);
+  border-radius: var(--vp-radius-lg, 12px);
+  box-shadow: var(--vp-shadow-sm);
+  overflow: hidden;
+}
+
+::ng-deep .api-keys-card .p-card-body,
+::ng-deep .api-keys-card .p-card-content {
+  padding: 0 !important;
+}
+
+::ng-deep .environment-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+::ng-deep .environment-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+::ng-deep .environment-pill--sandbox {
+  background: var(--vp-warning-bg, #fffbeb);
+  color: #9a6700;
+}
+
+::ng-deep .environment-pill--production {
+  background: var(--vp-success-bg, #ecfdf5);
+  color: var(--vp-success, #10b981);
+}
+
+::ng-deep .environment-pill--revoked {
+  background: var(--vp-error-bg, #fef2f2);
+  color: var(--vp-error, #ef4444);
+}
+
+::ng-deep .usage-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+::ng-deep .usage-count {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--vp-text, #1e293b);
+}
+
+::ng-deep .usage-label {
+  font-size: 0.75rem;
+  color: var(--vp-text-muted, #94a3b8);
+  font-weight: 600;
+}
+
+::ng-deep .menu-item-danger {
+  color: var(--vp-error, #ef4444);
+}
+
+::ng-deep .menu-item-danger .p-menuitem-icon {
+  color: var(--vp-error, #ef4444);
+}
+
 @media (max-width: 768px) {
-  .api-keys-container {
-    padding: 16px;
-
-    .header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
-
-      :host ::ng-deep p-button {
-        width: 100%;
-
-        button {
-          width: 100%;
-        }
-      }
-    }
+  .page-actions {
+    width: 100%;
   }
 }

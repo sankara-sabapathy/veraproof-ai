@@ -1,0 +1,136 @@
+﻿<div class="encryption-page">
+  <app-page-header
+    title="Encryption"
+    eyebrow="Tenant Security"
+    [subtitle]="pageSubtitle"
+    [hasActions]="false">
+  </app-page-header>
+
+  <ng-container *ngIf="!loading; else loadingState">
+    <div class="page-grid">
+      <p-card header="Protection Mode" styleClass="panel-card mode-card">
+        <div class="mode-toggle" role="tablist" aria-label="Encryption mode">
+          <button
+            type="button"
+            class="mode-option"
+            [class.active]="selectedMode === 'managed'"
+            (click)="selectMode('managed')">
+            <span class="mode-title">VeraProof Managed</span>
+            <span class="mode-copy">Server-side wrapping keys controlled by VeraProof.</span>
+          </button>
+          <button
+            type="button"
+            class="mode-option"
+            [class.active]="selectedMode === 'tenant_managed'"
+            (click)="selectMode('tenant_managed')">
+            <span class="mode-title">Tenant-Managed Zero Access</span>
+            <span class="mode-copy">Tenant passphrase required to process protected artifacts.</span>
+          </button>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Current Mode</span>
+            <span class="detail-value">{{ settings?.encryption_mode === 'tenant_managed' ? 'Tenant-Managed Zero Access' : 'VeraProof Managed' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Observed Key Version</span>
+            <span class="detail-value">v{{ settings?.encryption_key_version || 1 }}</span>
+          </div>
+        </div>
+
+        <p class="mode-summary">{{ modeSummary }}</p>
+
+        <div *ngIf="requiresPassphraseForModeChange" class="activation-note">
+          Enter the tenant passphrase below before enabling zero-access mode. The passphrase is not persisted to the database.
+        </div>
+
+        <div class="action-row">
+          <button
+            pButton
+            type="button"
+            [label]="selectedMode === 'tenant_managed' ? 'Enable Zero-Access Mode' : 'Use VeraProof Managed'"
+            [disabled]="!canSaveMode"
+            [loading]="savingMode"
+            (click)="saveMode()">
+          </button>
+        </div>
+
+        <div class="guidance-note">
+          New artifacts use the active protection mode at write time. Existing artifacts retain their original wrapping metadata and do not get silently re-encrypted.
+        </div>
+      </p-card>
+
+      <p-card header="Tenant Runtime Key" styleClass="panel-card runtime-card">
+        <div *ngIf="selectedMode === 'tenant_managed' || isTenantManagedActive; else runtimeInactive" class="runtime-shell">
+          <div class="status-strip" [class.loaded]="runtimeKeyStatus.loaded" [class.unloaded]="!runtimeKeyStatus.loaded">
+            <div>
+              <div class="status-title">{{ runtimeStatusLabel }}</div>
+              <div class="status-copy" *ngIf="runtimeKeyStatus.loaded; else missingKeyCopy">
+                Available for approximately {{ formattedSecondsRemaining }}
+                <span *ngIf="runtimeKeyStatus.expires_at">until {{ runtimeKeyStatus.expires_at | date:'short' }}</span>
+              </div>
+              <ng-template #missingKeyCopy>
+                <div class="status-copy">Tenant-managed artifact creation and decryption will fail until the passphrase is loaded.</div>
+              </ng-template>
+            </div>
+            <p-tag [value]="runtimeKeyStatus.loaded ? 'Loaded' : 'Not loaded'"></p-tag>
+          </div>
+
+          <label class="field-label" for="runtimePassphrase">Tenant passphrase</label>
+          <input
+            id="runtimePassphrase"
+            pInputText
+            type="password"
+            [(ngModel)]="runtimePassphrase"
+            placeholder="Enter the tenant-managed passphrase" />
+
+          <div class="action-row">
+            <button
+              pButton
+              type="button"
+              label="Load Runtime Key"
+              [loading]="runtimeKeyBusy"
+              (click)="loadRuntimeKey()">
+            </button>
+            <button
+              pButton
+              type="button"
+              label="Refresh Status"
+              class="p-button-secondary"
+              [disabled]="runtimeKeyBusy"
+              (click)="refreshRuntimeKeyStatus()">
+            </button>
+            <button
+              pButton
+              type="button"
+              label="Unload Key"
+              class="p-button-secondary"
+              [disabled]="runtimeKeyBusy || !runtimeKeyStatus.loaded"
+              (click)="clearRuntimeKey()">
+            </button>
+          </div>
+
+          <ul class="guidance-list">
+            <li>Current implementation keeps the passphrase only in short-lived backend memory, never in Postgres.</li>
+            <li>It is not written to the dashboard client for long-term storage and must be reloaded after TTL expiry or backend restart.</li>
+            <li>Backend encryption and decryption are enforced: tenant-managed artifact operations fail when no runtime key is loaded.</li>
+          </ul>
+        </div>
+
+        <ng-template #runtimeInactive>
+          <app-content-state
+            title="Runtime key inactive"
+            description="Switch the tenant to Tenant-Managed Zero Access mode to load the passphrase used for tenant-managed artifacts."
+            icon="pi-lock"
+            tone="neutral">
+          </app-content-state>
+        </ng-template>
+      </p-card>
+    </div>
+  </ng-container>
+</div>
+
+<ng-template #loadingState>
+  <app-loading-spinner message="Loading encryption settings..."></app-loading-spinner>
+</ng-template>
