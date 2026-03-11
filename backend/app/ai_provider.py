@@ -5,6 +5,7 @@ import logging
 from typing import List, Dict, Any, Tuple
 import boto3
 from app.aws_credentials import aws_cred_manager
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ class GoogleGeminiProvider(GenAIProvider):
         if not api_key:
             try:
                 session = aws_cred_manager.get_session()
-                ssm = session.client('ssm', region_name='ap-south-1')
+                ssm = session.client('ssm', region_name=settings.aws_region)
                 stage = os.environ.get('STAGE', 'prod')
                 param_paths = [
                     f"/veraproof/{stage}/api/gemini_key",
@@ -224,9 +225,10 @@ class GoogleGeminiProvider(GenAIProvider):
 
 
 class AmazonNova2LiteProvider(GenAIProvider):
-    def __init__(self, region_name: str = "ap-south-1"):
+    def __init__(self, region_name: str = None):
         session = aws_cred_manager.get_session()
-        self.bedrock_runtime = session.client(service_name="bedrock-runtime", region_name=region_name)
+        resolved_region = region_name or settings.aws_region
+        self.bedrock_runtime = session.client(service_name='bedrock-runtime', region_name=resolved_region)
         self.model_id = "amazon.nova-2-lite-v1:0"
 
     async def evaluate_trust(self, frames_base64: List[str], vision_context: Dict[str, Any], metadata: Dict[str, Any] = None, imu_context: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
@@ -331,11 +333,10 @@ class AmazonNova2LiteProvider(GenAIProvider):
 
 
 class AmazonRekognitionProvider(VisionProvider):
-    def __init__(self, region_name: str = "us-east-1"):
+    def __init__(self, region_name: str = None):
         session = aws_cred_manager.get_session()
-        self.region_name = region_name
-        # Fallback to us-east-1 strictly for global Rekognition endpoints if needed
-        self.rekognition = session.client(service_name="rekognition", region_name=region_name)
+        self.region_name = region_name or settings.aws_region
+        self.rekognition = session.client(service_name='rekognition', region_name=self.region_name)
 
     async def extract_context(self, frames_base64: List[str], metadata: Dict[str, Any] = None) -> Tuple[bool, Dict[str, Any]]:
         """
@@ -548,3 +549,4 @@ class AmazonRekognitionProvider(VisionProvider):
         except Exception as e:
             logger.error(f"Error invoking Amazon Rekognition (Tier 2 Vision Provider): {e}")
             return False, {"error": f"Tier 2 evaluation failed: {str(e)}"}
+

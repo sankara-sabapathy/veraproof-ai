@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch, call
 from app.ai_provider import AmazonNova2LiteProvider, AmazonRekognitionProvider
+from app.config import settings
 import json
 import base64
 
@@ -10,6 +11,26 @@ def mock_boto3_client():
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
         yield mock_session.client
+
+
+def test_rekognition_provider_uses_configured_region(mock_boto3_client):
+    mock_rekognition = MagicMock()
+    mock_boto3_client.return_value = mock_rekognition
+
+    provider = AmazonRekognitionProvider()
+
+    assert provider.region_name == settings.aws_region
+    mock_boto3_client.assert_called_with(service_name="rekognition", region_name=settings.aws_region)
+
+
+def test_nova_provider_uses_configured_region(mock_boto3_client):
+    mock_runtime = MagicMock()
+    mock_boto3_client.return_value = mock_runtime
+
+    provider = AmazonNova2LiteProvider()
+
+    assert provider.model_id == "amazon.nova-2-lite-v1:0"
+    mock_boto3_client.assert_called_with(service_name="bedrock-runtime", region_name=settings.aws_region)
 
 @pytest.mark.asyncio
 async def test_analyze_frames_success(mock_boto3_client):
@@ -178,7 +199,7 @@ class TestRekognitionDetectFaces:
         mock_rekognition.detect_labels.return_value = _make_detect_labels_response([
             ("Person", 98.0), ("Face", 95.0)
         ])
-        # Simulate a static image — identical pose across all frames
+        # Simulate a static image - identical pose across all frames
         static_face = _make_detect_faces_response(pose=(5.0, 1.0, -3.0), quality=(80.0, 90.0))
         mock_rekognition.detect_faces.side_effect = [static_face, static_face, static_face]
 

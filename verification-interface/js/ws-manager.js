@@ -13,6 +13,7 @@ export class WSManager {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000; // Start with 1 second
     this.isIntentionallyClosed = false;
+    this.outboundQueue = [];
   }
 
   /**
@@ -67,6 +68,7 @@ export class WSManager {
           console.log('WebSocket connected successfully');
           this.reconnectAttempts = 0;
           this.reconnectDelay = 1000;
+          this.flushOutboundQueue();
           resolve();
         };
 
@@ -106,6 +108,29 @@ export class WSManager {
     });
   }
 
+  flushOutboundQueue() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.outboundQueue.length === 0) {
+      return;
+    }
+
+    while (this.outboundQueue.length > 0) {
+      this.ws.send(this.outboundQueue.shift());
+    }
+  }
+
+  sendOrQueue(payload) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(payload);
+      return;
+    }
+
+    this.outboundQueue.push(payload);
+  }
+
+  sendJsonMessage(message) {
+    this.sendOrQueue(JSON.stringify(message));
+  }
+
   /**
    * Handle reconnection with exponential backoff
    */
@@ -138,37 +163,32 @@ export class WSManager {
    * Send video chunk
    */
   sendVideoChunk(blob) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      // Send as binary data with type prefix
-      const reader = new FileReader();
-      reader.onload = () => {
-        const arrayBuffer = reader.result;
-        const message = JSON.stringify({
-          type: 'video_chunk',
-          size: arrayBuffer.byteLength,
-          timestamp: Date.now()
-        });
+    const reader = new FileReader();
+    reader.onload = () => {
+      const arrayBuffer = reader.result;
+      const message = JSON.stringify({
+        type: 'video_chunk',
+        size: arrayBuffer.byteLength,
+        timestamp: Date.now()
+      });
 
-        // Send metadata first, then binary data
-        this.ws.send(message);
-        this.ws.send(arrayBuffer);
-      };
-      reader.readAsArrayBuffer(blob);
-    }
+      // Preserve ordering even if recording begins before the socket is ready.
+      this.sendOrQueue(message);
+      this.sendOrQueue(arrayBuffer);
+    };
+    reader.readAsArrayBuffer(blob);
   }
 
   /**
    * Send IMU data batch
    */
   sendIMUBatch(imuDataArray) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message = {
-        type: 'imu_batch',
-        payload: imuDataArray,
-        timestamp: Date.now()
-      };
-      this.ws.send(JSON.stringify(message));
-    }
+    const message = {
+      type: 'imu_batch',
+      payload: imuDataArray,
+      timestamp: Date.now()
+    };
+    this.sendJsonMessage(message);
   }
 
   /**
@@ -194,3 +214,4 @@ export class WSManager {
     }
   }
 }
+

@@ -54,7 +54,9 @@ class VerificationWebSocket:
             "optical_flow_data": [],
             "gyro_gamma": [],
             "phase": "idle",
-            "start_time": datetime.utcnow()
+            "start_time": datetime.utcnow(),
+            "recording_finalized": False,
+            "recording_finalized_at": None,
         }
         
         # Add correlation IDs to OpenTelemetry active spans
@@ -175,6 +177,30 @@ class VerificationWebSocket:
             "type": "error",
             "payload": {"error": error}
         })
+
+    async def _wait_for_recording_finalization(self, session_id: str, timeout_seconds: float = 2.0):
+        session_data = self.session_data.get(session_id)
+        if not session_data:
+            return
+
+        start = time.monotonic()
+        while session_id in self.session_data:
+            current = self.session_data.get(session_id)
+            if not current:
+                return
+
+            if current.get("recording_finalized"):
+                await asyncio.sleep(0.15)
+                return
+
+            if time.monotonic() - start >= timeout_seconds:
+                logger.warning(
+                    "Timed out waiting for recorder finalization signal; continuing with buffered chunks",
+                    extra={"session_id": session_id, "chunk_count": len(current.get("video_chunks", []))},
+                )
+                return
+
+            await asyncio.sleep(0.05)
 
     def _split_rekognition_artifact(self, vision_context: Optional[Dict]) -> tuple[Dict, Optional[Dict]]:
         if not isinstance(vision_context, dict):
@@ -363,6 +389,20 @@ class VerificationWebSocket:
             pass
         elif msg_type == "imu_batch":
             await self.handle_imu_batch(session_id, payload)
+        elif msg_type == "recording_complete":
+            if session_id not in self.session_data:
+                logger.warning("Recording completion arrived after session buffer was cleared", extra={"session_id": session_id})
+                return
+
+            self.session_data[session_id]["recording_finalized"] = True
+            self.session_data[session_id]["recording_finalized_at"] = datetime.utcnow().isoformat()
+            logger.info(
+                "Frontend recorder finalized; AI pipeline may safely rebuild WebM",
+                extra={
+                    "session_id": session_id,
+                    "chunk_count": len(self.session_data[session_id]["video_chunks"]),
+                },
+            )
         elif msg_type == "phase_complete":
             # Phase Complete is now vestigial since the Backend runs the asynchronous playbook. 
             pass
@@ -479,7 +519,9 @@ class VerificationWebSocket:
             from app.webhooks import webhook_manager
             from app.quota import quota_manager
             from app.config import settings
-            
+
+            await self._wait_for_recording_finalization(session_id)
+
             # 1. Rebuild video file
             if not session_data.get('video_chunks'):
                 logger.warning("No video data found for AI processing", extra={"session_id": session_id})
@@ -717,7 +759,9 @@ class VerificationWebSocket:
             if not session_data:
                 logger.warning(f"Missing S3 artifact payload data", extra={"session_id": session_id})
                 return
-            
+
+            await self._wait_for_recording_finalization(session_id)
+
             # Get session to get tenant_id
             session = await session_manager.get_session(session_id)
             if not session:
@@ -782,3 +826,4 @@ class VerificationWebSocket:
 
 # Global WebSocket handler instance
 ws_handler = VerificationWebSocket()
+

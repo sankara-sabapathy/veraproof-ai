@@ -436,6 +436,13 @@ class VerificationApp {
       this.wsManager.sendVideoChunk(blob);
     });
 
+    this.videoCapture.onStop(() => {
+      this.wsManager.sendJsonMessage({
+        type: 'recording_complete',
+        timestamp: Date.now()
+      });
+    });
+
     // Handle IMU data
     this.imuCollector.onData((imuData) => {
       this.imuBuffer.push(imuData);
@@ -626,3 +633,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     app.cleanup();
   });
 });
+

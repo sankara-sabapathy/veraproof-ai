@@ -7,6 +7,7 @@ export class VideoCapture {
     this.mediaRecorder = null;
     this.stream = null;
     this.chunkCallback = null;
+    this.stopCallback = null;
     this._switchPromise = null; // Guards against race conditions during camera switches
   }
 
@@ -26,7 +27,7 @@ export class VideoCapture {
         audio: false
       });
 
-      // Create MediaRecorder — try preferred MIME, fall back to browser default
+      // Create MediaRecorder - try preferred MIME, fall back to browser default
       this.mediaRecorder = this._createRecorder(this.stream);
 
       return this.stream;
@@ -53,10 +54,19 @@ export class VideoCapture {
       recorder = new MediaRecorder(stream);
     }
 
+    recorder._notifyOnStop = false;
+
     recorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0 && this.chunkCallback) {
         this.chunkCallback(event.data);
       }
+    };
+
+    recorder.onstop = () => {
+      if (recorder._notifyOnStop && this.stopCallback) {
+        this.stopCallback();
+      }
+      recorder._notifyOnStop = false;
     };
 
     return recorder;
@@ -76,6 +86,7 @@ export class VideoCapture {
 
       // 2. Stop the old MediaRecorder cleanly
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder._notifyOnStop = false;
         this.mediaRecorder.stop();
       }
 
@@ -163,6 +174,7 @@ export class VideoCapture {
    */
   stop() {
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder._notifyOnStop = true;
       this.mediaRecorder.stop();
     }
 
@@ -178,6 +190,10 @@ export class VideoCapture {
     this.chunkCallback = callback;
   }
 
+  onStop(callback) {
+    this.stopCallback = callback;
+  }
+
   /**
    * Get video stream for preview
    */
@@ -185,3 +201,4 @@ export class VideoCapture {
     return this.stream;
   }
 }
+
