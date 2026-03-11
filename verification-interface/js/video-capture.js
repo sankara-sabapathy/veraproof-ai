@@ -63,6 +63,11 @@ export class VideoCapture {
     };
 
     recorder.onstop = () => {
+      // Stop only the stream bound to this specific recorder instance.
+      // Using this.stream here is unsafe during camera switches because it may point
+      // at a newly created stream by the time the old recorder fires onstop.
+      stream.getTracks().forEach(track => track.stop());
+
       if (recorder._notifyOnStop && this.stopCallback) {
         this.stopCallback();
       }
@@ -176,9 +181,8 @@ export class VideoCapture {
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder._notifyOnStop = true;
       this.mediaRecorder.stop();
-    }
-
-    if (this.stream) {
+    } else if (this.stream) {
+      // No active recorder to finalize, safe to stop camera tracks immediately.
       this.stream.getTracks().forEach(track => track.stop());
     }
   }
@@ -201,4 +205,3 @@ export class VideoCapture {
     return this.stream;
   }
 }
-
