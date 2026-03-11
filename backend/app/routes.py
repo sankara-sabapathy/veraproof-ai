@@ -1478,22 +1478,33 @@ async def websocket_verify(websocket: WebSocket, session_id: str, ws_token: Opti
         # Handle messages
         while True:
             data = await websocket.receive()
-            
-            if "bytes" in data:
+            event_type = data.get("type")
+
+            if event_type == "websocket.disconnect":
+                logger.info("WebSocket disconnect frame received", extra={"session_id": session_id})
+                break
+
+            chunk = data.get("bytes")
+            if chunk is not None:
                 # Video chunk
-                await ws_handler.handle_video_chunk(session_id, data["bytes"])
-            elif "text" in data:
+                await ws_handler.handle_video_chunk(session_id, chunk)
+                continue
+
+            payload = data.get("text")
+            if payload:
                 # JSON message
                 import json
-                message = json.loads(data["text"])
+                message = json.loads(payload)
                 await ws_handler.handle_message(session_id, message)
                 
     except WebSocketDisconnect:
-        ws_handler.disconnect(session_id)
+        await ws_handler.disconnect(session_id)
         logger.info(f"WebSocket disconnected: {session_id}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}", exc_info=True)
-        ws_handler.disconnect(session_id)
+        await ws_handler.disconnect(session_id)
+    finally:
+        await ws_handler.disconnect(session_id)
 
 
 def _parse_metadata_json(metadata: Optional[str]) -> dict:
@@ -1594,5 +1605,4 @@ async def get_media_analysis_artifact(
         return {"url": url}
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
 
