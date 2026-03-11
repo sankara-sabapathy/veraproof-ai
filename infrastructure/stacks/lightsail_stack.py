@@ -95,7 +95,7 @@ class VeraproofLightsailStack(Stack):
         )
         backend_user.add_to_policy(
             iam.PolicyStatement(
-                actions=['rekognition:DetectLabels'],
+                actions=['rekognition:DetectLabels', 'rekognition:DetectFaces'],
                 resources=['*'],
             )
         )

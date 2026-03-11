@@ -123,6 +123,13 @@ veraproof-ai/
 - The verification interface is vanilla HTML/CSS/JS and must stay lightweight.
 - Avoid introducing framework-heavy changes into the verification interface.
 
+## UI/UX Design Preferences
+- Prefer a subtle, clean, professional SaaS visual language over marketing-heavy or overly expressive presentation.
+- Prioritize long-term maintainability and consistency with the existing product UI before introducing new visual treatments or one-off interaction patterns.
+- Keep information architecture practical and task-oriented: important operational data should appear early, with supporting detail following in a logical order.
+- Avoid advertising-style hero sections, excessive gradients, ornamental copy, or visually loud layouts in dashboard and admin experiences unless explicitly requested.
+- Favor restrained spacing, clear hierarchy, reusable components, and styles that can be extended across the product without redesigning each page from scratch.
+
 ## Operational Rules
 
 ### Database and Migrations

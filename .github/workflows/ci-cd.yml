@@ -261,6 +261,19 @@ jobs:
             value=$(aws ssm get-parameter --name "$name" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
             echo "$key=$value" >> $GITHUB_OUTPUT
           }
+          get_optional_first() {
+            local key="$1"
+            shift
+            local value=""
+            local name
+            for name in "$@"; do
+              value=$(aws ssm get-parameter --name "$name" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null || true)
+              if [ -n "$value" ]; then
+                break
+              fi
+            done
+            echo "$key=$value" >> $GITHUB_OUTPUT
+          }
           PREFIX="/veraproof/${{ steps.stage.outputs.stage }}"
           get_required "$PREFIX/security/app_session_secret" app_session_secret
           get_required "$PREFIX/security/app_encryption_key" app_encryption_key
@@ -270,8 +283,8 @@ jobs:
           get_required "$PREFIX/api/gemini_key" gemini_api_key
           get_required "$PREFIX/backend/aws_access_key_id" backend_aws_access_key_id
           get_required "$PREFIX/backend/aws_secret_access_key" backend_aws_secret_access_key
-          get_optional "$PREFIX/observability/otlp_endpoint" otlp_endpoint
-          get_optional "$PREFIX/observability/otlp_headers" otlp_headers
+          get_optional_first otlp_endpoint "$PREFIX/observability/otlp_endpoint" "$PREFIX/grafana/otlp_endpoint"
+          get_optional_first otlp_headers "$PREFIX/observability/otlp_headers" "$PREFIX/grafana/otlp_headers"
       - uses: docker/setup-buildx-action@v3
       - name: Build Docker image
         run: |

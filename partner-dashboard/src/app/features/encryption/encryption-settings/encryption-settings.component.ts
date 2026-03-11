@@ -9,7 +9,6 @@ import { TagModule } from 'primeng/tag';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { ContentStateComponent } from '../../../shared/components/content-state/content-state.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import {
@@ -30,7 +29,6 @@ import {
     InputTextModule,
     TagModule,
     PageHeaderComponent,
-    ContentStateComponent,
     LoadingSpinnerComponent,
   ],
   templateUrl: './encryption-settings.component.html',
@@ -90,6 +88,10 @@ export class EncryptionSettingsComponent implements OnInit, OnDestroy {
     return this.settings?.encryption_mode === 'tenant_managed';
   }
 
+  get isTenantManagedSelected(): boolean {
+    return this.selectedMode === 'tenant_managed';
+  }
+
   get requiresPassphraseForModeChange(): boolean {
     return this.selectedMode === 'tenant_managed' && this.settings?.encryption_mode !== 'tenant_managed';
   }
@@ -106,10 +108,18 @@ export class EncryptionSettingsComponent implements OnInit, OnDestroy {
     return true;
   }
 
-
   get runtimeStatusLabel(): string {
     return this.runtimeKeyStatus.loaded ? 'Runtime key loaded' : 'Runtime key not loaded';
   }
+
+  get selectedModeLabel(): string {
+    return this.selectedMode === 'tenant_managed' ? 'Tenant-Managed Zero Access' : 'VeraProof Managed';
+  }
+
+  get activeModeLabel(): string {
+    return this.settings?.encryption_mode === 'tenant_managed' ? 'Tenant-Managed Zero Access' : 'VeraProof Managed';
+  }
+
   get modeSummary(): string {
     if (this.selectedMode === 'tenant_managed') {
       return 'Artifacts are wrapped with a tenant-supplied runtime passphrase. VeraProof cannot decrypt tenant-managed artifacts unless that passphrase is explicitly loaded into short-lived backend memory.';
@@ -261,4 +271,3 @@ export class EncryptionSettingsComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 }
-

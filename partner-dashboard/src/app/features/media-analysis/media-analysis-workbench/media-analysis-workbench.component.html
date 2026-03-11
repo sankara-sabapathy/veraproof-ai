@@ -22,7 +22,7 @@
         <span class="drop-kicker">Source media</span>
         <strong>{{ selectedFile?.name || 'Choose a file from your machine' }}</strong>
         <small *ngIf="selectedFile; else emptyFileState">
-          {{ selectedFile.type || 'unknown type' }} · {{ formatBytes(selectedFile.size) }}
+          {{ selectedFile.type || 'unknown type' }} - {{ formatBytes(selectedFile.size) }}
         </small>
         <ng-template #emptyFileState>
           <small>Upload a single source artifact for asynchronous fraud analysis.</small>
@@ -38,8 +38,8 @@
       <div class="upload-actions">
         <button pButton type="button" label="Start Analysis" icon="pi pi-send"
           [loading]="uploading" [disabled]="!selectedFile || uploading" (click)="submitUpload()"></button>
-        <p-chip label="Async job" icon="pi pi-bolt"></p-chip>
-        <p-chip label="JWT + API key" icon="pi pi-lock"></p-chip>
+        <p-chip label="Async job" icon="pi pi-bolt" styleClass="meta-chip"></p-chip>
+        <p-chip label="JWT + API key" icon="pi pi-lock" styleClass="meta-chip"></p-chip>
       </div>
     </article>
 
@@ -47,7 +47,7 @@
       <div class="panel-head detail-head">
         <div>
           <h2>{{ selectedJob.source_filename }}</h2>
-          <p>{{ selectedJob.media_type | titlecase }} · {{ selectedJob.content_type }} · {{ formatBytes(selectedJob.file_size_bytes) }}</p>
+          <p>{{ selectedJob.media_type | titlecase }} - {{ selectedJob.content_type }} - {{ formatBytes(selectedJob.file_size_bytes) }}</p>
         </div>
         <span class="status-pill" [attr.data-status]="selectedJob.status">{{ statusLabel(selectedJob) }}</span>
       </div>

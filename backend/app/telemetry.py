@@ -3,7 +3,7 @@ import os
 import sys
 from pythonjsonlogger import jsonlogger
 
-# OpenTelemetry — Tracing
+# OpenTelemetry - Tracing
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -11,7 +11,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-# OpenTelemetry — Logging
+# OpenTelemetry - Logging
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
@@ -53,6 +53,18 @@ def setup_telemetry(app_name: str = "veraproof-backend"):
     })
 
     export_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    export_headers = os.getenv("OTEL_EXPORTER_OTLP_HEADERS")
+
+    if not export_endpoint and environment.lower() not in {"development", "local", "test"}:
+        print(
+            "[telemetry] OTLP export is disabled because OTEL_EXPORTER_OTLP_ENDPOINT is not set.",
+            file=sys.stderr,
+        )
+    elif export_endpoint and not export_headers:
+        print(
+            "[telemetry] OTLP endpoint is configured without OTEL_EXPORTER_OTLP_HEADERS.",
+            file=sys.stderr,
+        )
 
     # ---------------------------------------------------------
     # 1. Configure Tracing
@@ -69,7 +81,7 @@ def setup_telemetry(app_name: str = "veraproof-backend"):
         print(f"Failed to bootstrap OpenTelemetry Tracing: {e}", file=sys.stderr)
 
     # ---------------------------------------------------------
-    # 2. Configure Log Export (OTLP → Grafana Cloud Loki)
+    # 2. Configure Log Export (OTLP -> Grafana Cloud Loki)
     # ---------------------------------------------------------
     otel_log_handler = None
     try:
@@ -81,7 +93,7 @@ def setup_telemetry(app_name: str = "veraproof-backend"):
             )
             set_logger_provider(logger_provider)
 
-            # Create a logging.Handler that bridges Python logs → OTel LogRecords
+            # Create a logging.Handler that bridges Python logs -> OTel LogRecords
             otel_log_handler = LoggingHandler(
                 level=logging.INFO,
                 logger_provider=logger_provider
@@ -114,7 +126,7 @@ def setup_telemetry(app_name: str = "veraproof-backend"):
         root_logger.addHandler(otel_log_handler)
         # Use stdout to avoid circular logging
         print(
-            f"[telemetry] OTLP Log Export enabled → {export_endpoint}",
+            f"[telemetry] OTLP Log Export enabled -> {export_endpoint}",
             file=sys.stdout
         )
 
