@@ -1,4 +1,3 @@
-import cv2
 import base64
 import logging
 import os
@@ -6,6 +5,8 @@ import shutil
 import subprocess
 import tempfile
 from typing import List
+
+import cv2
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +30,11 @@ def extract_sparse_keyframes(video_path: str, num_frames: int = 5) -> List[str]:
 
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        # FIX: Browser-recorded WebM files often lack duration metadata, causing OpenCV to report <= 0 frames.
-        # If this happens, we must manually read frames to determine length and sample them.
+        # Browser-recorded WebM files often lack duration metadata, causing OpenCV
+        # to report <= 0 frames. Count them manually before sampling if needed.
         if total_frames <= 0:
             logger.warning(f"Metadata reported 0 frames for {video_path}, falling back to manual frame extraction.")
 
-            # PASS 1: Count total frames efficiently without decoding arrays to RAM (Prevents OOM Crashes)
             total_frames = 0
             while True:
                 ret = cap.grab()
@@ -51,9 +51,7 @@ def extract_sparse_keyframes(video_path: str, num_frames: int = 5) -> List[str]:
             frame_indices = sorted(list(set([min(i * step, total_frames - 1) for i in range(num_frames)])))
             target_set = set(frame_indices)
 
-            # PASS 2: Re-open and extract the precise target frames
             cap.release()
-
             cap = cv2.VideoCapture(video_path)
             current_frame = 0
 
@@ -67,7 +65,7 @@ def extract_sparse_keyframes(video_path: str, num_frames: int = 5) -> List[str]:
 
                 current_frame += 1
                 if current_frame > max(frame_indices):
-                    break  # Optimization: exit early once all targets are hit
+                    break
 
             cap.release()
             return frames_base64
@@ -102,7 +100,28 @@ def _extract_sparse_keyframes_ffmpeg(video_path: str, num_frames: int = 5) -> Li
         return []
 
     duration = _probe_video_duration(video_path, ffprobe_path)
-    timestamps = _build_sample_timestamps(duration, num_frames)
+    frames_base64 = _extract_ffmpeg_timestamps(
+        video_path,
+        ffmpeg_path,
+        _build_sample_timestamps(duration, num_frames),
+    )
+
+    if not frames_base64:
+        logger.warning(
+            'Timestamp-based ffmpeg extraction failed; retrying sequential decode',
+            extra={'video_path': video_path, 'duration_seconds': duration, 'requested_frames': num_frames},
+        )
+        frames_base64 = _extract_ffmpeg_sequential(video_path, ffmpeg_path, num_frames)
+
+    if frames_base64:
+        logger.info('ffmpeg fallback extracted frames successfully', extra={'video_path': video_path, 'frame_count': len(frames_base64)})
+    else:
+        logger.error(f'ffmpeg fallback could not extract any frames from {video_path}')
+
+    return frames_base64
+
+
+def _extract_ffmpeg_timestamps(video_path: str, ffmpeg_path: str, timestamps: List[float]) -> List[str]:
     frames_base64 = []
 
     with tempfile.TemporaryDirectory(prefix='vp-ffmpeg-frames-') as temp_dir:
@@ -119,7 +138,12 @@ def _extract_sparse_keyframes_ffmpeg(video_path: str, num_frames: int = 5) -> Li
             ]
 
             try:
-                subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(command, check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as exc:
+                stderr = (exc.stderr or '').strip()
+                detail = f' stderr={stderr}' if stderr else ''
+                logger.warning(f'ffmpeg fallback failed at {timestamp:.3f}s for {video_path}: exit={exc.returncode}.{detail}')
+                continue
             except Exception as exc:
                 logger.warning(f'ffmpeg fallback failed at {timestamp:.3f}s for {video_path}: {exc}')
                 continue
@@ -131,10 +155,47 @@ def _extract_sparse_keyframes_ffmpeg(video_path: str, num_frames: int = 5) -> Li
 
             _process_and_encode_frame(frame, frames_base64)
 
-    if frames_base64:
-        logger.info('ffmpeg fallback extracted frames successfully', extra={'video_path': video_path, 'frame_count': len(frames_base64)})
-    else:
-        logger.error(f'ffmpeg fallback could not extract any frames from {video_path}')
+    return frames_base64
+
+
+def _extract_ffmpeg_sequential(video_path: str, ffmpeg_path: str, num_frames: int) -> List[str]:
+    frames_base64 = []
+
+    with tempfile.TemporaryDirectory(prefix='vp-ffmpeg-seq-frames-') as temp_dir:
+        output_pattern = os.path.join(temp_dir, 'frame_%03d.jpg')
+        command = [
+            ffmpeg_path,
+            '-loglevel', 'error',
+            '-y',
+            '-i', video_path,
+            '-frames:v', str(max(num_frames, 1)),
+            output_pattern,
+        ]
+
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or '').strip()
+            detail = f' stderr={stderr}' if stderr else ''
+            logger.warning(f'ffmpeg sequential fallback failed for {video_path}: exit={exc.returncode}.{detail}')
+            return frames_base64
+        except Exception as exc:
+            logger.warning(f'ffmpeg sequential fallback failed for {video_path}: {exc}')
+            return frames_base64
+
+        for file_name in sorted(os.listdir(temp_dir)):
+            if not file_name.lower().endswith('.jpg'):
+                continue
+
+            output_path = os.path.join(temp_dir, file_name)
+            frame = cv2.imread(output_path)
+            if frame is None:
+                logger.warning(f'ffmpeg sequential frame could not be decoded: {output_path}')
+                continue
+
+            _process_and_encode_frame(frame, frames_base64)
+            if len(frames_base64) >= num_frames:
+                break
 
     return frames_base64
 
@@ -185,5 +246,3 @@ def _process_and_encode_frame(frame, frames_base64_list):
     _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
     b64_str = base64.b64encode(buffer).decode('utf-8')
     frames_base64_list.append(b64_str)
-
-

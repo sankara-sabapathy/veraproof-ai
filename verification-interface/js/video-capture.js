@@ -55,6 +55,8 @@ export class VideoCapture {
     }
 
     recorder._notifyOnStop = false;
+    recorder._stopPromise = null;
+    recorder._stopResolver = null;
 
     recorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0 && this.chunkCallback) {
@@ -62,16 +64,26 @@ export class VideoCapture {
       }
     };
 
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       // Stop only the stream bound to this specific recorder instance.
       // Using this.stream here is unsafe during camera switches because it may point
       // at a newly created stream by the time the old recorder fires onstop.
       stream.getTracks().forEach(track => track.stop());
 
-      if (recorder._notifyOnStop && this.stopCallback) {
-        this.stopCallback();
+      try {
+        if (recorder._notifyOnStop && this.stopCallback) {
+          await this.stopCallback();
+        }
+      } catch (error) {
+        console.error('Recorder stop callback failed:', error);
+      } finally {
+        recorder._notifyOnStop = false;
+        if (recorder._stopResolver) {
+          recorder._stopResolver();
+        }
+        recorder._stopResolver = null;
+        recorder._stopPromise = null;
       }
-      recorder._notifyOnStop = false;
     };
 
     return recorder;
@@ -84,23 +96,18 @@ export class VideoCapture {
   async switchCamera(newFacingMode) {
     if (this.currentFacingMode === newFacingMode) return this.stream;
 
-    // Create a new switch promise that start() can await
     const doSwitch = async () => {
-      // 1. Check if recording was active
       const wasRecording = this.mediaRecorder && this.mediaRecorder.state === 'recording';
 
-      // 2. Stop the old MediaRecorder cleanly
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder._notifyOnStop = false;
         this.mediaRecorder.stop();
       }
 
-      // 3. Tear down the old hardware tracks
       if (this.stream) {
         this.stream.getTracks().forEach(t => t.stop());
       }
 
-      // 4. Boot up the new hardware lens
       this.currentFacingMode = newFacingMode;
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -111,10 +118,8 @@ export class VideoCapture {
         audio: false
       });
 
-      // 5. Recreate the MediaRecorder with the new stream
       this.mediaRecorder = this._createRecorder(this.stream);
 
-      // 6. Resume recording if it was previously active
       if (wasRecording) {
         this.mediaRecorder.start(this.chunkInterval);
       }
@@ -154,7 +159,6 @@ export class VideoCapture {
    * Start recording (waits for any in-progress camera switch to finish first)
    */
   async start() {
-    // Wait for any ongoing camera switch to complete
     if (this._switchPromise) {
       console.log('Waiting for camera switch to finish before starting...');
       await this._switchPromise;
@@ -164,27 +168,36 @@ export class VideoCapture {
       throw new Error('MediaRecorder not initialized');
     }
 
-    // Idempotent: skip if already recording (e.g. camera switch started it early)
     if (this.mediaRecorder.state === 'recording') {
       console.log('MediaRecorder already recording, skipping start()');
       return;
     }
 
-    // Start recording with timeslice for chunked output
     this.mediaRecorder.start(this.chunkInterval);
   }
 
   /**
-   * Stop recording
+   * Stop recording and resolve only after the recorder has fully finalized.
    */
   stop() {
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      if (this.mediaRecorder._stopPromise) {
+        return this.mediaRecorder._stopPromise;
+      }
+
       this.mediaRecorder._notifyOnStop = true;
+      this.mediaRecorder._stopPromise = new Promise((resolve) => {
+        this.mediaRecorder._stopResolver = resolve;
+      });
       this.mediaRecorder.stop();
-    } else if (this.stream) {
-      // No active recorder to finalize, safe to stop camera tracks immediately.
+      return this.mediaRecorder._stopPromise;
+    }
+
+    if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
     }
+
+    return Promise.resolve();
   }
 
   /**

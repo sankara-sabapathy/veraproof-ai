@@ -1,4 +1,4 @@
-﻿name: VeraProof AI - CI/CD Pipeline
+name: VeraProof AI - CI/CD Pipeline
 
 on:
   push:
@@ -120,6 +120,9 @@ jobs:
           cd verification-interface
           node --check ./js/main.js
           node --check ./js/ws-manager.js
+          node --check ./js/video-capture.js
+          node --check ./js/imu-collector.js
+          node --check ./js/challenge-controller.js
           node --check ./js/ui-controller.js
 
   security-scan:
@@ -546,3 +549,4 @@ jobs:
       - name: Test verification interface
         run: |
           curl -f -s ${{ steps.urls.outputs.verification-url }} > /dev/null
+

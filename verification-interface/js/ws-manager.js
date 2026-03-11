@@ -14,6 +14,18 @@ export class WSManager {
     this.reconnectDelay = 1000; // Start with 1 second
     this.isIntentionallyClosed = false;
     this.outboundQueue = [];
+
+    // Recording transport state so finalization can be verified explicitly.
+    this.recordingStarted = false;
+    this.nextVideoChunkSequence = 0;
+    this.videoChunkSequence = 0;
+    this.videoBytesSent = 0;
+    this.videoSendChain = Promise.resolve();
+    this.recordingTransportError = null;
+    this.recordingCompleteSent = false;
+    this.recordingFinalizationPromise = null;
+    this.recordingFinalizedResolver = null;
+    this.recordingFinalizedAck = null;
   }
 
   /**
@@ -56,7 +68,7 @@ export class WSManager {
    */
   async connect() {
     return new Promise((resolve, reject) => {
-      const tokenQuery = this.wsToken ? `?ws_token=${encodeURIComponent(this.wsToken)}` : "";
+      const tokenQuery = this.wsToken ? `?ws_token=${encodeURIComponent(this.wsToken)}` : '';
       const wsUrl = `${this.apiUrl}/api/v1/ws/verify/${this.sessionId}${tokenQuery}`;
 
       console.log('Connecting to WebSocket:', wsUrl);
@@ -75,10 +87,15 @@ export class WSManager {
         this.ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
-            // Hide standard instruction logs from console output
-            if (message.type !== 'instruction' && message.type !== 'branding') {
-              // console.log('WebSocket message received:', message.type);
+            if (message.type === 'recording_finalized') {
+              this.recordingFinalizedAck = message.payload || {};
+              if (this.recordingFinalizedResolver) {
+                const resolveRecording = this.recordingFinalizedResolver;
+                this.recordingFinalizedResolver = null;
+                resolveRecording(this.recordingFinalizedAck);
+              }
             }
+
             if (this.messageCallback) {
               this.messageCallback(message);
             } else {
@@ -131,6 +148,23 @@ export class WSManager {
     this.sendOrQueue(JSON.stringify(message));
   }
 
+  markRecordingStarted() {
+    this.recordingStarted = true;
+  }
+
+  async blobToArrayBuffer(blob) {
+    if (typeof blob.arrayBuffer === 'function') {
+      return blob.arrayBuffer();
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('Failed to read recording chunk.'));
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+
   /**
    * Handle reconnection with exponential backoff
    */
@@ -160,23 +194,96 @@ export class WSManager {
   }
 
   /**
-   * Send video chunk
+   * Send video chunk in strict sequence order.
    */
-  sendVideoChunk(blob) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const arrayBuffer = reader.result;
-      const message = JSON.stringify({
-        type: 'video_chunk',
-        size: arrayBuffer.byteLength,
-        timestamp: Date.now()
+  async sendVideoChunk(blob) {
+    if (!blob || blob.size <= 0) {
+      return;
+    }
+
+    this.recordingStarted = true;
+    const sequence = ++this.nextVideoChunkSequence;
+    const sendTask = this.videoSendChain
+      .catch(() => undefined)
+      .then(async () => {
+        const arrayBuffer = await this.blobToArrayBuffer(blob);
+        this.videoChunkSequence = Math.max(this.videoChunkSequence, sequence);
+        this.videoBytesSent += arrayBuffer.byteLength;
+
+        this.sendJsonMessage({
+          type: 'video_chunk',
+          payload: {
+            sequence,
+            size: arrayBuffer.byteLength,
+            timestamp: Date.now()
+          }
+        });
+        this.sendOrQueue(arrayBuffer);
       });
 
-      // Preserve ordering even if recording begins before the socket is ready.
-      this.sendOrQueue(message);
-      this.sendOrQueue(arrayBuffer);
-    };
-    reader.readAsArrayBuffer(blob);
+    this.videoSendChain = sendTask.catch((error) => {
+      this.recordingTransportError = error;
+      console.error('Failed to send video chunk:', error);
+    });
+
+    return sendTask;
+  }
+
+  async finalizeRecording(timeoutMs = 4000) {
+    if (this.recordingFinalizedAck) {
+      return { acknowledged: true, payload: this.recordingFinalizedAck };
+    }
+
+    if (this.recordingFinalizationPromise) {
+      return this.recordingFinalizationPromise;
+    }
+
+    await this.videoSendChain;
+
+    if (this.recordingTransportError) {
+      console.error('Video transport encountered an error before finalization:', this.recordingTransportError);
+    }
+
+    this.recordingCompleteSent = true;
+    this.recordingFinalizationPromise = new Promise((resolve) => {
+      let settled = false;
+      const timeoutHandle = window.setTimeout(() => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        this.recordingFinalizedResolver = null;
+        console.warn('Timed out waiting for backend recording finalization acknowledgement.');
+        resolve({ acknowledged: false, payload: null });
+      }, timeoutMs);
+
+      this.recordingFinalizedResolver = (payload) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        window.clearTimeout(timeoutHandle);
+        resolve({ acknowledged: true, payload: payload || {} });
+      };
+
+      this.sendJsonMessage({
+        type: 'recording_complete',
+        payload: {
+          chunk_count: this.videoChunkSequence,
+          byte_count: this.videoBytesSent,
+          last_sequence: this.videoChunkSequence,
+          timestamp: Date.now()
+        }
+      });
+    });
+
+    return this.recordingFinalizationPromise;
+  }
+
+  hasPendingRecordingTransport() {
+    return (this.recordingStarted || this.videoChunkSequence > 0 || this.recordingCompleteSent) && !this.recordingFinalizedAck;
   }
 
   /**
@@ -214,4 +321,3 @@ export class WSManager {
     }
   }
 }
-

@@ -234,6 +234,16 @@ export class SessionDetailsComponent implements OnInit, OnDestroy {
     }
     return (this.session.verification_status || this.session.state || 'unknown').replace(/_/g, ' ');
   }
+  hasDistinctModelSummary(): boolean {
+    const reasoning = this.normalizeReasoningText(this.session?.reasoning);
+    const summary = this.normalizeReasoningText(this.session?.ai_explanation?.['summary']);
+
+    if (!summary) {
+      return false;
+    }
+
+    return summary !== reasoning;
+  }
 
   hasVideoEvidence(): boolean {
     return !!(this.getArtifactByType('original_video') || this.session?.video_s3_key);
@@ -686,4 +696,8 @@ export class SessionDetailsComponent implements OnInit, OnDestroy {
         return 'artifact preview';
     }
   }
+  private normalizeReasoningText(value: string | null | undefined): string {
+    return (value || '').replace(/\s+/g, ' ').trim();
+  }
 }
+

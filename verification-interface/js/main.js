@@ -1,12 +1,40 @@
 /**
  * Main entry point for VeraProof AI Verification Interface
  */
-import { DeviceDetector } from './device-detector.js?v=13';
-import { VideoCapture } from './video-capture.js?v=13';
-import { IMUCollector } from './imu-collector.js?v=13';
-import { WSManager } from './ws-manager.js?v=13';
-import { ChallengeController } from './challenge-controller.js?v=13';
-import { UIController } from './ui-controller.js?v=16';
+let DeviceDetector;
+let VideoCapture;
+let IMUCollector;
+let WSManager;
+let ChallengeController;
+let UIController;
+
+async function loadModules() {
+  const assetVersion = encodeURIComponent(window.VERAPROOF_CONFIG?.version || 'local-dev');
+  const modulePath = (name) => `./${name}.js?v=${assetVersion}`;
+
+  const [
+    deviceDetectorModule,
+    videoCaptureModule,
+    imuCollectorModule,
+    wsManagerModule,
+    challengeControllerModule,
+    uiControllerModule
+  ] = await Promise.all([
+    import(modulePath('device-detector')),
+    import(modulePath('video-capture')),
+    import(modulePath('imu-collector')),
+    import(modulePath('ws-manager')),
+    import(modulePath('challenge-controller')),
+    import(modulePath('ui-controller'))
+  ]);
+
+  ({ DeviceDetector } = deviceDetectorModule);
+  ({ VideoCapture } = videoCaptureModule);
+  ({ IMUCollector } = imuCollectorModule);
+  ({ WSManager } = wsManagerModule);
+  ({ ChallengeController } = challengeControllerModule);
+  ({ UIController } = uiControllerModule);
+}
 
 class VerificationApp {
   constructor() {
@@ -22,6 +50,8 @@ class VerificationApp {
     this.imuBatchSize = 10; // Send IMU data in batches of 10 samples
     this.consentDialogCleanup = null;
     this.lastFocusedElement = null;
+    this.captureFinalizationPromise = null;
+    this.captureFinalized = false;
   }
 
   /**
@@ -427,20 +457,64 @@ class VerificationApp {
     }
   }
 
+  async handleFinalizeRecording(payload = {}) {
+    const message = payload?.message || 'Finalizing recording. Keep this page open for a moment.';
+    this.ui.showStatusMessage(message, payload?.type || 'info');
+
+    try {
+      await this.stopRecording();
+    } catch (error) {
+      console.error('Capture finalization error:', error);
+      this.ui.showStatusMessage('Recording finalization hit a transport issue. VeraProof will continue with the buffered capture.', 'info');
+    }
+  }
+
+  async stopRecording() {
+    if (this.captureFinalizationPromise) {
+      return this.captureFinalizationPromise;
+    }
+
+    this.captureFinalizationPromise = (async () => {
+      if (this.imuCollector) {
+        this.imuCollector.stop();
+      }
+
+      if (this.videoCapture) {
+        await this.videoCapture.stop();
+      }
+
+      if (this.imuBuffer.length > 0 && this.wsManager) {
+        this.wsManager.sendIMUBatch(this.imuBuffer);
+        this.imuBuffer = [];
+      }
+
+      if (this.wsManager && this.wsManager.hasPendingRecordingTransport()) {
+        const finalization = await this.wsManager.finalizeRecording();
+        if (!finalization?.acknowledged) {
+          console.warn('Backend did not acknowledge recording finalization before timeout.');
+        }
+      }
+
+      this.captureFinalized = true;
+
+      if (this.recordingInterval) {
+        clearInterval(this.recordingInterval);
+      }
+
+      this.ui.stopPreparationCountdown();
+      this.ui.stopRecordingTimer();
+    })();
+
+    return this.captureFinalizationPromise;
+  }
+
   /**
    * Setup event handlers
    */
   setupEventHandlers() {
     // Handle video chunks
     this.videoCapture.onChunk((blob) => {
-      this.wsManager.sendVideoChunk(blob);
-    });
-
-    this.videoCapture.onStop(() => {
-      this.wsManager.sendJsonMessage({
-        type: 'recording_complete',
-        timestamp: Date.now()
-      });
+      void this.wsManager.sendVideoChunk(blob);
     });
 
     // Handle IMU data
@@ -501,6 +575,13 @@ class VerificationApp {
         }
         break;
 
+      case 'finalize_recording':
+        void this.handleFinalizeRecording(message.payload);
+        break;
+
+      case 'recording_finalized':
+        break;
+
       case 'result':
         this.handleVerificationResult(message.payload);
         break;
@@ -539,6 +620,7 @@ class VerificationApp {
 
       // Start the video pipeline recording the blob (async: waits for any pending camera switch)
       await this.videoCapture.start();
+      this.wsManager?.markRecordingStarted();
 
       // Start IMU loop
       this.imuCollector.start();
@@ -560,14 +642,7 @@ class VerificationApp {
    * Handle verification result
    */
   handleVerificationResult(result) {
-    // Stop recording
-    this.stopRecording();
-
-    // Flush remaining IMU data
-    if (this.imuBuffer.length > 0) {
-      this.wsManager.sendIMUBatch(this.imuBuffer);
-      this.imuBuffer = [];
-    }
+    void this.stopRecording();
 
     // Show result
     this.ui.showResult(result);
@@ -580,51 +655,27 @@ class VerificationApp {
    * Handle verification error
    */
   handleVerificationError(error) {
-    // Stop recording
-    this.stopRecording();
+    void this.stopRecording();
 
     // Show error
     this.ui.showError(error);
   }
 
   /**
-   * Stop all recording
-   */
-  stopRecording() {
-    if (this.videoCapture) {
-      this.videoCapture.stop();
-    }
-
-    if (this.imuCollector) {
-      this.imuCollector.stop();
-    }
-
-    if (this.recordingInterval) {
-      clearInterval(this.recordingInterval);
-    }
-
-    this.ui.stopPreparationCountdown();
-    this.ui.stopRecordingTimer();
-  }
-
-  /**
    * Cleanup on page unload
    */
   cleanup() {
-    this.stopRecording();
+    void this.stopRecording();
 
     if (this.consentDialogCleanup) {
       this.consentDialogCleanup();
-    }
-
-    if (this.wsManager) {
-      this.wsManager.close();
     }
   }
 }
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadModules();
   const app = new VerificationApp();
   await app.init();
 

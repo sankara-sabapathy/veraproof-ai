@@ -145,7 +145,10 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=18"></script>
+    <script type="module">
+        const assetVersion = encodeURIComponent(window.VERAPROOF_CONFIG?.version || 'local-dev');
+        import(`./js/main.js?v=${assetVersion}`);
+    </script>
 </body>
 
 </html>
