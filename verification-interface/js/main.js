@@ -673,15 +673,35 @@ class VerificationApp {
   }
 }
 
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadModules();
-  const app = new VerificationApp();
-  await app.init();
+async function bootApp() {
+  try {
+    await loadModules();
+    const app = new VerificationApp();
+    await app.init();
 
-  // Cleanup on page unload
-  window.addEventListener('beforeunload', () => {
-    app.cleanup();
-  });
-});
+    window.addEventListener('beforeunload', () => {
+      app.cleanup();
+    });
+  } catch (error) {
+    console.error('Verification bootstrap error:', error);
+    const errorMessage = document.getElementById('error-message');
+    const errorPage = document.getElementById('error-page');
 
+    if (errorMessage) {
+      errorMessage.textContent = 'Verification interface failed to start. Please refresh and try again.';
+    }
+
+    if (errorPage) {
+      document.querySelectorAll('.page').forEach((page) => page.classList.remove('active'));
+      errorPage.classList.add('active');
+    }
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    void bootApp();
+  }, { once: true });
+} else {
+  void bootApp();
+}
