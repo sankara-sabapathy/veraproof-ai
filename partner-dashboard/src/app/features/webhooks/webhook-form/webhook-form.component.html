@@ -1,46 +1,73 @@
 <div class="webhook-form-dialog">
-  <form [formGroup]="form">
-    <div class="form-field">
-      <span class="p-float-label">
-        <input 
-          pInputText 
-          id="url" 
-          formControlName="url" 
+  <div class="dialog-intro">
+    <h2>{{ isEdit ? 'Edit Webhook' : 'Create Webhook' }}</h2>
+    <p>Register a delivery endpoint for session events and choose the notifications your downstream systems should receive.</p>
+  </div>
+
+  <form [formGroup]="form" class="webhook-form">
+    <section class="form-section">
+      <div class="section-header">
+        <div>
+          <h3>Endpoint</h3>
+          <p>The backend sends signed event payloads to this URL.</p>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="url" class="field-label">Webhook URL</label>
+        <input
+          pInputText
+          id="url"
+          formControlName="url"
           [class.ng-invalid]="form.get('url')?.invalid && form.get('url')?.touched"
-          class="full-width">
-        <label for="url">Webhook URL</label>
-      </span>
-      <small class="p-hint">The endpoint that will receive webhook notifications</small>
-      <small *ngIf="form.get('url')?.invalid && form.get('url')?.touched" class="p-error">
-        {{ getErrorMessage('url') }}
-      </small>
-    </div>
+          class="full-width"
+          placeholder="https://example.com/veraproof/webhooks">
+        <small class="p-hint">Use an HTTPS endpoint that can accept POST requests from VeraProof.</small>
+        <small *ngIf="form.get('url')?.invalid && form.get('url')?.touched" class="p-error">
+          {{ getErrorMessage('url') }}
+        </small>
+      </div>
+    </section>
 
-    <div class="form-field">
-      <label class="field-label">Event Types</label>
-      <p-listbox 
-        [options]="eventTypes" 
-        formControlName="events"
-        optionLabel="label" 
-        optionValue="value"
-        [multiple]="true"
-        [checkbox]="true"
-        [filter]="false"
-        [listStyle]="{'max-height':'250px'}"
-        styleClass="full-width">
-      </p-listbox>
-      <small class="p-hint">Select at least one event type</small>
-      <small *ngIf="form.get('events')?.invalid && form.get('events')?.touched" class="p-error">
-        Please select at least one event type
-      </small>
-    </div>
+    <section class="form-section">
+      <div class="section-header">
+        <div>
+          <h3>Event Types</h3>
+          <p>Choose the session lifecycle events your endpoint should subscribe to.</p>
+        </div>
+      </div>
 
-    <div class="form-field toggle-field">
-      <label for="enabled" class="toggle-label">Enable webhook</label>
-      <p-inputSwitch id="enabled" formControlName="enabled"></p-inputSwitch>
-    </div>
+      <div class="form-field">
+        <p-listbox
+          [options]="eventTypes"
+          formControlName="events"
+          optionLabel="label"
+          optionValue="value"
+          [multiple]="true"
+          [checkbox]="true"
+          [filter]="false"
+          [listStyle]="{'max-height':'250px'}"
+          styleClass="full-width webhook-events-list">
+        </p-listbox>
+        <small class="p-hint">Select at least one event type.</small>
+        <small *ngIf="form.get('events')?.invalid && form.get('events')?.touched" class="p-error">
+          Please select at least one event type
+        </small>
+      </div>
+    </section>
 
-    <p-accordion>
+    <section class="delivery-panel">
+      <div class="delivery-copy">
+        <span class="delivery-label">Delivery Status</span>
+        <p>Keep the webhook enabled to start receiving events immediately after saving.</p>
+      </div>
+      <div class="toggle-field">
+        <label for="enabled" class="toggle-label">Enable webhook</label>
+        <p-inputSwitch id="enabled" formControlName="enabled"></p-inputSwitch>
+      </div>
+    </section>
+
+    <p-accordion styleClass="payload-accordion">
       <p-accordionTab header="Webhook Payload Documentation">
         <div class="payload-example">
           <h4>Example Payload</h4>
@@ -63,10 +90,10 @@
   </form>
 
   <div class="dialog-actions">
-    <p-button label="Cancel" [text]="true" (onClick)="onCancel()"></p-button>
-    <p-button 
-      [label]="isEdit ? 'Update' : 'Create'" 
-      (onClick)="onSubmit()" 
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="onCancel()"></p-button>
+    <p-button
+      [label]="isEdit ? 'Update Webhook' : 'Create Webhook'"
+      (onClick)="onSubmit()"
       [disabled]="form.invalid">
     </p-button>
   </div>

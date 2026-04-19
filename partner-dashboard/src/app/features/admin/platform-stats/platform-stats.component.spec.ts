@@ -20,7 +20,9 @@ describe('PlatformStatsComponent', () => {
     total_revenue: 50000,
     revenue_this_month: 5000,
     average_sessions_per_tenant: 33.3,
-    platform_success_rate: 98.5
+    platform_success_rate: 98.5,
+    platform_failure_rate: 1.5,
+    average_trust_score: 91.2
   };
 
   const mockSystemHealth: SystemHealth = {

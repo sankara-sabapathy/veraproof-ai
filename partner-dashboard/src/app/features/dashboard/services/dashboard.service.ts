@@ -29,7 +29,7 @@ export class DashboardService {
     private analyticsService: AnalyticsService,
     private sessionsService: SessionsService,
     private billingService: BillingService
-  ) {}
+  ) { }
 
   getDashboardData(): Observable<DashboardData> {
     return forkJoin({

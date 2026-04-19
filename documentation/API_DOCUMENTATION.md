@@ -216,6 +216,7 @@ Create a new verification session.
   "metadata": {
     "user_id": "user-123",
     "transaction_id": "txn-456",
+    "verification_profile": "standard",
     "custom_field": "custom_value"
   },
   "return_url": "https://yourapp.com/verification/callback"
@@ -224,6 +225,14 @@ Create a new verification session.
 
 **Parameters:**
 - `metadata` (optional): Custom key-value pairs
+  - `verification_profile` (optional): Controls which AI analysis pipeline is used. Defaults to `"standard"` if not specified. Supported values:
+
+    | Value | Description |
+    |---|---|
+    | `standard` | Full human liveness detection with face pose variance, anti-spoofing, and IMU cross-validation |
+    | `static_human` | Human verification with tolerance for minimal movement. Spoof indicators are deferred to AI evaluation instead of hard-failing |
+    | `object_originality` | Verify physical objects (electronics, documents, etc.) are real and present in 3D space. Human face detection is skipped |
+
 - `return_url` (optional): URL to redirect after verification
 
 **Response (200 OK):**

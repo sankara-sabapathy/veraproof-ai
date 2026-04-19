@@ -6,6 +6,7 @@ import { SubscriptionOverviewComponent } from './subscription-overview.component
 import { BillingService, Subscription } from '../services/billing.service';
 import { BillingStateService } from '../services/billing-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 
 describe('SubscriptionOverviewComponent', () => {
   let component: SubscriptionOverviewComponent;
@@ -13,6 +14,7 @@ describe('SubscriptionOverviewComponent', () => {
   let mockBillingService: jasmine.SpyObj<BillingService>;
   let mockStateService: jasmine.SpyObj<BillingStateService>;
   let mockNotificationService: jasmine.SpyObj<NotificationService>;
+  let mockConfirmationDialogService: jasmine.SpyObj<ConfirmationDialogService>;
 
   const mockSubscription: Subscription = {
     tenant_id: 'tenant-123',
@@ -38,8 +40,9 @@ describe('SubscriptionOverviewComponent', () => {
       loading$: of(false)
     });
     mockNotificationService = jasmine.createSpyObj('NotificationService', [
-      'error'
+      'error', 'success'
     ]);
+    mockConfirmationDialogService = jasmine.createSpyObj('ConfirmationDialogService', ['confirm']);
 
     await TestBed.configureTestingModule({
       imports: [
@@ -50,6 +53,7 @@ describe('SubscriptionOverviewComponent', () => {
         { provide: BillingService, useValue: mockBillingService },
         { provide: BillingStateService, useValue: mockStateService },
         { provide: NotificationService, useValue: mockNotificationService },
+        { provide: ConfirmationDialogService, useValue: mockConfirmationDialogService },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -70,27 +74,27 @@ describe('SubscriptionOverviewComponent', () => {
 
   it('should load subscription on init', () => {
     mockBillingService.getSubscription.and.returnValue(of(mockSubscription));
-    
+
     component.ngOnInit();
-    
+
     expect(mockStateService.setLoading).toHaveBeenCalledWith(true);
     expect(mockBillingService.getSubscription).toHaveBeenCalled();
   });
 
   it('should set subscription in state on successful load', () => {
     mockBillingService.getSubscription.and.returnValue(of(mockSubscription));
-    
+
     component.loadSubscription();
-    
+
     expect(mockStateService.setSubscription).toHaveBeenCalledWith(mockSubscription);
   });
 
   it('should handle error when loading subscription fails', () => {
     const error = new Error('Network error');
     mockBillingService.getSubscription.and.returnValue(throwError(() => error));
-    
+
     component.loadSubscription();
-    
+
     expect(mockStateService.setError).toHaveBeenCalledWith('Network error');
     expect(mockNotificationService.error).toHaveBeenCalledWith('Failed to load subscription details');
   });

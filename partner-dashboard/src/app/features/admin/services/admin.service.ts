@@ -49,6 +49,8 @@ export interface PlatformStats {
   revenue_this_month: number;
   average_sessions_per_tenant: number;
   platform_success_rate: number;
+  platform_failure_rate: number;
+  average_trust_score: number;
 }
 
 export interface SystemHealth {

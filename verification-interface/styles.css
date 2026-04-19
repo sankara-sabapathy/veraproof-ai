@@ -38,7 +38,8 @@ body {
     justify-content: center;
 }
 
-.container, .landing-container {
+.container,
+.landing-container {
     background: white;
     border-radius: 20px;
     padding: 40px;
@@ -133,7 +134,8 @@ body {
 }
 
 /* Buttons */
-.btn-primary, .btn-secondary {
+.btn-primary,
+.btn-secondary {
     width: 100%;
     padding: 16px;
     border: none;
@@ -141,7 +143,7 @@ body {
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-primary {
@@ -179,6 +181,77 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.recording-indicator {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    z-index: 10;
+}
+
+.red-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #EF4444;
+    border-radius: 50%;
+    animation: pulse 1s infinite alternate;
+}
+
+.countdown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+#countdown-timer {
+    font-size: 6rem;
+    font-weight: 800;
+    color: white;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    opacity: 1;
+    transform: scale(1);
+}
+
+.animate-pop-a {
+    animation: popIn 1s ease-out;
+}
+
+.animate-pop-b {
+    animation: popIn 1s ease-out;
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.65;
+    }
+
+    50% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .branding-logo {
@@ -277,6 +350,14 @@ body {
     margin-bottom: 30px;
 }
 
+.score-note {
+    font-size: 0.85rem;
+    color: #6B7280;
+    margin-top: 8px;
+    font-weight: 500;
+    font-style: italic;
+}
+
 .result-score.success {
     color: var(--success-color);
 }
@@ -307,19 +388,21 @@ body {
 
 /* Mobile Responsive */
 @media (max-width: 640px) {
-    .container, .landing-container {
+
+    .container,
+    .landing-container {
         padding: 30px 20px;
     }
-    
+
     .brand-title {
         font-size: 2rem;
     }
-    
+
     .features {
         grid-template-columns: 1fr;
         gap: 15px;
     }
-    
+
     #phase-title {
         font-size: 1.3rem;
     }
@@ -327,9 +410,12 @@ body {
 
 /* Animations */
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
@@ -337,4 +423,67 @@ body {
 
 .pulsing {
     animation: pulse 2s ease-in-out infinite;
+}
+/* Accessibility and modal hardening */
+.consent-modal {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-color);
+}
+
+.consent-modal h3 {
+    margin-bottom: 10px;
+}
+
+.consent-modal p {
+    font-size: 0.9rem;
+    color: #4b5563;
+    margin: 10px 0;
+}
+
+.consent-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.consent-btn {
+    flex: 1;
+}
+
+.consent-agree-btn {
+    background-color: var(--button-color);
+}
+
+.ai-disclaimer {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 15px;
+    padding: 0 10px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary-color) 70%, white 30%);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    #countdown-timer {
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }

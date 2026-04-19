@@ -24,6 +24,8 @@
     "@angular/platform-browser-dynamic": "^17.0.0",
     "@angular/router": "^17.0.0",
     "@types/qrcode": "^1.5.6",
+    "ag-grid-angular": "^35.1.0",
+    "ag-grid-community": "^35.1.0",
     "chart.js": "^4.4.0",
     "dompurify": "^3.3.1",
     "fast-check": "^4.5.3",

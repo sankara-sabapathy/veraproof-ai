@@ -1,30 +1,41 @@
-<div class="layout-container">
-  <!-- Desktop: Toggleable sidebar -->
-  <aside class="layout-sidebar" *ngIf="!(isHandset$ | async) && sidebarVisible()">
-    <app-sidebar (navItemClick)="onSidebarNavClick()"></app-sidebar>
-  </aside>
-  
-  <!-- Mobile: Overlay sidebar -->
-  <p-sidebar 
-    [(visible)]="sidebarVisible" 
-    [modal]="true" 
-    [showCloseIcon]="true"
-    [dismissible]="true"
-    [closeOnEscape]="true"
-    position="left"
-    styleClass="mobile-sidebar"
-    *ngIf="isHandset$ | async">
-    <app-sidebar (navItemClick)="onSidebarNavClick()"></app-sidebar>
-  </p-sidebar>
-  
-  <div class="layout-content">
-    <app-toolbar 
-      (menuToggle)="toggleSidebar()"
-      [showMenuButton]="true">
-    </app-toolbar>
-    
-    <main class="main-content">
+<div class="layout-shell" [class.menu-open]="isMobileMenuOpen">
+  <app-toolbar
+    (menuToggle)="toggleSidebar()"
+    [showMenuButton]="true"
+    [menuOpen]="sidebarVisible">
+  </app-toolbar>
+
+  <div class="layout-body">
+    <aside class="layout-sidebar" *ngIf="!isHandset && sidebarVisible">
+      <app-sidebar (navItemClick)="onSidebarNavClick()"></app-sidebar>
+    </aside>
+
+    <main class="main-content" [attr.aria-hidden]="isMobileMenuOpen ? 'true' : null">
       <router-outlet></router-outlet>
     </main>
+  </div>
+
+  <div class="mobile-nav-layer" *ngIf="isHandset" [class.open]="isMobileMenuOpen">
+    <button
+      type="button"
+      class="mobile-nav-backdrop"
+      [class.visible]="isMobileMenuOpen"
+      [attr.aria-hidden]="!isMobileMenuOpen"
+      [tabIndex]="isMobileMenuOpen ? 0 : -1"
+      (click)="closeSidebar()">
+    </button>
+
+    <aside
+      class="mobile-sidebar"
+      [class.open]="isMobileMenuOpen"
+      [attr.aria-hidden]="!isMobileMenuOpen"
+      [attr.aria-modal]="isMobileMenuOpen"
+      aria-label="Primary navigation">
+      <app-sidebar
+        [isMobile]="true"
+        (navItemClick)="onSidebarNavClick()"
+        (dismiss)="closeSidebar()">
+      </app-sidebar>
+    </aside>
   </div>
 </div>

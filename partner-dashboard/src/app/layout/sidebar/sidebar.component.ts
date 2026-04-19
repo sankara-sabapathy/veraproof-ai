@@ -1,18 +1,15 @@
-import { Component, EventEmitter, OnInit, Output, OnDestroy } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
-import { MenuModule } from 'primeng/menu';
-import { DividerModule } from 'primeng/divider';
-import { MenuItem } from 'primeng/api';
 import { AuthService } from '../../core/services/auth.service';
-import { Observable, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 interface NavItem {
   label: string;
   icon: string;
   route: string;
-  adminOnly?: boolean;
+  permission?: string;
 }
 
 @Component({
@@ -20,81 +17,44 @@ interface NavItem {
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
-    MenuModule,
-    DividerModule
+    RouterModule
   ],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
 })
 export class SidebarComponent implements OnInit, OnDestroy {
+  @Input() isMobile = false;
   @Output() navItemClick = new EventEmitter<void>();
-  
-  isAdmin$: Observable<boolean>;
-  menuItems: MenuItem[] = [];
+  @Output() dismiss = new EventEmitter<void>();
+
+  visibleNavItems: NavItem[] = [];
+  adminNavItems: NavItem[] = [];
+  showAdminSection = false;
   private routerSubscription?: Subscription;
-  
+
   private navigationItems: NavItem[] = [
-    {
-      label: 'Dashboard',
-      icon: 'pi pi-home',
-      route: '/dashboard'
-    },
-    {
-      label: 'API Keys',
-      icon: 'pi pi-key',
-      route: '/api-keys'
-    },
-    {
-      label: 'Sessions',
-      icon: 'pi pi-shield',
-      route: '/sessions'
-    },
-    {
-      label: 'Analytics',
-      icon: 'pi pi-chart-line',
-      route: '/analytics'
-    },
-    {
-      label: 'Billing',
-      icon: 'pi pi-file',
-      route: '/billing'
-    },
-    {
-      label: 'Webhooks',
-      icon: 'pi pi-link',
-      route: '/webhooks'
-    },
-    {
-      label: 'Branding',
-      icon: 'pi pi-palette',
-      route: '/branding'
-    },
-    {
-      label: 'Admin',
-      icon: 'pi pi-users',
-      route: '/admin',
-      adminOnly: true
-    }
+    { label: 'Dashboard', icon: 'pi pi-home', route: '/dashboard', permission: 'analytics.read' },
+    { label: 'API Keys', icon: 'pi pi-key', route: '/api-keys', permission: 'api_keys.manage' },
+    { label: 'Sessions', icon: 'pi pi-shield', route: '/sessions', permission: 'sessions.read' },
+    { label: 'Fraud Analysis', icon: 'pi pi-search', route: '/fraud-analysis', permission: 'media-analysis.read' },
+    { label: 'Analytics', icon: 'pi pi-chart-line', route: '/analytics', permission: 'analytics.read' },
+    { label: 'Billing', icon: 'pi pi-file', route: '/billing', permission: 'billing.read' },
+    { label: 'Webhooks', icon: 'pi pi-link', route: '/webhooks', permission: 'webhooks.manage' },
+    { label: 'Branding', icon: 'pi pi-palette', route: '/branding', permission: 'branding.manage' },
+    { label: 'Encryption', icon: 'pi pi-lock', route: '/encryption', permission: 'org.members.manage' },
+    { label: 'Users', icon: 'pi pi-users', route: '/users', permission: 'org.members.manage' }
   ];
 
   constructor(
     private authService: AuthService,
     private router: Router
-  ) {
-    this.isAdmin$ = new Observable<boolean>(observer => {
-      observer.next(this.authService.isAdmin());
-    });
-  }
+  ) { }
 
   ngOnInit(): void {
-    this.buildMenuItems();
-    
-    // Update active state when route changes
+    this.buildNavItems();
     this.routerSubscription = this.router.events
       .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(() => {
-        this.updateActiveState();
       });
   }
 
@@ -102,30 +62,21 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.routerSubscription?.unsubscribe();
   }
 
-  private buildMenuItems(): void {
-    this.menuItems = this.navigationItems
-      .filter(item => this.shouldShowItem(item))
-      .map(item => ({
-        label: item.label,
-        icon: item.icon,
-        command: () => {
-          this.router.navigate([item.route]);
-          this.onNavItemClicked();
-        },
-        styleClass: this.isActiveRoute(item.route) ? 'active-menu-item' : ''
-      }));
+  private buildNavItems(): void {
+    this.visibleNavItems = this.navigationItems.filter(item => !item.permission || this.authService.hasPermission(item.permission));
+    this.showAdminSection = this.authService.isAdmin();
+    this.adminNavItems = this.showAdminSection
+      ? [
+          { label: 'Platform Stats', icon: 'pi pi-chart-bar', route: '/admin/platform-stats' },
+          { label: 'Tenants', icon: 'pi pi-building', route: '/admin/tenants' },
+          { label: 'Platform Users', icon: 'pi pi-user-plus', route: '/admin/users' },
+        ]
+      : [];
   }
 
-  private shouldShowItem(item: NavItem): boolean {
-    if (item.adminOnly) {
-      return this.authService.isAdmin();
-    }
-    return true;
-  }
-
-  private isActiveRoute(route: string): boolean {
+  isActiveRoute(route: string): boolean {
     if (route === '/dashboard') {
-      return this.router.url === route;
+      return this.router.url === route || this.router.url === '/';
     }
     return this.router.url.startsWith(route);
   }
@@ -134,8 +85,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.navItemClick.emit();
   }
 
-  // Rebuild menu items when route changes to update active state
-  updateActiveState(): void {
-    this.buildMenuItems();
+  onDismiss(): void {
+    this.dismiss.emit();
   }
 }

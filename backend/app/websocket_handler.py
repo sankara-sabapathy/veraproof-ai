@@ -1,9 +1,12 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, Optional
+import hashlib
 import json
 import logging
 import asyncio
+import time
 from datetime import datetime
+from opentelemetry import trace
 
 from app.session_manager import session_manager
 from app.models import SessionState, IMUData
@@ -23,27 +26,121 @@ class VerificationWebSocket:
         await websocket.accept()
         self.active_connections[session_id] = websocket
         
-        # Initialize session data storage
+        # Prevent data wipe if a user refreshes the tab while the background AI worker is analyzing
+        session_db_record = await session_manager.get_session(session_id)
+        if session_db_record:
+            state = session_db_record.get("state")
+            status = session_db_record.get("verification_status")
+            
+            # If the session has already advanced past data collection, protect the RAM and do not restart the playbook.
+            if state in [SessionState.ANALYZING.value, "success", "failed"] or status in ["success", "failed"]:
+                logger.info("Client reconnected to an already completed/analyzing session", extra={"session_id": session_id})
+                
+                # If Tier 3 AI has already firmly finalized this session, re-transmit the final score to the frontend.
+                if session_db_record.get("unified_score") is not None:
+                    await self.send_message(session_id, {
+                        "type": "result",
+                        "payload": {
+                            "status": "success",
+                            "reasoning": "Verification complete. You can close this tab and return to your application."
+                        }
+                    })
+                return # Abort playbook restart to cleanly wait for AI to finish or dashboard to render
+        
+        # Initialize session data storage for a fresh run
         self.session_data[session_id] = {
             "video_chunks": [],
             "imu_data": [],
             "optical_flow_data": [],
             "gyro_gamma": [],
             "phase": "idle",
-            "start_time": datetime.utcnow()
+            "start_time": datetime.utcnow(),
+            "recording_finalized": False,
+            "recording_finalized_at": None,
+            "recording_finalized_event": asyncio.Event(),
+            "recording_completion": None,
+            "pending_video_chunk_metadata": [],
+            "video_chunk_count": 0,
+            "video_byte_count": 0,
+            "last_video_chunk_sequence": 0,
         }
         
-        logger.info(f"WebSocket connected for session: {session_id}")
+        # Add correlation IDs to OpenTelemetry active spans
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            span.set_attribute("session.id", session_id)
+            span.set_attribute("websocket.action", "connect")
+            
+        logger.info(f"WebSocket securely connected", extra={"session_id": session_id})
         
         # Extend session expiration when verification begins
         await session_manager.extend_expiration(session_id)
+
+        # Trigger the dynamic verification playbook sequence in the background
+        asyncio.create_task(self.run_playbook(session_id))
+    
+    async def run_playbook(self, session_id: str):
+        """Execute the Verification Playbook (custom or default fallback)"""
+        session_db_record = await session_manager.get_session(session_id)
+        if not session_db_record:
+            logger.error("Could not find session in db to run playbook", extra={"session_id": session_id})
+            return
+
+        commands = session_db_record.get("verification_commands")
+
+        # Fallback Algorithm: If no custom commands exist (or list is empty string "[]"), construct the 15s physics default.
+        if not commands or isinstance(commands, str) and commands == "[]" or len(commands) == 0:
+            commands = [
+                {"text": "Reflect your face and slowly pan your phone to the RIGHT", "lens": "user", "duration": 5},
+                {"text": "Slowly return your phone to the LEFT", "lens": "user", "duration": 5},
+                {"text": "Stay centered. Analyzing data...", "lens": "user", "duration": 5}
+            ]
+        elif isinstance(commands, str):
+            commands = json.loads(commands)
+            
+        # Dynamically calculate the ACTUAL session duration from the playbook commands
+        session_duration = sum(cmd.get("duration", 0) for cmd in commands)
+
+        logger.info(f"Starting Playbook Sequence with {len(commands)} commands over {session_duration}s", extra={"session_id": session_id})
+
+        await self.send_message(session_id, {
+            "type": "playbook_started",
+            "payload": {
+                "session_duration": session_duration
+            }
+        })
+        
+        # Sequentially stream instructions down to the "Dumb Terminal" frontend
+        for index, cmd in enumerate(commands):
+            if session_id not in self.active_connections:
+                break # User dropped connection mid-playbook
+                
+            await self.send_message(session_id, {
+                "type": "instruction",
+                "payload": {
+                    "text": cmd["text"],
+                    "lens": cmd.get("lens", "user"),
+                    "duration": cmd["duration"]
+                }
+            })
+            
+            # Record the state for Tier 1 Physics grading awareness
+            await session_manager.update_session_state(session_id, f"cmd_{index}")
+            
+            # Wait for the exact requested duration before firing the next command
+            await asyncio.sleep(cmd["duration"])
+
+        # When the playbook finishes, trigger verification
+        if session_id in self.active_connections:
+            await session_manager.update_session_state(session_id, SessionState.ANALYZING)
+            asyncio.create_task(self.perform_verification(session_id, session_duration))
     
     def disconnect(self, session_id: str):
         """Remove WebSocket connection"""
         if session_id in self.active_connections:
             del self.active_connections[session_id]
         
-        logger.info(f"WebSocket disconnected for session: {session_id}")
+        logger.info(f"WebSocket client disconnected", extra={"session_id": session_id})
     
     async def send_message(self, session_id: str, message: Dict):
         """Send message to client"""
@@ -86,29 +183,287 @@ class VerificationWebSocket:
             "type": "error",
             "payload": {"error": error}
         })
+
+    def _coerce_count(self, value, default: Optional[int] = None) -> Optional[int]:
+        try:
+            if value is None:
+                return default
+            parsed = int(value)
+            return parsed if parsed >= 0 else default
+        except (TypeError, ValueError):
+            return default
+
+    def _ensure_recording_transport_state(self, session_data: Optional[Dict]) -> Optional[Dict]:
+        if session_data is None:
+            return None
+
+        session_data.setdefault("recording_finalized", False)
+        session_data.setdefault("recording_finalized_at", None)
+        session_data.setdefault("recording_finalized_event", asyncio.Event())
+        session_data.setdefault("recording_completion", None)
+        session_data.setdefault("pending_video_chunk_metadata", [])
+
+        if "video_chunk_count" not in session_data:
+            session_data["video_chunk_count"] = len(session_data.get("video_chunks", []))
+        if "video_byte_count" not in session_data:
+            session_data["video_byte_count"] = sum(len(chunk.get("data", b"")) for chunk in session_data.get("video_chunks", []))
+        if "last_video_chunk_sequence" not in session_data:
+            session_data["last_video_chunk_sequence"] = max(
+                (self._coerce_count(chunk.get("sequence"), index + 1) or (index + 1) for index, chunk in enumerate(session_data.get("video_chunks", []))),
+                default=0,
+            )
+
+        return session_data
+
+    async def _mark_recording_finalized_if_ready(self, session_id: str):
+        current = self._ensure_recording_transport_state(self.session_data.get(session_id))
+        if not current or current.get("recording_finalized"):
+            return
+
+        completion = current.get("recording_completion")
+        if not completion:
+            return
+
+        expected_chunk_count = self._coerce_count(completion.get("chunk_count"), current.get("video_chunk_count", 0)) or 0
+        expected_byte_count = self._coerce_count(completion.get("byte_count"), current.get("video_byte_count", 0)) or 0
+        expected_last_sequence = self._coerce_count(completion.get("last_sequence"), current.get("last_video_chunk_sequence", 0)) or 0
+
+        if current.get("video_chunk_count", 0) < expected_chunk_count:
+            return
+        if current.get("video_byte_count", 0) < expected_byte_count:
+            return
+        if current.get("last_video_chunk_sequence", 0) < expected_last_sequence:
+            return
+
+        current["recording_finalized"] = True
+        current["recording_finalized_at"] = datetime.utcnow().isoformat()
+        current["recording_finalized_event"].set()
+
+        logger.info(
+            "Frontend recorder finalized; AI pipeline may safely rebuild WebM",
+            extra={
+                "session_id": session_id,
+                "chunk_count": current.get("video_chunk_count", 0),
+                "byte_count": current.get("video_byte_count", 0),
+                "last_sequence": current.get("last_video_chunk_sequence", 0),
+            },
+        )
+
+        await self.send_message(session_id, {
+            "type": "recording_finalized",
+            "payload": {
+                "chunk_count": current.get("video_chunk_count", 0),
+                "byte_count": current.get("video_byte_count", 0),
+                "last_sequence": current.get("last_video_chunk_sequence", 0),
+            },
+        })
+
+    def _ordered_video_chunks(self, session_data: Dict) -> List[Dict]:
+        current = self._ensure_recording_transport_state(session_data) or {}
+        return sorted(
+            current.get("video_chunks", []),
+            key=lambda chunk: (
+                self._coerce_count(chunk.get("sequence"), 0) or 0,
+                chunk.get("timestamp", 0.0),
+            ),
+        )
+
+    def _build_video_payload(self, session_data: Dict) -> bytes:
+        return b"".join(chunk["data"] for chunk in self._ordered_video_chunks(session_data))
+
+    async def _wait_for_recording_finalization(self, session_id: str, timeout_seconds: float = 5.0):
+        session_data = self._ensure_recording_transport_state(self.session_data.get(session_id))
+        if not session_data:
+            return
+
+        if session_data.get("recording_finalized"):
+            return
+
+        finalize_event = session_data.get("recording_finalized_event")
+        if finalize_event is None:
+            return
+
+        try:
+            await asyncio.wait_for(finalize_event.wait(), timeout=timeout_seconds)
+            await asyncio.sleep(0.05)
+        except asyncio.TimeoutError:
+            completion = session_data.get("recording_completion") or {}
+            logger.warning(
+                "Timed out waiting for recorder finalization signal; continuing with buffered chunks",
+                extra={
+                    "session_id": session_id,
+                    "chunk_count": session_data.get("video_chunk_count", len(session_data.get("video_chunks", []))),
+                    "expected_chunk_count": completion.get("chunk_count"),
+                    "byte_count": session_data.get("video_byte_count", 0),
+                    "expected_byte_count": completion.get("byte_count"),
+                },
+            )
+
+    def _split_rekognition_artifact(self, vision_context: Optional[Dict]) -> tuple[Dict, Optional[Dict]]:
+        if not isinstance(vision_context, dict):
+            return {}, None
+
+        sanitized_context = dict(vision_context)
+        artifact_payload = sanitized_context.pop("_artifact_rekognition_raw", None)
+        return sanitized_context, artifact_payload
+
+    async def _register_session_artifact(
+        self,
+        *,
+        tenant_id,
+        session_id: str,
+        artifact_type: str,
+        file_name: str,
+        content_type: str,
+        storage_key: str,
+        artifact_bytes: bytes,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+        encryption_mode: Optional[str] = None,
+        encryption_key_id: Optional[str] = None,
+    ):
+        from app.artifact_manager import artifact_manager
+
+        await artifact_manager.upsert_artifact(
+            session_id=session_id,
+            tenant_id=str(tenant_id),
+            artifact_type=artifact_type,
+            provider=provider,
+            file_name=file_name,
+            content_type=content_type,
+            storage_key=storage_key,
+            size_bytes=len(artifact_bytes),
+            sha256=hashlib.sha256(artifact_bytes).hexdigest(),
+            metadata=metadata or {},
+            encryption_mode=encryption_mode,
+            encryption_key_id=encryption_key_id,
+        )
+
+    async def _store_json_session_artifact(
+        self,
+        *,
+        tenant_id,
+        session_id: str,
+        artifact_type: str,
+        file_name: str,
+        payload: Dict,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+    ) -> Optional[str]:
+        from app.storage import storage_manager
+
+        artifact_bytes = json.dumps(payload, indent=2, default=str).encode('utf-8')
+        storage_key = await storage_manager.store_session_json_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            filename=file_name,
+            payload=payload,
+        )
+        encryption_metadata = await storage_manager.get_object_metadata(storage_key)
+        await self._register_session_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            artifact_type=artifact_type,
+            file_name=file_name,
+            content_type='application/json',
+            storage_key=storage_key,
+            artifact_bytes=artifact_bytes,
+            provider=provider,
+            metadata=metadata,
+            encryption_mode=encryption_metadata.get('vp_mode'),
+            encryption_key_id=encryption_metadata.get('vp_key_id'),
+        )
+        return storage_key
+
+    async def _store_binary_session_artifact(
+        self,
+        *,
+        tenant_id,
+        session_id: str,
+        artifact_type: str,
+        file_name: str,
+        artifact_data: bytes,
+        content_type: str,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict] = None,
+    ) -> Optional[str]:
+        from app.storage import storage_manager
+
+        storage_key = await storage_manager.store_session_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            filename=file_name,
+            artifact_data=artifact_data,
+            content_type=content_type,
+        )
+        encryption_metadata = await storage_manager.get_object_metadata(storage_key)
+        await self._register_session_artifact(
+            tenant_id=tenant_id,
+            session_id=session_id,
+            artifact_type=artifact_type,
+            file_name=file_name,
+            content_type=content_type,
+            storage_key=storage_key,
+            artifact_bytes=artifact_data,
+            provider=provider,
+            metadata=metadata,
+            encryption_mode=encryption_metadata.get('vp_mode'),
+            encryption_key_id=encryption_metadata.get('vp_key_id'),
+        )
+        return storage_key
     
     async def handle_video_chunk(self, session_id: str, chunk_data: bytes):
         """Handle incoming video chunk"""
-        if session_id not in self.session_data:
-            logger.error(f"Session data not found: {session_id}")
+        current = self._ensure_recording_transport_state(self.session_data.get(session_id))
+        if not current:
+            logger.error(f"Failed to find session data", extra={"session_id": session_id})
             return
-        
-        self.session_data[session_id]["video_chunks"].append({
+
+        metadata_queue = current.get("pending_video_chunk_metadata") or []
+        metadata = metadata_queue.pop(0) if metadata_queue else {}
+        if not metadata:
+            logger.warning("Video chunk bytes arrived without metadata descriptor", extra={"session_id": session_id})
+        sequence = self._coerce_count(metadata.get("sequence"), current.get("last_video_chunk_sequence", 0) + 1) or (current.get("last_video_chunk_sequence", 0) + 1)
+        expected_size = self._coerce_count(metadata.get("size"))
+        actual_size = len(chunk_data)
+
+        if expected_size is not None and expected_size != actual_size:
+            logger.warning(
+                "Video chunk size mismatch detected",
+                extra={"session_id": session_id, "sequence": sequence, "expected_size": expected_size, "actual_size": actual_size},
+            )
+
+        if any(chunk.get("sequence") == sequence for chunk in current.get("video_chunks", [])):
+            logger.warning("Duplicate video chunk sequence ignored", extra={"session_id": session_id, "sequence": sequence})
+            return
+
+        current["video_chunks"].append({
             "data": chunk_data,
-            "timestamp": datetime.utcnow().timestamp()
+            "timestamp": datetime.utcnow().timestamp(),
+            "sequence": sequence,
+            "size": actual_size,
         })
-        
-        logger.debug(f"Video chunk received for session: {session_id}")
+        current["video_chunk_count"] = current.get("video_chunk_count", 0) + 1
+        current["video_byte_count"] = current.get("video_byte_count", 0) + actual_size
+        current["last_video_chunk_sequence"] = max(current.get("last_video_chunk_sequence", 0), sequence)
+
+        logger.debug(
+            "Video chunk received and buffered",
+            extra={"session_id": session_id, "chunk_size": actual_size, "sequence": sequence},
+        )
+
+        await self._mark_recording_finalized_if_ready(session_id)
+    
     
     async def handle_imu_batch(self, session_id: str, imu_data: List[Dict]):
         """Handle incoming IMU data batch"""
         if session_id not in self.session_data:
-            logger.error(f"Session data not found: {session_id}")
+            logger.error(f"Failed to find session data", extra={"session_id": session_id})
             return
         
         # Safety check for None or empty data
         if not imu_data:
-            logger.warning(f"Empty or None IMU data received for session: {session_id}")
+            logger.warning(f"Empty or None IMU payload detected", extra={"session_id": session_id})
             return
         
         # Store IMU data
@@ -123,7 +478,11 @@ class VerificationWebSocket:
                 if gamma_value is not None and gamma_value != 0:
                     self.session_data[session_id]["gyro_gamma"].append(gamma_value)
         
-        logger.info(f"IMU batch received for session: {session_id}, count: {len(imu_data)}, total gyro: {len(self.session_data[session_id]['gyro_gamma'])}")
+        logger.info(f"IMU sensor batch processed", extra={
+            "session_id": session_id, 
+            "samples_received": len(imu_data), 
+            "total_gyro_pool": len(self.session_data[session_id]['gyro_gamma'])
+        })
     
     def get_session_data(self, session_id: str) -> Optional[Dict]:
         """Get stored session data"""
@@ -131,116 +490,435 @@ class VerificationWebSocket:
     
     def clear_session_data(self, session_id: str):
         """Clear session data from memory"""
+        if session_id in self.active_connections:
+            del self.active_connections[session_id]
+            logger.info("WebSocket connection state removed", extra={"session_id": session_id})
+            
         if session_id in self.session_data:
             del self.session_data[session_id]
-        
-        logger.info(f"Session data cleared: {session_id}")
-    
+        logger.info("Session state cleared from RAM", extra={"session_id": session_id})
+            
+    async def disconnect(self, session_id: str):
+        """Handle client disconnect cleanly without deleting session RAM (Deferred to AI worker)"""
+        if session_id in self.active_connections:
+            del self.active_connections[session_id]
+            logger.info("WebSocket client disconnected, memory buffer preserved for AI", extra={"session_id": session_id})
+            
     async def handle_message(self, session_id: str, message: Dict):
         """Handle incoming WebSocket message"""
         msg_type = message.get("type")
         payload = message.get("payload")
         
-        logger.info(f"WebSocket message received: type={msg_type}, session={session_id}")
+        logger.debug(f"Handling websocket event payload", extra={"session_id": session_id, "msg_type": msg_type})
         
         if msg_type == "video_chunk":
-            # Video chunk is sent as binary, handled separately
-            pass
+            current = self._ensure_recording_transport_state(self.session_data.get(session_id))
+            if not current:
+                logger.warning("Video chunk metadata arrived after session buffer was cleared", extra={"session_id": session_id})
+                return
+
+            if not isinstance(current.get("pending_video_chunk_metadata"), list):
+                current["pending_video_chunk_metadata"] = []
+
+            current["pending_video_chunk_metadata"].append(payload if isinstance(payload, dict) else {})
         elif msg_type == "imu_batch":
             await self.handle_imu_batch(session_id, payload)
+        elif msg_type == "recording_complete":
+            current = self._ensure_recording_transport_state(self.session_data.get(session_id))
+            if not current:
+                logger.warning("Recording completion arrived after session buffer was cleared", extra={"session_id": session_id})
+                return
+
+            completion_payload = payload if isinstance(payload, dict) else {}
+            current["recording_completion"] = {
+                "chunk_count": self._coerce_count(completion_payload.get("chunk_count"), current.get("video_chunk_count", 0)),
+                "byte_count": self._coerce_count(completion_payload.get("byte_count"), current.get("video_byte_count", 0)),
+                "last_sequence": self._coerce_count(completion_payload.get("last_sequence"), current.get("last_video_chunk_sequence", 0)),
+                "timestamp": completion_payload.get("timestamp") or int(time.time() * 1000),
+            }
+
+            logger.info(
+                "Recorder stop signal received; validating final chunk delivery",
+                extra={
+                    "session_id": session_id,
+                    "expected_chunk_count": current["recording_completion"].get("chunk_count"),
+                    "expected_byte_count": current["recording_completion"].get("byte_count"),
+                    "received_chunk_count": current.get("video_chunk_count", 0),
+                    "received_byte_count": current.get("video_byte_count", 0),
+                },
+            )
+
+            await self._mark_recording_finalized_if_ready(session_id)
         elif msg_type == "phase_complete":
-            phase = payload.get("phase")
-            logger.info(f"Phase complete: {phase} for session: {session_id}")
-            
-            # Trigger next phase or analysis
-            if phase == "baseline":
-                await self.send_phase_change(session_id, "pan")
-            elif phase == "pan":
-                await self.send_phase_change(session_id, "return")
-            elif phase == "return":
-                # Start analysis
-                await session_manager.update_session_state(session_id, SessionState.ANALYZING)
-                await self.perform_verification(session_id)
+            # Phase Complete is now vestigial since the Backend runs the asynchronous playbook. 
+            pass
+        elif msg_type == "instruction_acknowledged":
+            logger.debug("Frontend successfully rendered the latest playbook instruction", extra={"session_id": session_id})
         else:
-            logger.warning(f"Unknown message type: {msg_type}")
+            logger.warning(f"Unknown websocket instruction blocked", extra={"msg_type": msg_type, "session_id": session_id})
     
-    async def perform_verification(self, session_id: str):
-        """Perform verification analysis"""
+    async def perform_verification(self, session_id: str, expected_duration: int = 15):
+        """Perform Tier 1 verification, show result to user, upload artifacts, then defer Tier 2 (AI)"""
         try:
+            start_time = time.time()
             from app.sensor_fusion import sensor_fusion_analyzer
             
-            session_data = self.session_data.get(session_id)
+            session_data = self._ensure_recording_transport_state(self.session_data.get(session_id))
             if not session_data:
-                logger.error(f"No session data for verification: {session_id}")
+                logger.error(f"Failed to extract session verification data", extra={"session_id": session_id})
                 await self.send_message(session_id, {
                     "type": "error",
                     "payload": {"message": "Verification failed: No data collected"}
                 })
                 return
             
+            span = trace.get_current_span()
+            if span and span.is_recording():
+                span.set_attribute("session.id", session_id)
+
+            # Enforce strict session_duration wait time for UX, calculated from the first buffered chunk.
+            video_chunks = self._ordered_video_chunks(session_data)
+            first_chunk_time = min((chunk.get("timestamp", start_time) for chunk in video_chunks), default=start_time)
+            elapsed_time = time.time() - first_chunk_time
+            if elapsed_time < expected_duration:
+                await asyncio.sleep(expected_duration - elapsed_time)
+
+            await self.send_message(session_id, {
+                "type": "status",
+                "payload": {
+                    "message": "Finalizing recording. Keep this page open for a moment.",
+                    "type": "info"
+                }
+            })
+            await self.send_message(session_id, {
+                "type": "finalize_recording",
+                "payload": {
+                    "message": "Finalizing recording. Keep this page open for a moment.",
+                    "type": "info"
+                }
+            })
+            await self._wait_for_recording_finalization(session_id)
+
             gyro_gamma = session_data.get("gyro_gamma", [])
             optical_flow_x = session_data.get("optical_flow_data", [])
-            
-            logger.info(f"Performing verification: {len(gyro_gamma)} gyro samples, {len(optical_flow_x)} optical flow samples")
-            
+
+            logger.info(f"AI Sensor Fusion initialized", extra={
+                "session_id": session_id,
+                "gyro_samples": len(gyro_gamma),
+                "optical_flow_samples": len(optical_flow_x)
+            })
+
+            if span and span.is_recording():
+                span.set_attribute("ai.gyro_samples", len(gyro_gamma))
+
             # For now, use mock optical flow data (will be computed from video in full implementation)
             if len(optical_flow_x) == 0:
                 optical_flow_x = [g * 0.9 + (i % 3 - 1) * 0.1 for i, g in enumerate(gyro_gamma)]
-            
-            # Calculate Pearson correlation
+
+            correlation = 0.0
             if len(gyro_gamma) >= 10 and len(optical_flow_x) >= 10:
                 correlation = sensor_fusion_analyzer.calculate_pearson_correlation(
                     gyro_gamma[:len(optical_flow_x)],
                     optical_flow_x[:len(gyro_gamma)]
                 )
-                
-                # Calculate trust score
-                tier_1_score = int(correlation * 100)
-                final_trust_score = tier_1_score
-                
-                # Determine result
-                is_authentic = correlation >= 0.85
-                reasoning = f"Sensor fusion correlation: {correlation:.3f}. "
-                reasoning += "Authentic human movement detected." if is_authentic else "Suspicious movement pattern detected."
-                
-                # Update session with results
-                await session_manager.update_session_results(
-                    session_id=session_id,
-                    tier_1_score=tier_1_score,
-                    tier_2_score=None,
-                    final_trust_score=final_trust_score,
-                    correlation_value=correlation,
-                    reasoning=reasoning
-                )
-                
-                # Send result to client
-                await self.send_message(session_id, {
-                    "type": "result",
-                    "payload": {
-                        "status": "success" if is_authentic else "failed",
-                        "final_trust_score": final_trust_score,
-                        "correlation_value": correlation,
-                        "reasoning": reasoning
-                    }
-                })
-                
-                logger.info(f"Verification complete for {session_id}: correlation={correlation:.3f}, authentic={is_authentic}")
-                
-                # Upload artifacts to S3 after verification
-                await self.upload_session_artifacts(session_id)
-            else:
-                logger.warning(f"Insufficient data for verification: {len(gyro_gamma)} gyro, {len(optical_flow_x)} optical flow")
-                await self.send_message(session_id, {
-                    "type": "error",
-                    "payload": {"message": "Insufficient sensor data collected"}
-                })
-                
+
+            tier_1_score = int(correlation * 100) if len(gyro_gamma) >= 10 else 0
+            tier_1_passed = tier_1_score >= 50
+            tier_1_status = "success" if tier_1_passed else "failed"
+
+            await session_manager.update_session_results(
+                session_id=session_id,
+                tier_1_score=tier_1_score,
+                tier_2_score=None,
+                final_trust_score=tier_1_score,
+                correlation_value=correlation,
+                reasoning=f"Sensor correlation: {correlation:.3f}. AI deep analysis will follow.",
+                physics_score=tier_1_score,
+                verification_status=tier_1_status
+            )
+
+            await self.send_message(session_id, {
+                "type": "result",
+                "payload": {
+                    "status": "success",
+                    "reasoning": "Verification complete. You can close this tab and return to your application."
+                }
+            })
+
+            logger.info(f"Tier 1 Verification concluded", extra={
+                "session_id": session_id,
+                "physics_score": tier_1_score,
+                "tier_1_status": tier_1_status
+            })
+
+            asyncio.create_task(self.run_ai_verification_background(session_id, session_data))
+            await self.upload_session_artifacts(session_id)
+
         except Exception as e:
-            logger.error(f"Verification error: {e}", exc_info=True)
+            logger.error(f"Verification Tier 1 crashed: {e}", exc_info=True, extra={"session_id": session_id})
             await self.send_message(session_id, {
                 "type": "error",
                 "payload": {"message": f"Verification failed: {str(e)}"}
             })
+    
+    async def run_ai_verification_background(self, session_id: str, session_data: dict):
+        """Background asynchronous AI video frame analysis. Failures here are fully isolated."""
+        try:
+            import tempfile
+            import os
+            from app.video_utils import extract_sparse_keyframes
+            from app.ai_provider import get_ai_pipeline
+            from app.scoring import calculate_unified_score, evaluate_trust_status
+            from app.database import db_manager
+            from app.webhooks import webhook_manager
+            from app.quota import quota_manager
+            from app.config import settings
+
+            await self._wait_for_recording_finalization(session_id)
+
+            # 1. Rebuild video file
+            if not session_data.get('video_chunks'):
+                logger.warning("No video data found for AI processing", extra={"session_id": session_id})
+                return
+                
+            video_data = self._build_video_payload(session_data)
+            
+            # 2. Extract frames
+            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp_video:
+                tmp_video.write(video_data)
+                tmp_video.flush()
+                tmp_video_path = tmp_video.name
+            
+            frames_b64 = extract_sparse_keyframes(tmp_video_path, num_frames=5)
+            
+            # Clean up temp file
+            try:
+                os.remove(tmp_video_path)
+            except:
+                pass
+            
+            # 3. Request AI classification via the 3-Tier Verification Engine
+            vision_engine, genai_engine = get_ai_pipeline()
+            session_db = await session_manager.get_session(session_id)
+            metadata = session_db.get("metadata", {}) if session_db else {}
+            if session_db:
+                db_manager.set_request_context(
+                    tenant_id=str(session_db.get('tenant_id')),
+                    environment_id=session_db.get('tenant_environment_id'),
+                    environment_slug=session_db.get('environment'),
+                    actor_type='service_account',
+                )
+            
+            if not frames_b64:
+                logger.error(
+                    "Skipping Tier 2 and Tier 3 analysis because no decodable video frames were extracted",
+                    extra={"session_id": session_id},
+                )
+                is_spoofed = False
+                vision_context = {
+                    "status": "warning",
+                    "message": "No decodable video frames were extracted from the recorded video.",
+                }
+                rekognition_artifact = None
+            else:
+                # --- TIER 2: VISION SCANNER (AWS Rekognition) ---
+                # Pass metadata so Rekognition can resolve the verification_profile for conditional spoof suppression
+                is_spoofed, vision_context = await vision_engine.extract_context(frames_b64, metadata)
+                vision_context, rekognition_artifact = self._split_rekognition_artifact(vision_context)
+
+                if session_db and rekognition_artifact:
+                    try:
+                        await self._store_json_session_artifact(
+                            tenant_id=session_db['tenant_id'],
+                            session_id=session_id,
+                            artifact_type='rekognition_raw',
+                            file_name='rekognition_raw.json',
+                            payload=rekognition_artifact,
+                            provider='aws_rekognition',
+                            metadata={
+                                'verification_profile': metadata.get('verification_profile', 'standard'),
+                                'frame_count': len(rekognition_artifact.get('frames', [])),
+                            },
+                        )
+                    except Exception as artifact_err:
+                        logger.error(f"Failed to persist Rekognition artifact: {artifact_err}", extra={"session_id": session_id})
+            # --- Compute IMU summary stats for cross-modal validation ---
+            imu_context = {"has_data": False}
+            gyro_gamma = session_data.get("gyro_gamma", [])
+            imu_raw = session_data.get("imu_data", [])
+            
+            if len(gyro_gamma) >= 5:
+                import statistics
+                imu_context = {
+                    "has_data": True,
+                    "gyro_gamma_samples": len(gyro_gamma),
+                    "gyro_gamma_range": round(max(gyro_gamma) - min(gyro_gamma), 4),
+                    "gyro_gamma_std_dev": round(statistics.stdev(gyro_gamma), 4),
+                    "gyro_gamma_mean": round(statistics.mean(gyro_gamma), 4),
+                    "motion_detected": abs(max(gyro_gamma) - min(gyro_gamma)) > 5.0,
+                    "motion_interpretation": "device_was_panned" if abs(max(gyro_gamma) - min(gyro_gamma)) > 15.0 
+                        else "minimal_device_movement" if abs(max(gyro_gamma) - min(gyro_gamma)) > 5.0
+                        else "device_stationary"
+                }
+                
+                # Extract accelerometer magnitude variance if available
+                accel_magnitudes = []
+                for sample in imu_raw:
+                    accel = sample.get("acceleration") or sample.get("accelerationIncludingGravity", {})
+                    if accel:
+                        x = accel.get("x", 0) or 0
+                        y = accel.get("y", 0) or 0
+                        z = accel.get("z", 0) or 0
+                        magnitude = (x**2 + y**2 + z**2) ** 0.5
+                        accel_magnitudes.append(magnitude)
+                
+                if len(accel_magnitudes) > 1:
+                    imu_context["accel_magnitude_std_dev"] = round(statistics.stdev(accel_magnitudes), 4)
+                    imu_context["accel_interpretation"] = (
+                        "natural_hand_tremor" if statistics.stdev(accel_magnitudes) > 0.1 
+                        else "suspiciously_stable"
+                    )
+                
+                logger.info(f"IMU context for AI evaluation", extra={
+                    "session_id": session_id,
+                    "imu_context": imu_context
+                })
+            
+            if not frames_b64:
+                tier_2_score = 0
+                ai_score = -1.0
+                ai_explanation = {
+                    "summary": "AI analysis was skipped because the recorded video could not be decoded into reviewable frames. Tier 1 physics evidence was preserved."
+                }
+            elif is_spoofed:
+                # Hard-fail the pipeline if Rekognition detects obvious Presentation Attacks (Screens, Photos)
+                tier_2_score = 0
+                ai_score = 0.0
+                ai_explanation = vision_context
+            else:
+                # --- TIER 3: GENERATIVE AI EVALUATOR (Google Gemini / Amazon Nova) ---
+                # Calculate a rough Tier 2 pass/fail metric for the dashboard (just context extraction success)
+                tier_2_score = 100 if vision_context.get("status") == "success" else 0
+                
+                # Hand off the AWS Rekognition structured JSON and IMU context to the GenAI prompt
+                ai_score, ai_explanation = await genai_engine.evaluate_trust(frames_b64, vision_context, metadata, imu_context)
+            
+            # 4. Final Scoring Fusion
+            if not session_db:
+                logger.error("Session missing from DB during AI pass", extra={"session_id": session_id})
+                return
+                
+            physics_score = session_db.get("physics_score", 0.0)
+            if physics_score is None:
+                physics_score = 0.0
+            
+            # Fuse Tier 1 (Physics) with Tier 3 (GenAI Trust Score)
+            unified_score = calculate_unified_score(physics_score, ai_score)
+            is_authentic = evaluate_trust_status(unified_score)
+            
+            final_status = "success" if is_authentic else "failed"
+            final_reasoning = f"{ai_explanation.get('summary', 'N/A')}"
+            
+            # 5. Update Session DB with Full 3-Tier enrichment
+            await session_manager.update_session_results(
+                session_id=session_id,
+                tier_1_score=int(physics_score),
+                tier_2_score=int(tier_2_score),
+                final_trust_score=int(unified_score),
+                correlation_value=session_db.get("correlation_value"),
+                reasoning=final_reasoning,
+                ai_score=ai_score,
+                physics_score=physics_score,
+                unified_score=unified_score,
+                ai_explanation=ai_explanation,
+                verification_status=final_status
+            )
+            
+            logger.info("AI Verification Complete", extra={"session_id": session_id, "unified_score": unified_score})
+            
+            # Decrement usage quota
+            tenant_id = session_db.get("tenant_id")
+            if tenant_id:
+                try:
+                    await quota_manager.decrement_quota(str(tenant_id))
+                except Exception as q_err:
+                    logger.error(f"Failed to decrement quota: {q_err}", extra={"session_id": session_id})
+            
+            # 6. Webhook Notification
+            environment_id = session_db.get('tenant_environment_id') if session_db else None
+            webhooks = await db_manager.fetch_all(
+                """
+                SELECT w.webhook_id, w.url, t.webhook_secret
+                FROM webhooks w
+                JOIN tenants t ON t.tenant_id = w.tenant_id
+                WHERE w.tenant_id = $1
+                  AND w.enabled = TRUE
+                  AND ($2::uuid IS NULL OR w.tenant_environment_id = $2)
+                ORDER BY w.created_at ASC
+                """,
+                tenant_id,
+                environment_id,
+            )
+
+            if webhooks:
+                webhook_payload = {
+                    "event": "verification.complete",
+                    "environment": session_db.get('environment') if session_db else None,
+                    "session_id": session_id,
+                    "verification_status": final_status,
+                    "final_trust_score": int(unified_score),
+                    "ai_score": ai_score,
+                    "physics_score": physics_score,
+                    "ai_explanation": ai_explanation,
+                    "metadata": session_db.get("metadata", {})
+                }
+
+                for webhook in webhooks:
+                    try:
+                        asyncio.create_task(
+                            webhook_manager.retry_webhook(
+                                tenant_id=str(tenant_id),
+                                webhook_url=webhook.get('url'),
+                                payload=webhook_payload,
+                                api_secret=webhook.get('webhook_secret') or settings.app_session_secret,
+                                webhook_id=str(webhook.get('webhook_id')),
+                                event_type='verification.complete',
+                            )
+                        )
+                    except Exception as webhook_err:
+                        logger.error(f"Failed to schedule webhook: {webhook_err}", extra={"session_id": session_id, "webhook_id": str(webhook.get('webhook_id'))})
+                
+        except Exception as e:
+            # AI failure is fully isolated — it does NOT change the user-facing verification status immediately
+            # But we MUST record the AI failure score so the dashboard doesn't inherit Tier 1's score.
+            logger.error(f"Background AI worker failed (non-critical): {e}", exc_info=True, extra={"session_id": session_id})
+            
+            try:
+                session_db = await session_manager.get_session(session_id)
+                if session_db:
+                    physics = session_db.get("physics_score", 0.0) or 0.0
+                    await session_manager.update_session_results(
+                        session_id=session_id,
+                        tier_1_score=int(physics),
+                        tier_2_score=0,
+                        final_trust_score=int(physics), # Overall stays at physics
+                        correlation_value=session_db.get("correlation_value"),
+                        reasoning=f"AI Forensics Error: {str(e)[:100]}",
+                        ai_score=0.0,
+                        physics_score=physics,
+                        unified_score=0.0, # Explicitly denote AI failure
+                        ai_explanation={"summary": "AI module execution failed."},
+                        verification_status="failed"
+                    )
+            except Exception as db_err:
+                logger.error(f"Failed to record AI crash to DB: {db_err}", extra={"session_id": session_id})
+        finally:
+            # Clear in-memory data to free up memory ONLY after all background tasks are done
+            # Also delay for 5 seconds to ensure any lagging connections are safely disconnected
+            await asyncio.sleep(5)
+            if session_id in self.session_data:
+                del self.session_data[session_id]
+            logger.info("Session state cleared from RAM after AI pipeline lock", extra={"session_id": session_id})
     
     async def upload_session_artifacts(self, session_id: str):
         """Upload session artifacts to S3 after verification"""
@@ -250,13 +928,15 @@ class VerificationWebSocket:
             
             session_data = self.session_data.get(session_id)
             if not session_data:
-                logger.warning(f"No session data to upload for: {session_id}")
+                logger.warning(f"Missing S3 artifact payload data", extra={"session_id": session_id})
                 return
-            
+
+            await self._wait_for_recording_finalization(session_id)
+
             # Get session to get tenant_id
             session = await session_manager.get_session(session_id)
             if not session:
-                logger.error(f"Session not found for artifact upload: {session_id}")
+                logger.error(f"Cannot identify tenant to store target S3 credentials", extra={"session_id": session_id})
                 return
             
             tenant_id = session['tenant_id']
@@ -266,22 +946,36 @@ class VerificationWebSocket:
             # Upload video chunks if available
             if session_data.get('video_chunks'):
                 try:
-                    video_data = b''.join([chunk['data'] for chunk in session_data['video_chunks']])
-                    video_key = f"{tenant_id}/sessions/{session_id}/video.webm"
-                    await storage_manager.upload_file(video_key, video_data, 'video/webm')
-                    logger.info(f"Video uploaded to S3: {video_key}, size: {len(video_data)} bytes")
+                    video_data = self._build_video_payload(session_data)
+                    video_key = await self._store_binary_session_artifact(
+                        tenant_id=tenant_id,
+                        session_id=session_id,
+                        artifact_type='original_video',
+                        file_name='video.webm',
+                        artifact_data=video_data,
+                        content_type='video/webm',
+                        provider='verification_interface',
+                        metadata={'source': 'live_verification'},
+                    )
+                    logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "video", "bytes": len(video_data)})
                 except Exception as e:
-                    logger.error(f"Failed to upload video: {e}")
+                    logger.error(f"S3 Interfacing crash formatting WebM file: {e}", extra={"session_id": session_id})
             
             # Upload IMU data if available
             if session_data.get('imu_data'):
                 try:
-                    imu_json = json.dumps(session_data['imu_data'], indent=2)
-                    imu_key = f"{tenant_id}/sessions/{session_id}/imu_data.json"
-                    await storage_manager.upload_file(imu_key, imu_json.encode(), 'application/json')
-                    logger.info(f"IMU data uploaded to S3: {imu_key}, samples: {len(session_data['imu_data'])}")
+                    imu_key = await self._store_json_session_artifact(
+                        tenant_id=tenant_id,
+                        session_id=session_id,
+                        artifact_type='imu_telemetry',
+                        file_name='imu_data.json',
+                        payload=session_data['imu_data'],
+                        provider='verification_interface',
+                        metadata={'sample_count': len(session_data['imu_data'])},
+                    )
+                    logger.info(f"Exported artifact file to S3 buckets", extra={"session_id": session_id, "tensor": "imu", "length_samples": len(session_data['imu_data'])})
                 except Exception as e:
-                    logger.error(f"Failed to upload IMU data: {e}")
+                    logger.error(f"S3 Interfacing crash formatting IMU JSON file: {e}", extra={"session_id": session_id})
             
             # Update session with S3 keys
             if video_key or imu_key:
@@ -290,15 +984,18 @@ class VerificationWebSocket:
                     video_s3_key=video_key,
                     imu_data_s3_key=imu_key
                 )
-                logger.info(f"Artifact keys stored for session: {session_id}")
+                logger.info(f"S3 metadata keys reconciled effectively", extra={"session_id": session_id})
             
             # Clear in-memory data to free up memory
-            self.clear_session_data(session_id)
-            logger.info(f"Session data cleared from memory: {session_id}")
+            # DO NOT clear here! It's clearing video chunks while run_ai_verification_background is running!
+            # Using memory cautiously is good, but asyncio.create_task runs in parallel
+            # self.clear_session_data(session_id)
             
         except Exception as e:
-            logger.error(f"Error uploading session artifacts: {e}", exc_info=True)
+            logger.error(f"S3 global artifact engine thread failed: {e}", exc_info=True, extra={"session_id": session_id})
 
 
 # Global WebSocket handler instance
 ws_handler = VerificationWebSocket()
+
+

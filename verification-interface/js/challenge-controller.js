@@ -10,83 +10,31 @@ export class ChallengeController {
   }
 
   /**
-   * Start the complete challenge sequence
+   * Start the complete challenge sequence (now driven by Backend Playbook)
    */
   startChallenge() {
     this.clearTimers();
-    this.startBaseline();
+    this.currentPhase = 'listening';
+    // The frontend now waits in 'listening' mode until the WebSocket receives the first payload.
+    this.emitPhaseChange({
+      phase: 'listening',
+      title: 'Preparing Verification',
+      instruction: 'Connecting to server playbook...',
+      duration: 3000 // Give the UI a small buffer before first websocket ping
+    });
   }
 
   /**
-   * Phase 1: Baseline (1 second static hold)
+   * Execute an instruction provided dynamically by the Backend Playbook Engine over WebSocket.
    */
-  startBaseline() {
-    this.currentPhase = 'baseline';
+  executeInstruction(payload) {
+    this.currentPhase = 'instruction';
     this.emitPhaseChange({
-      phase: 'baseline',
-      title: 'Hold Still',
-      instruction: 'Keep your phone steady for 1 second',
-      duration: 1000
+      phase: 'instruction',
+      title: payload.lens === 'environment' ? 'Environment Scan' : 'Face Check',
+      instruction: payload.text,
+      duration: payload.duration * 1000 // Convert backend SECONDS to frontend MS
     });
-
-    const timer = setTimeout(() => {
-      // Notify backend that baseline is complete
-      this.wsManager.ws.send(JSON.stringify({
-        type: 'phase_complete',
-        payload: { phase: 'baseline' }
-      }));
-      this.startPan();
-    }, 1000);
-    
-    this.phaseTimers.push(timer);
-  }
-
-  /**
-   * Phase 2: Pan (tilt phone right)
-   */
-  startPan() {
-    this.currentPhase = 'pan';
-    this.emitPhaseChange({
-      phase: 'pan',
-      title: 'Tilt Right',
-      instruction: 'Slowly tilt your phone to the right',
-      duration: 2000
-    });
-
-    const timer = setTimeout(() => {
-      // Notify backend that pan is complete
-      this.wsManager.ws.send(JSON.stringify({
-        type: 'phase_complete',
-        payload: { phase: 'pan' }
-      }));
-      this.startReturn();
-    }, 2000);
-    
-    this.phaseTimers.push(timer);
-  }
-
-  /**
-   * Phase 3: Return (return to center)
-   */
-  startReturn() {
-    this.currentPhase = 'return';
-    this.emitPhaseChange({
-      phase: 'return',
-      title: 'Return to Center',
-      instruction: 'Slowly return your phone to the center position',
-      duration: 2000
-    });
-
-    const timer = setTimeout(() => {
-      // Notify backend that return is complete
-      this.wsManager.ws.send(JSON.stringify({
-        type: 'phase_complete',
-        payload: { phase: 'return' }
-      }));
-      this.completeChallenge();
-    }, 2000);
-    
-    this.phaseTimers.push(timer);
   }
 
   /**

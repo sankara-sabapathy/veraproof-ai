@@ -2,9 +2,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { BehaviorSubject, of } from 'rxjs';
 import { ToolbarComponent } from './toolbar.component';
 import { AuthService } from '../../core/services/auth.service';
-import { BehaviorSubject, of } from 'rxjs';
+import { TenantEnvironmentService } from '../../core/services/tenant-environment.service';
 
 describe('ToolbarComponent', () => {
   let component: ToolbarComponent;
@@ -12,13 +13,48 @@ describe('ToolbarComponent', () => {
   let authService: jasmine.SpyObj<AuthService>;
   let router: Router;
   let currentUserSubject: BehaviorSubject<any>;
+  let activeEnvironmentSubject: BehaviorSubject<any>;
+  let availableEnvironmentsSubject: BehaviorSubject<any[]>;
 
   beforeEach(async () => {
-    currentUserSubject = new BehaviorSubject({ email: 'test@example.com', role: 'Admin' });
+    currentUserSubject = new BehaviorSubject({ email: 'test@example.com', role: 'Admin', roles: ['org_admin'], permissions: [] });
+    activeEnvironmentSubject = new BehaviorSubject({
+      environment_id: 'env-production',
+      slug: 'production',
+      display_name: 'Production',
+      is_default: true,
+      is_billable: true,
+      monthly_quota: 1000,
+      current_usage: 0,
+      billing_cycle_start: null,
+      billing_cycle_end: null,
+    });
+    availableEnvironmentsSubject = new BehaviorSubject([
+      activeEnvironmentSubject.value,
+      {
+        environment_id: 'env-sandbox',
+        slug: 'sandbox',
+        display_name: 'Sandbox',
+        is_default: false,
+        is_billable: false,
+        monthly_quota: 100,
+        current_usage: 0,
+        billing_cycle_start: null,
+        billing_cycle_end: null,
+      }
+    ]);
+
     const authServiceSpy = jasmine.createSpyObj('AuthService', ['logout'], {
       currentUser$: currentUserSubject.asObservable()
     });
     authServiceSpy.logout.and.returnValue(of(undefined));
+
+    const tenantEnvironmentServiceSpy = jasmine.createSpyObj('TenantEnvironmentService', ['selectEnvironment', 'getActiveEnvironmentSlug'], {
+      activeEnvironment$: activeEnvironmentSubject.asObservable(),
+      availableEnvironments$: availableEnvironmentsSubject.asObservable(),
+    });
+    tenantEnvironmentServiceSpy.selectEnvironment.and.returnValue(of(activeEnvironmentSubject.value));
+    tenantEnvironmentServiceSpy.getActiveEnvironmentSlug.and.returnValue('production');
 
     await TestBed.configureTestingModule({
       imports: [
@@ -27,7 +63,8 @@ describe('ToolbarComponent', () => {
         NoopAnimationsModule
       ],
       providers: [
-        { provide: AuthService, useValue: authServiceSpy }
+        { provide: AuthService, useValue: authServiceSpy },
+        { provide: TenantEnvironmentService, useValue: tenantEnvironmentServiceSpy }
       ]
     }).compileComponents();
 
@@ -73,20 +110,8 @@ describe('ToolbarComponent', () => {
   it('should render user menu button', () => {
     fixture.detectChanges();
 
-    // PrimeNG button uses p-button selector
-    const userMenuButton = fixture.nativeElement.querySelector('.user-menu-button');
+    const userMenuButton = fixture.nativeElement.querySelector('.user-btn');
     expect(userMenuButton).toBeTruthy();
-  });
-
-  it('should handle logout error gracefully', () => {
-    authService.logout.and.returnValue(of(undefined));
-    spyOn(router, 'navigate');
-    spyOn(console, 'error');
-
-    fixture.detectChanges();
-    component.onLogout();
-
-    expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
   });
 
   it('should initialize user menu items on init', () => {
@@ -98,23 +123,27 @@ describe('ToolbarComponent', () => {
     expect(component.userMenuItems[0].icon).toBe('pi pi-sign-out');
   });
 
-  it('should render PrimeNG toolbar', () => {
+  it('should render toolbar header', () => {
     fixture.detectChanges();
 
-    const toolbar = fixture.nativeElement.querySelector('p-toolbar');
+    const toolbar = fixture.nativeElement.querySelector('.vp-toolbar');
     expect(toolbar).toBeTruthy();
   });
-
-  // Note: Menu toggle button test is skipped because PrimeNG button rendering
-  // is difficult to test in unit tests. This is covered by e2e tests.
 
   it('should render brand container', () => {
     fixture.detectChanges();
 
-    const brandContainer = fixture.nativeElement.querySelector('.brand-container');
+    const brandContainer = fixture.nativeElement.querySelector('.brand');
     expect(brandContainer).toBeTruthy();
-    
-    const brandText = brandContainer.querySelector('.brand-text');
-    expect(brandText?.textContent).toContain('VeraProof AI');
+
+    const brandName = brandContainer.querySelector('.brand-name');
+    expect(brandName?.textContent).toContain('VeraProof');
+  });
+
+  it('should render environment switcher for tenant users', () => {
+    fixture.detectChanges();
+
+    const switcher = fixture.nativeElement.querySelector('.environment-switcher');
+    expect(switcher).toBeTruthy();
   });
 });

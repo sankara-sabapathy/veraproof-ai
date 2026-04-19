@@ -1,16 +1,20 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { Subject } from 'rxjs';
+import { skip, takeUntil } from 'rxjs/operators';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
-import { TableModule } from 'primeng/table';
-import { ChipModule } from 'primeng/chip';
-import { TooltipModule } from 'primeng/tooltip';
-import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { SessionService } from '../services/session.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
-import { SessionCreateDialogComponent } from '../session-create-dialog/session-create-dialog.component';
+import { TenantEnvironmentService } from '../../../core/services/tenant-environment.service';
+import { TenantEnvironmentSummary } from '../../../core/models/interfaces';
+import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { ColDef, ValueFormatterParams } from 'ag-grid-community';
+import { StatusRendererComponent } from '../../../shared/components/data-table/renderers/status-renderer.component';
+import { ActionRendererComponent } from '../../../shared/components/data-table/renderers/action-renderer.component';
+import { getTrustScoreTone } from '../../../shared/utils/ui-presenters';
 
 interface Session {
   session_id: string;
@@ -30,82 +34,125 @@ interface Session {
     RouterModule,
     CardModule,
     ButtonModule,
-    TableModule,
-    ChipModule,
-    TooltipModule,
-    LoadingSpinnerComponent
+    DataTableComponent,
+    PageHeaderComponent
   ],
-  providers: [DialogService],
+  providers: [DatePipe],
   templateUrl: './sessions-list.component.html',
   styleUrls: ['./sessions-list.component.scss']
 })
-export class SessionsListComponent implements OnInit {
+export class SessionsListComponent implements OnInit, OnDestroy {
   sessions: Session[] = [];
   loading = false;
-  
-  // Pagination
-  pageSize = 10;
-  first = 0;
   totalSessions = 0;
+  errorMessage: string | null = null;
+  activeEnvironment: TenantEnvironmentSummary | null = null;
+  private destroy$ = new Subject<void>();
 
-  private dialogRef: DynamicDialogRef | undefined;
+  columns: ColDef[] = [];
 
   constructor(
     private sessionService: SessionService,
     private notification: NotificationService,
+    private tenantEnvironmentService: TenantEnvironmentService,
     private router: Router,
-    private dialogService: DialogService
-  ) {}
+    private datePipe: DatePipe
+  ) {
+    this.columns = [
+      {
+        field: 'session_id',
+        headerName: 'Session ID',
+        flex: 2,
+        cellRenderer: (params: any) => `<span class="session-id-pill">${params.value}</span>`
+      },
+      {
+        field: 'created_at',
+        headerName: 'Created',
+        valueFormatter: (params: ValueFormatterParams) => this.datePipe.transform(params.value, 'short') || ''
+      },
+      {
+        field: 'state',
+        headerName: 'Status',
+        cellRenderer: StatusRendererComponent
+      },
+      {
+        field: 'final_trust_score',
+        headerName: 'Trust Score',
+        cellRenderer: (params: any) => this.renderTrustScore(params.value)
+      },
+      {
+        headerName: 'Actions',
+        sortable: false,
+        filter: false,
+        width: 100,
+        cellRenderer: ActionRendererComponent,
+        cellRendererParams: {
+          actions: () => [
+            {
+              icon: 'pi pi-eye',
+              tooltip: 'View details',
+              actionCallback: (rowData: any) => this.viewSession(rowData.session_id)
+            }
+          ]
+        }
+      }
+    ];
+  }
 
   ngOnInit(): void {
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(environment => this.activeEnvironment = environment);
+
+    this.tenantEnvironmentService.activeEnvironment$
+      .pipe(skip(1), takeUntil(this.destroy$))
+      .subscribe(() => this.loadSessions());
+
     this.loadSessions();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  get pageSubtitle(): string {
+    const environment = this.activeEnvironment?.display_name || 'the selected environment';
+    return `Review verification history and trust results for ${environment.toLowerCase()}.`;
   }
 
   loadSessions(): void {
     this.loading = true;
-    const offset = this.first;
-    this.sessionService.getSessions(this.pageSize, offset).subscribe({
+    this.errorMessage = null;
+
+    this.sessionService.getSessions(1000, 0).subscribe({
       next: (response) => {
         this.sessions = response.sessions;
         this.totalSessions = response.total;
         this.loading = false;
       },
-      error: (error) => {
+      error: () => {
         this.loading = false;
+        this.errorMessage = 'We could not load session history for the selected environment.';
         this.notification.error('Failed to load sessions');
-        console.error('Error loading sessions:', error);
       }
     });
-  }
-
-  onPageChange(event: any): void {
-    this.first = event.first;
-    this.pageSize = event.rows;
-    this.loadSessions();
   }
 
   createSession(): void {
-    this.dialogRef = this.dialogService.open(SessionCreateDialogComponent, {
-      header: 'Create Test Session',
-      width: '600px',
-      modal: true,
-      dismissableMask: false
-    });
-
-    this.dialogRef.onClose.subscribe(result => {
-      if (result) {
-        this.loadSessions();
-      }
-    });
+    this.router.navigate(['/sessions/create']);
   }
 
   viewSession(sessionId: string): void {
     this.router.navigate(['/sessions', sessionId]);
   }
 
-  getTrustScoreColor(score: number): string {
-    if (score >= 80) return '#4caf50';
-    if (score >= 50) return '#ff9800';
-    return '#f44336';
+  private renderTrustScore(value: number | null | undefined): string {
+    if (value === null || value === undefined) {
+      return '<span class="trust-score trust-score--neutral">Not scored</span>';
+    }
+
+    const tone = getTrustScoreTone(value);
+    return `<span class="trust-score trust-score--${tone}">${Number(value).toFixed(1)}</span>`;
   }
 }

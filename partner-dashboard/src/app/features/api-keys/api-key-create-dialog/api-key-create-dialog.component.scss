@@ -1,208 +1,320 @@
 .dialog-container {
-  padding: 1.5rem;
-  min-width: 500px;
-  max-width: 600px;
+  width: min(100vw - 32px, 560px);
+  min-width: min(100vw - 32px, 560px);
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
 
-  .description {
-    margin: 0 0 1.5rem 0;
-    color: var(--text-color-secondary);
-    line-height: 1.5;
+.dialog-intro h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--vp-text, #1e293b);
+}
+
+.dialog-intro p {
+  margin: 0.5rem 0 0;
+  color: var(--vp-text-secondary, #64748b);
+  line-height: 1.6;
+  font-size: 0.875rem;
+}
+
+.selection-form,
+.selection-step,
+.generated-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.selection-panel {
+  padding: 1rem;
+  border: 1px solid var(--vp-border-light, #f1f5f9);
+  border-radius: 16px;
+  background: var(--vp-bg, #f8fafc);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--vp-text, #1e293b);
+}
+
+::ng-deep p-dropdown,
+::ng-deep .p-dropdown {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 8px;
+}
+
+::ng-deep .p-dropdown .p-dropdown-label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  line-height: normal;
+}
+
+.environment-guide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.guide-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.875rem;
+  border: 1px solid var(--vp-border, #e2e8f0);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.guide-label,
+.meta-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-text-muted, #94a3b8);
+}
+
+.guide-card p,
+.meta-card p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--vp-text-secondary, #64748b);
+}
+
+.environment-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.environment-option i {
+  color: var(--vp-text-muted, #94a3b8);
+  font-size: 18px;
+}
+
+.environment-option.type-sandbox i {
+  color: var(--vp-warning, #f59e0b);
+}
+
+.environment-option.type-production i {
+  color: var(--vp-success, #10b981);
+}
+
+.environment-option.type-sandbox .option-title {
+  color: #92400e;
+}
+
+.environment-option.type-production .option-title {
+  color: #065f46;
+}
+
+.option-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--vp-text, #1e293b);
+}
+
+.option-description {
+  font-size: 12px;
+  color: var(--vp-text-muted, #94a3b8);
+}
+
+.result-banner {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(16, 185, 129, 0.14);
+  border-radius: 14px;
+  background: rgba(236, 253, 245, 0.8);
+}
+
+.result-banner i {
+  flex-shrink: 0;
+  font-size: 1.125rem;
+  color: #059669;
+}
+
+.result-banner strong,
+.warning-content strong {
+  display: block;
+  color: var(--vp-text, #1e293b);
+  font-size: 0.9375rem;
+}
+
+.result-banner p,
+.warning-content p {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--vp-text-secondary, #64748b);
+  line-height: 1.55;
+}
+
+.credential-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.credential-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vp-text, #1e293b);
+}
+
+.credential-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+}
+
+.credential-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: #e2e8f0;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+::ng-deep .credential-display .p-button {
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  color: #94a3b8 !important;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+::ng-deep .credential-display .p-button:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+::ng-deep .credential-display .p-button.copied .pi {
+  color: var(--vp-success, #10b981) !important;
+}
+
+.credential-hint {
+  font-size: 12px;
+  color: var(--vp-text-muted, #94a3b8);
+}
+
+.result-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.meta-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  border: 1px solid var(--vp-border-light, #f1f5f9);
+  border-radius: 14px;
+  background: var(--vp-bg, #f8fafc);
+}
+
+::ng-deep .meta-card .p-chip {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+::ng-deep .meta-card .p-chip.sandbox {
+  background-color: var(--vp-warning-bg, #fffbeb);
+  color: #92400e;
+}
+
+::ng-deep .meta-card .p-chip.production {
+  background-color: var(--vp-success-bg, #ecfdf5);
+  color: #065f46;
+}
+
+.warning-panel {
+  border-radius: 14px;
+  border: 1px solid #fecaca;
+  background: var(--vp-error-bg, #fef2f2);
+}
+
+.warning-content {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.warning-content i {
+  color: var(--vp-error, #ef4444);
+  flex-shrink: 0;
+  font-size: 1.125rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 16px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--vp-border-light, #f1f5f9);
+}
+
+::ng-deep .dialog-actions .p-button {
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 20px;
+  min-height: 44px;
+}
+
+@media (max-width: 600px) {
+  .dialog-container {
+    width: calc(100vw - 24px);
+    min-width: calc(100vw - 24px);
+    max-width: 100%;
   }
 
-  .selection-step {
-    .full-width {
-      width: 100%;
-      display: block;
-      margin-bottom: 1rem;
-    }
-
-    .environment-option {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.5rem 0;
-
-      i {
-        color: var(--text-color-secondary);
-        font-size: 1.25rem;
-      }
-
-      .option-title {
-        font-weight: 500;
-        font-size: 0.875rem;
-        color: var(--text-color);
-      }
-
-      .option-description {
-        font-size: 0.75rem;
-        color: var(--text-color-secondary);
-      }
-    }
+  .environment-guide,
+  .result-meta {
+    grid-template-columns: 1fr;
   }
 
-  .generated-step {
-    display: flex;
+  .credential-display {
     flex-direction: column;
-    gap: 1.5rem;
-
-    ::ng-deep .warning-card {
-      background-color: #fff3e0;
-      border-left: 4px solid #ff9800;
-
-      &.danger {
-        background-color: #ffebee;
-        border-left-color: #f44336;
-      }
-
-      .p-card-content {
-        padding: 1rem;
-
-        .warning-content {
-          display: flex;
-          gap: 0.75rem;
-
-          i {
-            flex-shrink: 0;
-            font-size: 1.5rem;
-            color: #ff9800;
-          }
-
-          strong {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-color);
-          }
-
-          p {
-            margin: 0;
-            font-size: 0.875rem;
-            color: var(--text-color-secondary);
-            line-height: 1.5;
-          }
-        }
-      }
-    }
-
-    ::ng-deep .warning-card.danger {
-      .warning-content i {
-        color: #f44336;
-      }
-    }
-
-    .credential-section {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-
-      .credential-label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: var(--text-color);
-      }
-
-      .credential-display {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        background-color: var(--surface-100);
-        border: 1px solid var(--surface-border);
-        border-radius: var(--border-radius);
-
-        .credential-value {
-          flex: 1;
-          font-family: 'Courier New', monospace;
-          font-size: 0.8125rem;
-          color: var(--text-color);
-          word-break: break-all;
-          line-height: 1.5;
-        }
-
-        ::ng-deep .p-button {
-          flex-shrink: 0;
-          transition: all 0.2s ease;
-
-          &.copied {
-            .pi {
-              color: #4caf50;
-            }
-          }
-        }
-      }
-
-      .credential-hint {
-        font-size: 0.75rem;
-        color: var(--text-color-secondary);
-        font-style: italic;
-      }
-    }
-
-    .environment-badge {
-      display: flex;
-      justify-content: center;
-      padding-top: 0.5rem;
-
-      ::ng-deep .p-chip {
-        font-size: 0.875rem;
-        font-weight: 500;
-        padding: 0.5rem 1rem;
-
-        &.sandbox {
-          background-color: #e3f2fd;
-          color: #1976d2;
-        }
-
-        &.production {
-          background-color: #e8f5e9;
-          color: #388e3c;
-        }
-      }
-    }
-  }
-
-  .close-warning {
-    margin-top: 1rem;
+    align-items: stretch;
   }
 
   .dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding-top: 1.5rem;
-    margin-top: 1.5rem;
-    border-top: 1px solid var(--surface-border);
+    flex-direction: column;
+    align-items: stretch;
   }
-}
 
-// Responsive styles
-@media (max-width: 600px) {
-  .dialog-container {
-    min-width: unset;
-    max-width: 100%;
-    padding: 1rem;
-
-    .generated-step {
-      gap: 1rem;
-
-      .credential-section {
-        .credential-display {
-          flex-direction: column;
-          align-items: stretch;
-
-          ::ng-deep .p-button {
-            align-self: flex-end;
-          }
-        }
-      }
-    }
-
-    .dialog-actions {
-      flex-direction: column;
-      align-items: stretch;
-
-      ::ng-deep .p-button {
-        width: 100%;
-      }
-    }
+  ::ng-deep .dialog-actions .p-button {
+    width: 100%;
   }
 }

@@ -1,0 +1,145 @@
+<div class="vp-page analysis-workbench">
+  <app-page-header title="Fraud Analysis" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <button pButton type="button" label="Refresh" icon="pi pi-refresh" class="p-button-outlined"
+        [loading]="refreshing" (click)="loadJobs(false)"></button>
+    </div>
+  </app-page-header>
+
+  <section class="workbench-grid">
+    <article class="panel-card upload-panel">
+      <div class="panel-head">
+        <div>
+          <h2>New Analysis</h2>
+          <p>Upload one source artifact and optional metadata to start an asynchronous job.</p>
+        </div>
+        <span class="hint">PNG, JPG, WEBP, WEBM, MP4, MOV, OGG</span>
+      </div>
+
+      <label class="upload-dropzone" [class.has-file]="selectedFile">
+        <input type="file" accept="image/png,image/jpeg,image/webp,video/webm,video/mp4,video/quicktime,video/ogg"
+          (change)="onFileSelected($event)">
+        <span class="drop-kicker">Source media</span>
+        <strong>{{ selectedFile?.name || 'Choose a file from your machine' }}</strong>
+        <small *ngIf="selectedFile; else emptyFileState">
+          {{ selectedFile.type || 'unknown type' }} - {{ formatBytes(selectedFile.size) }}
+        </small>
+        <ng-template #emptyFileState>
+          <small>Upload a single source artifact for asynchronous fraud analysis.</small>
+        </ng-template>
+      </label>
+
+      <div class="metadata-block">
+        <label for="analysis-metadata">Optional metadata JSON</label>
+        <textarea id="analysis-metadata" [(ngModel)]="metadataText" rows="7"
+          spellcheck="false"></textarea>
+      </div>
+
+      <div class="upload-actions">
+        <button pButton type="button" label="Start Analysis" icon="pi pi-send"
+          [loading]="uploading" [disabled]="!selectedFile || uploading" (click)="submitUpload()"></button>
+        <p-chip label="Async job" icon="pi pi-bolt" styleClass="meta-chip"></p-chip>
+        <p-chip label="JWT + API key" icon="pi pi-lock" styleClass="meta-chip"></p-chip>
+      </div>
+    </article>
+
+    <aside class="panel-card detail-panel" *ngIf="selectedJob; else emptyDetail">
+      <div class="panel-head detail-head">
+        <div>
+          <h2>{{ selectedJob.source_filename }}</h2>
+          <p>{{ selectedJob.media_type | titlecase }} - {{ selectedJob.content_type }} - {{ formatBytes(selectedJob.file_size_bytes) }}</p>
+        </div>
+        <span class="status-pill" [attr.data-status]="selectedJob.status">{{ statusLabel(selectedJob) }}</span>
+      </div>
+
+      <div class="score-band">
+        <div>
+          <span class="metric-label">Trust score</span>
+          <strong>{{ scoreLabel(selectedJob) }}</strong>
+        </div>
+        <div>
+          <span class="metric-label">Outcome</span>
+          <span class="metric-copy">{{ outcomeLabel(selectedJob) }}</span>
+        </div>
+        <div>
+          <span class="metric-label">Created</span>
+          <span class="metric-copy">{{ selectedJob.created_at | date:'medium' }}</span>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <button pButton type="button" label="Refresh Job" icon="pi pi-refresh" class="p-button-text"
+          (click)="refreshSelectedJob()"></button>
+        <button pButton type="button" label="Open Source" icon="pi pi-external-link" class="p-button-text"
+          [disabled]="!selectedJob.artifact_s3_key" (click)="openArtifact(selectedJob)"></button>
+      </div>
+
+      <div class="detail-copy" *ngIf="selectedJob.reasoning as reasoning">
+        <h3>Reasoning</h3>
+        <p>{{ reasoning }}</p>
+      </div>
+
+      <div class="detail-copy error-copy" *ngIf="selectedJob.error_message as errorMessage">
+        <h3>Failure detail</h3>
+        <p>{{ errorMessage }}</p>
+      </div>
+
+      <div class="detail-json" *ngIf="selectedJob.ai_explanation">
+        <h3>AI explanation payload</h3>
+        <pre>{{ selectedJob.ai_explanation | json }}</pre>
+      </div>
+    </aside>
+
+    <ng-template #emptyDetail>
+      <aside class="panel-card detail-panel empty-panel">
+        <h2>No job selected</h2>
+        <p>Upload a new file or choose a recent job to inspect its fraud-analysis output.</p>
+      </aside>
+    </ng-template>
+  </section>
+
+  <section class="panel-card jobs-panel">
+    <div class="panel-head jobs-head">
+      <div>
+        <h2>Recent Jobs</h2>
+        <p *ngIf="hasActiveJobs">Polling for active jobs every 5 seconds.</p>
+        <p *ngIf="!hasActiveJobs">Latest 24 uploads for this tenant.</p>
+      </div>
+    </div>
+
+    <app-loading-spinner *ngIf="loading"></app-loading-spinner>
+
+    <div class="jobs-list" *ngIf="!loading && jobs.length > 0">
+      <button type="button" class="job-card" *ngFor="let job of jobs; trackBy: trackByJobId"
+        [class.selected]="selectedJob?.job_id === job.job_id" (click)="selectJob(job)">
+        <div class="job-card-head">
+          <div>
+            <strong>{{ job.source_filename }}</strong>
+            <span>{{ job.created_at | date:'medium' }}</span>
+          </div>
+          <span class="status-pill" [attr.data-status]="job.status">{{ statusLabel(job) }}</span>
+        </div>
+
+        <div class="job-card-body">
+          <div class="job-stat">
+            <span>Type</span>
+            <strong>{{ job.media_type | titlecase }}</strong>
+          </div>
+          <div class="job-stat">
+            <span>Outcome</span>
+            <strong>{{ outcomeLabel(job) }}</strong>
+          </div>
+          <div class="job-stat">
+            <span>Trust</span>
+            <strong>{{ scoreLabel(job) }}</strong>
+          </div>
+        </div>
+      </button>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && jobs.length === 0">
+      <h2>No uploads yet</h2>
+      <p>Run the first image or video through the offline fraud-analysis pipeline from this screen.</p>
+    </div>
+  </section>
+</div>

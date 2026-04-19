@@ -34,15 +34,15 @@ export class BillingStateService {
   }
 
   setSubscription(subscription: Subscription): void {
-    this.patchState({ subscription, loading: false });
+    this.patchState({ subscription, loading: false, error: null });
   }
 
   setPlans(plans: SubscriptionPlan[]): void {
-    this.patchState({ plans, loading: false });
+    this.patchState({ plans, loading: false, error: null });
   }
 
   setInvoices(invoices: Invoice[]): void {
-    this.patchState({ invoices, loading: false });
+    this.patchState({ invoices, loading: false, error: null });
   }
 
   setError(error: string): void {

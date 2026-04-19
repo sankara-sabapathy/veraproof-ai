@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VeraProof AI - Verification</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=18">
     <!-- Configuration - loaded before other scripts -->
     <script src="config.js"></script>
 </head>
+
 <body>
     <div id="app">
         <!-- Landing Page -->
@@ -17,34 +19,34 @@
                     <h1 class="brand-title">VeraProof AI</h1>
                     <p class="brand-tagline">Physics-First Fraud Detection</p>
                 </div>
-                
+
                 <div class="hero-section">
                     <h2>Verify Your Identity</h2>
                     <p>Secure video verification using advanced sensor fusion technology</p>
                 </div>
-                
+
                 <div class="features">
                     <div class="feature">
-                        <span class="icon">🔒</span>
+                        <span class="icon">&#128274;</span>
                         <h3>Secure</h3>
                         <p>Military-grade encryption</p>
                     </div>
                     <div class="feature">
-                        <span class="icon">⚡</span>
+                        <span class="icon">&#9889;</span>
                         <h3>Fast</h3>
                         <p>Results in 3 seconds</p>
                     </div>
                     <div class="feature">
-                        <span class="icon">🎯</span>
+                        <span class="icon">&#127919;</span>
                         <h3>Accurate</h3>
                         <p>Physics-based detection</p>
                     </div>
                 </div>
-                
+
                 <button id="start-verification-btn" class="btn-primary">Start Verification</button>
-                
+
                 <div class="footer-links">
-                    <a href="#" id="partner-login-link">Partner Login</a>
+                    <a href="/partner-dashboard" id="partner-login-link">Partner Login</a>
                 </div>
             </div>
         </div>
@@ -57,7 +59,26 @@
                     <p>Checking device compatibility...</p>
                 </div>
                 <div id="device-error" class="error-box hidden"></div>
-                <button id="continue-verification-btn" class="btn-primary hidden">Continue to Verification</button>
+
+                <!-- Explicit Consent Modal (Injected Before Recording Starts) -->
+                <div id="consent-modal" class="consent-modal hidden" role="dialog" aria-modal="true"
+                    aria-labelledby="consent-title" aria-describedby="consent-description" tabindex="-1">
+                    <h3 id="consent-title">Privacy & Data Consent</h3>
+                    <p id="consent-description">
+                        By proceeding, you consent to VeraProof AI actively recording your device's
+                        <strong>camera</strong>, <strong>motion sensors (accelerometer/gyroscope)</strong>,
+                        and <strong>audio</strong> to conduct automated AI fraud detection and liveness analysis.
+                    </p>
+                    <div class="consent-actions">
+                        <button id="consent-decline-btn" type="button" class="btn-secondary consent-btn">Decline</button>
+                        <button id="consent-agree-btn" type="button" class="btn-primary consent-btn consent-agree-btn">I
+                            Agree & Proceed</button>
+                    </div>
+                </div>
+
+                <div id="continue-container" class="hidden">
+                    <button id="continue-verification-btn" class="btn-primary">Continue to Verification</button>
+                </div>
                 <button id="request-permissions-btn" class="btn-secondary hidden">Grant Permissions</button>
             </div>
         </div>
@@ -66,22 +87,35 @@
         <div id="verification-page" class="page">
             <div class="container">
                 <div id="branding-logo" class="branding-logo hidden"></div>
-                
+
                 <div class="video-container">
-                    <video id="video-preview" autoplay playsinline muted></video>
-                    <canvas id="video-canvas" class="hidden"></canvas>
+                    <div id="recording-indicator" class="recording-indicator hidden">
+                        <span class="red-dot"></span>
+                        <span id="recording-time">15s</span>
+                    </div>
+                    <div id="countdown-overlay" class="countdown-overlay hidden">
+                        <span id="countdown-timer" aria-live="polite" aria-atomic="true">5</span>
+                    </div>
+                    <video id="video-preview" autoplay playsinline muted aria-label="Live verification camera preview"></video>
+                    <canvas id="video-canvas" class="hidden" aria-hidden="true"></canvas>
                 </div>
-                
+
                 <div class="instructions">
                     <h2 id="phase-title">Preparing...</h2>
                     <p id="phase-instruction">Please wait while we set up your verification</p>
                 </div>
-                
-                <div class="progress-bar">
+
+                <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+                    aria-valuenow="0" aria-label="Verification progress">
                     <div id="progress-fill" class="progress-fill"></div>
                 </div>
-                
-                <div id="status-message" class="status-message"></div>
+
+                <div id="status-message" class="status-message" role="status" aria-live="polite" aria-atomic="true"></div>
+
+                <div class="ai-disclaimer">
+                    <p>&#128274; <strong>Note:</strong> There is no human involved in verifying the video. The process is fully
+                        automated by AI.</p>
+                </div>
             </div>
         </div>
 
@@ -102,7 +136,7 @@
         <div id="error-page" class="page">
             <div class="container">
                 <div class="error-content">
-                    <span class="error-icon">⚠️</span>
+                    <span class="error-icon">&#9888;&#65039;</span>
                     <h2>Verification Error</h2>
                     <p id="error-message"></p>
                     <button id="retry-btn" class="btn-secondary">Try Again</button>
@@ -111,6 +145,10 @@
         </div>
     </div>
 
-    <script type="module" src="js/main.js?v=9"></script>
+    <script type="module">
+        const assetVersion = encodeURIComponent(window.VERAPROOF_CONFIG?.version || 'local-dev');
+        import(`./js/main.js?v=${assetVersion}`);
+    </script>
 </body>
+
 </html>

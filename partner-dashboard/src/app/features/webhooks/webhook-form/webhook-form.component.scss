@@ -1,9 +1,26 @@
 .webhook-form-dialog {
-  padding: 1.5rem;
-  min-width: 500px;
+  width: min(100vw - 32px, 640px);
+  min-width: min(100vw - 32px, 640px);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-form {
+.dialog-intro h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--vp-text, #1e293b);
+}
+
+.dialog-intro p {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--vp-text-secondary, #64748b);
+}
+
+.webhook-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -13,63 +30,141 @@ form {
   width: 100%;
 }
 
+.form-section,
+.delivery-panel {
+  padding: 1rem;
+  border: 1px solid var(--vp-border-light, #f1f5f9);
+  border-radius: 16px;
+  background: var(--vp-bg, #f8fafc);
+}
+
+.section-header {
+  margin-bottom: 1rem;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--vp-text, #1e293b);
+}
+
+.section-header p {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--vp-text-secondary, #64748b);
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
 
-  .field-label {
-    font-weight: 500;
-    color: var(--text-color);
-    font-size: 0.875rem;
-  }
+.field-label {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 0.875rem;
+}
 
-  .p-hint {
-    font-size: 0.75rem;
-    color: var(--text-color-secondary);
-  }
+.p-hint {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+}
 
-  .p-error {
-    font-size: 0.75rem;
-    display: block;
-  }
+.p-error {
+  font-size: 0.75rem;
+  display: block;
+}
+
+.delivery-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.delivery-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.delivery-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-text-muted, #94a3b8);
+}
+
+.delivery-copy p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--vp-text-secondary, #64748b);
 }
 
 .toggle-field {
-  flex-direction: row;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-
-  .toggle-label {
-    font-weight: 500;
-    color: var(--text-color);
-  }
+  gap: 1rem;
 }
 
-.payload-example {
-  h4 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-  }
+.toggle-label {
+  font-weight: 500;
+  color: var(--text-color);
+}
 
-  pre {
-    background-color: var(--surface-100);
-    padding: 1rem;
-    border-radius: 4px;
-    overflow-x: auto;
+.payload-example h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
 
-    code {
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-    }
-  }
+.payload-example pre {
+  margin: 0;
+  background-color: var(--surface-100);
+  padding: 1rem;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.payload-example code {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--surface-border);
+  gap: 12px;
+  margin-top: 0.25rem;
+  padding-top: 16px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--vp-border-light, #f1f5f9);
+}
+
+::ng-deep .dialog-actions .p-button {
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 20px;
+}
+
+@media (max-width: 640px) {
+  .webhook-form-dialog {
+    width: calc(100vw - 24px);
+    min-width: calc(100vw - 24px);
+  }
+
+  .dialog-actions,
+  .delivery-panel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  ::ng-deep .dialog-actions .p-button {
+    width: 100%;
+  }
 }

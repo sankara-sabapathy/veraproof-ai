@@ -1,120 +1,64 @@
 <div class="webhook-logs" *ngIf="selectedWebhook$ | async as webhook">
   <div class="header">
-    <p-button 
-      icon="pi pi-arrow-left" 
-      [text]="true" 
-      [rounded]="true"
-      (onClick)="back()">
+    <p-button icon="pi pi-arrow-left" [text]="true" [rounded]="true" (onClick)="back()">
     </p-button>
     <h2>Webhook Logs: {{ webhook.url }}</h2>
   </div>
 
   <p-card *ngIf="logs$ | async as logs; else loading">
-    <p-table 
-      [value]="logs" 
-      dataKey="log_id"
-      styleClass="p-datatable-striped"
-      [tableStyle]="{'min-width': '50rem'}">
-      
-      <ng-template pTemplate="header">
-        <tr>
-          <th style="width: 3rem"></th>
-          <th>Timestamp</th>
-          <th>Event Type</th>
-          <th style="width: 120px">Status Code</th>
-          <th style="width: 140px">Response Time</th>
-          <th style="width: 120px">Status</th>
-          <th style="width: 100px">Retries</th>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="body" let-log let-expanded="expanded">
-        <tr [class.error-row]="!log.success">
-          <td>
-            <p-button 
-              type="button"
-              [pRowToggler]="log"
-              [icon]="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-              [text]="true"
-              [rounded]="true">
-            </p-button>
-          </td>
-          <td>{{ log.timestamp | date:'short' }}</td>
-          <td>
-            <p-chip [label]="log.event_type"></p-chip>
-          </td>
-          <td>{{ log.status_code }}</td>
-          <td>{{ log.response_time_ms }}ms</td>
-          <td>
-            <p-chip 
-              [label]="log.success ? 'Success' : 'Failed'" 
-              [styleClass]="log.success ? 'chip-success' : 'chip-danger'">
-            </p-chip>
-          </td>
-          <td>{{ log.retry_count }}</td>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="rowexpansion" let-log>
-        <tr>
-          <td colspan="7">
-            <div class="log-details">
-              <div class="detail-section">
-                <h4>Request Details</h4>
-                <div class="detail-row">
-                  <span class="label">URL:</span>
-                  <span class="value">{{ log.url }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="label">Method:</span>
-                  <span class="value">{{ log.method || 'POST' }}</span>
-                </div>
-                <div class="detail-row" *ngIf="log.request_headers">
-                  <span class="label">Headers:</span>
-                  <pre class="value">{{ log.request_headers | json }}</pre>
-                </div>
-                <div class="detail-row" *ngIf="log.request_body">
-                  <span class="label">Body:</span>
-                  <pre class="value">{{ log.request_body | json }}</pre>
-                </div>
-              </div>
-              
-              <div class="detail-section">
-                <h4>Response Details</h4>
-                <div class="detail-row">
-                  <span class="label">Status Code:</span>
-                  <span class="value">{{ log.status_code }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="label">Response Time:</span>
-                  <span class="value">{{ log.response_time_ms }}ms</span>
-                </div>
-                <div class="detail-row" *ngIf="log.response_body">
-                  <span class="label">Response Body:</span>
-                  <pre class="value">{{ log.response_body }}</pre>
-                </div>
-                <div class="detail-row" *ngIf="log.error_message">
-                  <span class="label">Error Message:</span>
-                  <span class="value error-text">{{ log.error_message }}</span>
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="7">
-            <div class="no-data">
-              <i class="pi pi-history" style="font-size: 3rem"></i>
-              <p>No delivery logs found</p>
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
+    <app-data-table [columns]="columns" [data]="logs" [loading]="false">
+    </app-data-table>
   </p-card>
+
+  <p-dialog header="Log Details" [(visible)]="displayDetails" [modal]="true"
+    [style]="{width: '60vw', minWidth: '400px'}" [maximizable]="true" [draggable]="false" *ngIf="selectedLog">
+
+    <div class="log-details" style="display:flex; flex-direction:column; gap:20px; padding-top:10px;">
+      <div class="detail-section">
+        <h4 style="margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">Request Details</h4>
+        <div class="detail-row" style="margin-bottom:8px;">
+          <strong class="label" style="display:inline-block; width:120px;">URL:</strong>
+          <span class="value" style="font-family:monospace;">{{ selectedLog.url }}</span>
+        </div>
+        <div class="detail-row" style="margin-bottom:8px;">
+          <strong class="label" style="display:inline-block; width:120px;">Method:</strong>
+          <span class="value">{{ selectedLog.method || 'POST' }}</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedLog.request_headers" style="margin-bottom:8px;">
+          <strong class="label" style="display:block; margin-bottom:4px;">Headers:</strong>
+          <pre class="value"
+            style="background:#f8fafc; padding:12px; border-radius:6px; font-size:13px; overflow-x:auto;">{{ selectedLog.request_headers | json }}</pre>
+        </div>
+        <div class="detail-row" *ngIf="selectedLog.request_body" style="margin-bottom:8px;">
+          <strong class="label" style="display:block; margin-bottom:4px;">Body:</strong>
+          <pre class="value"
+            style="background:#f8fafc; padding:12px; border-radius:6px; font-size:13px; overflow-x:auto;">{{ selectedLog.request_body | json }}</pre>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4 style="margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:8px;">Response Details</h4>
+        <div class="detail-row" style="margin-bottom:8px;">
+          <strong class="label" style="display:inline-block; width:120px;">Status Code:</strong>
+          <span class="value">{{ selectedLog.status_code }}</span>
+        </div>
+        <div class="detail-row" style="margin-bottom:8px;">
+          <strong class="label" style="display:inline-block; width:120px;">Response Time:</strong>
+          <span class="value">{{ selectedLog.response_time_ms }}ms</span>
+        </div>
+        <div class="detail-row" *ngIf="selectedLog.response_body" style="margin-bottom:8px;">
+          <strong class="label" style="display:block; margin-bottom:4px;">Response Body:</strong>
+          <pre class="value"
+            style="background:#f8fafc; padding:12px; border-radius:6px; font-size:13px; overflow-x:auto;">{{ selectedLog.response_body }}</pre>
+        </div>
+        <div class="detail-row" *ngIf="selectedLog.error_message" style="margin-bottom:8px;">
+          <strong class="label" style="display:block; margin-bottom:4px; color:#ef4444;">Error Message:</strong>
+          <span class="value error-text" style="color:#ef4444; font-family:monospace;">{{ selectedLog.error_message
+            }}</span>
+        </div>
+      </div>
+    </div>
+  </p-dialog>
 
   <ng-template #loading>
     <app-loading-spinner message="Loading logs..."></app-loading-spinner>

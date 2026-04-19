@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { DatePipe } from '@angular/common';
 import { of, throwError } from 'rxjs';
 import { TenantListComponent } from './tenant-list.component';
 import { AdminService, TenantSummary } from '../services/admin.service';
@@ -59,7 +60,8 @@ describe('TenantListComponent', () => {
         { provide: AdminService, useValue: adminServiceSpyObj },
         { provide: AdminStateService, useValue: adminStateSpyObj },
         { provide: NotificationService, useValue: notificationSpyObj },
-        { provide: Router, useValue: routerSpyObj }
+        { provide: Router, useValue: routerSpyObj },
+        DatePipe
       ]
     }).compileComponents();
 
@@ -79,9 +81,9 @@ describe('TenantListComponent', () => {
   describe('ngOnInit', () => {
     it('should subscribe to state observables', () => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       fixture.detectChanges();
-      
+
       expect(component.tenants).toEqual(mockTenants);
       expect(component.loading).toBe(false);
       expect(component.totalItems).toBe(2);
@@ -89,25 +91,27 @@ describe('TenantListComponent', () => {
 
     it('should initialize columns with templates', (done) => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       fixture.detectChanges();
-      
+
       setTimeout(() => {
-        expect(component.columns.length).toBe(5);
-        expect(component.columns[0].key).toBe('email');
-        expect(component.columns[1].key).toBe('subscription_tier');
-        expect(component.columns[2].key).toBe('usage');
-        expect(component.columns[3].key).toBe('status');
-        expect(component.columns[4].key).toBe('created_at');
+        expect(component.columns.length).toBe(6);
+        // Cast to any to access field and headerName for TS compiler
+        expect((component.columns[0] as any).field).toBe('email');
+        expect((component.columns[1] as any).field).toBe('subscription_tier');
+        expect((component.columns[2] as any).headerName).toBe('Usage');
+        expect((component.columns[3] as any).field).toBe('status');
+        expect((component.columns[4] as any).field).toBe('created_at');
+        expect((component.columns[5] as any).headerName).toBe('Actions');
         done();
       }, 10);
     });
 
     it('should load tenants on init', () => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       fixture.detectChanges();
-      
+
       expect(adminServiceSpy.listTenants).toHaveBeenCalled();
       expect(adminStateSpy.setLoading).toHaveBeenCalledWith(true);
     });
@@ -116,9 +120,9 @@ describe('TenantListComponent', () => {
   describe('loadTenants', () => {
     it('should load tenants successfully', () => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       component.loadTenants();
-      
+
       expect(adminStateSpy.setLoading).toHaveBeenCalledWith(true);
       expect(adminServiceSpy.listTenants).toHaveBeenCalledWith({
         limit: 25,
@@ -133,9 +137,9 @@ describe('TenantListComponent', () => {
     it('should load tenants with search term', () => {
       component.searchTerm = 'test@example.com';
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: [mockTenants[0]], total: 1, limit: 25, offset: 0 }));
-      
+
       component.loadTenants();
-      
+
       expect(adminServiceSpy.listTenants).toHaveBeenCalledWith({
         limit: 25,
         offset: 0,
@@ -148,9 +152,9 @@ describe('TenantListComponent', () => {
     it('should load tenants with tier filter', () => {
       component.selectedTier = 'Professional';
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: [mockTenants[0]], total: 1, limit: 25, offset: 0 }));
-      
+
       component.loadTenants();
-      
+
       expect(adminServiceSpy.listTenants).toHaveBeenCalledWith({
         limit: 25,
         offset: 0,
@@ -163,9 +167,9 @@ describe('TenantListComponent', () => {
     it('should load tenants with status filter', () => {
       component.selectedStatus = 'active';
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: [mockTenants[0]], total: 1, limit: 25, offset: 0 }));
-      
+
       component.loadTenants();
-      
+
       expect(adminServiceSpy.listTenants).toHaveBeenCalledWith({
         limit: 25,
         offset: 0,
@@ -178,9 +182,9 @@ describe('TenantListComponent', () => {
     it('should handle error when loading tenants', () => {
       const error = new Error('Network error');
       adminServiceSpy.listTenants.and.returnValue(throwError(() => error));
-      
+
       component.loadTenants();
-      
+
       expect(adminStateSpy.setError).toHaveBeenCalledWith('Network error');
       expect(notificationSpy.error).toHaveBeenCalledWith('Failed to load tenants');
     });
@@ -189,9 +193,9 @@ describe('TenantListComponent', () => {
   describe('onSearch', () => {
     it('should trigger loadTenants', () => {
       spyOn(component, 'loadTenants');
-      
+
       component.onSearch();
-      
+
       expect(component.loadTenants).toHaveBeenCalled();
     });
   });
@@ -199,9 +203,9 @@ describe('TenantListComponent', () => {
   describe('onFilterChange', () => {
     it('should trigger loadTenants', () => {
       spyOn(component, 'loadTenants');
-      
+
       component.onFilterChange();
-      
+
       expect(component.loadTenants).toHaveBeenCalled();
     });
   });
@@ -209,77 +213,24 @@ describe('TenantListComponent', () => {
   describe('viewTenant', () => {
     it('should navigate to tenant detail page', () => {
       const tenant = mockTenants[0];
-      
+
       component.viewTenant(tenant);
-      
+
       expect(routerSpy.navigate).toHaveBeenCalledWith(['/admin/tenants', 'tenant_1']);
-    });
-  });
-
-  describe('getUsagePercentage', () => {
-    it('should calculate usage percentage correctly', () => {
-      const tenant = mockTenants[0]; // 500/1000 = 50%
-      
-      const percentage = component.getUsagePercentage(tenant);
-      
-      expect(percentage).toBe(50);
-    });
-
-    it('should handle 100% usage', () => {
-      const tenant: TenantSummary = {
-        ...mockTenants[0],
-        current_usage: 1000,
-        monthly_quota: 1000
-      };
-      
-      const percentage = component.getUsagePercentage(tenant);
-      
-      expect(percentage).toBe(100);
-    });
-
-    it('should handle over 100% usage', () => {
-      const tenant: TenantSummary = {
-        ...mockTenants[0],
-        current_usage: 1200,
-        monthly_quota: 1000
-      };
-      
-      const percentage = component.getUsagePercentage(tenant);
-      
-      expect(percentage).toBe(120);
-    });
-  });
-
-  describe('getUsageSeverity', () => {
-    it('should return "success" for usage below 80%', () => {
-      expect(component.getUsageSeverity(50)).toBe('success');
-      expect(component.getUsageSeverity(79)).toBe('success');
-    });
-
-    it('should return "warning" for usage between 80% and 89%', () => {
-      expect(component.getUsageSeverity(80)).toBe('warning');
-      expect(component.getUsageSeverity(85)).toBe('warning');
-      expect(component.getUsageSeverity(89)).toBe('warning');
-    });
-
-    it('should return "danger" for usage 90% and above', () => {
-      expect(component.getUsageSeverity(90)).toBe('danger');
-      expect(component.getUsageSeverity(95)).toBe('danger');
-      expect(component.getUsageSeverity(100)).toBe('danger');
     });
   });
 
   describe('template rendering', () => {
     it('should render data table with correct columns', (done) => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       fixture.detectChanges();
-      
+
       setTimeout(() => {
         fixture.detectChanges();
         const compiled = fixture.nativeElement;
         const dataTable = compiled.querySelector('app-data-table');
-        
+
         expect(dataTable).toBeTruthy();
         done();
       }, 10);
@@ -287,23 +238,23 @@ describe('TenantListComponent', () => {
 
     it('should render filter dropdowns', () => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       fixture.detectChanges();
-      
+
       const compiled = fixture.nativeElement;
       const dropdowns = compiled.querySelectorAll('p-dropdown');
-      
+
       expect(dropdowns.length).toBeGreaterThanOrEqual(2); // tier and status filters
     });
 
     it('should render search input', () => {
       adminServiceSpy.listTenants.and.returnValue(of({ tenants: mockTenants, total: 2, limit: 25, offset: 0 }));
-      
+
       fixture.detectChanges();
-      
+
       const compiled = fixture.nativeElement;
       const searchInput = compiled.querySelector('input[type="text"]');
-      
+
       expect(searchInput).toBeTruthy();
     });
   });

@@ -1,135 +1,129 @@
-<div class="branding-editor">
-  <h2>Custom Branding</h2>
+<div class="vp-page branding-editor">
+  <app-page-header title="Branding" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Reset to Default" icon="pi pi-refresh" [outlined]="true" severity="secondary" (onClick)="resetBranding()"></p-button>
+      <p-button label="Save Colors" icon="pi pi-check" (onClick)="saveColors()" [disabled]="form.invalid || loading"></p-button>
+    </div>
+  </app-page-header>
 
-  <div class="editor-container">
-    <p-card styleClass="editor-card">
-      <ng-template pTemplate="header">
-        <div class="card-header">Logo</div>
-      </ng-template>
-      <ng-template pTemplate="content">
-        <div class="logo-section">
-          <div class="logo-preview" *ngIf="logoPreview">
-            <img [src]="logoPreview" alt="Logo preview">
-          </div>
-          <div class="logo-upload">
-            <p-fileUpload 
-              mode="basic" 
-              chooseLabel="Choose Logo" 
-              [auto]="false"
-              accept="image/png,image/jpeg,image/svg+xml"
-              [maxFileSize]="2097152"
-              (onSelect)="onFileSelected($event)"
-              [disabled]="(loading$ | async) ?? false">
-            </p-fileUpload>
-            <p-button 
-              label="Upload" 
-              icon="pi pi-cloud-upload" 
-              (onClick)="uploadLogo()" 
-              [disabled]="!logoFile || ((loading$ | async) ?? false)">
-            </p-button>
-          </div>
-          <small class="p-text-secondary">PNG, JPG, or SVG. Max 2MB</small>
-        </div>
-      </ng-template>
-    </p-card>
+  <app-loading-spinner *ngIf="loading && !currentConfig" message="Loading branding..."></app-loading-spinner>
 
-    <p-card styleClass="editor-card">
-      <ng-template pTemplate="header">
-        <div class="card-header">Colors</div>
-      </ng-template>
-      <ng-template pTemplate="content">
-        <form [formGroup]="form">
-          <div class="color-field">
-            <label>Primary Color</label>
-            <div class="color-input">
-              <p-colorPicker 
-                formControlName="primary_color" 
-                [inline]="false">
-              </p-colorPicker>
-              <span class="p-float-label">
-                <input 
-                  pInputText 
-                  id="primary_color"
-                  formControlName="primary_color" 
-                  [class.ng-invalid]="form.get('primary_color')?.invalid && form.get('primary_color')?.touched">
-                <label for="primary_color">Hex Color</label>
-              </span>
+  <app-content-state
+    *ngIf="errorMessage && !loading && !currentConfig"
+    title="Branding unavailable"
+    [description]="errorMessage"
+    icon="pi-palette"
+    actionLabel="Retry"
+    tone="error"
+    (action)="loadBranding()">
+  </app-content-state>
+
+  <div *ngIf="currentConfig || !loading" class="branding-layout">
+    <section class="branding-main-column">
+      <p-card styleClass="branding-card">
+        <ng-template pTemplate="header">
+          <div class="section-header">
+            <div>
+              <h2>Brand Assets</h2>
+              <p>Upload the mark shown in the hosted verification flow.</p>
             </div>
-            <small *ngIf="form.get('primary_color')?.invalid && form.get('primary_color')?.touched" class="p-error">
-              {{ getErrorMessage('primary_color') }}
-            </small>
-            <small *ngIf="contrastWarnings['primary_color']" class="warning">
-              <i class="pi pi-exclamation-triangle"></i>
-              {{ contrastWarnings['primary_color'] }}
-            </small>
           </div>
-
-          <div class="color-field">
-            <label>Secondary Color</label>
-            <div class="color-input">
-              <p-colorPicker 
-                formControlName="secondary_color" 
-                [inline]="false">
-              </p-colorPicker>
-              <span class="p-float-label">
-                <input 
-                  pInputText 
-                  id="secondary_color"
-                  formControlName="secondary_color" 
-                  [class.ng-invalid]="form.get('secondary_color')?.invalid && form.get('secondary_color')?.touched">
-                <label for="secondary_color">Hex Color</label>
-              </span>
+        </ng-template>
+        <ng-template pTemplate="content">
+          <div class="logo-grid">
+            <div class="logo-preview-shell">
+              <div class="logo-preview" *ngIf="logoPreview; else emptyLogoState">
+                <img [src]="logoPreview" alt="Logo preview">
+              </div>
+              <ng-template #emptyLogoState>
+                <div class="logo-empty-state">
+                  <span class="logo-empty-title">No logo uploaded</span>
+                  <span class="logo-empty-copy">The verification flow will fall back to text-only branding until a logo is added.</span>
+                </div>
+              </ng-template>
             </div>
-            <small *ngIf="form.get('secondary_color')?.invalid && form.get('secondary_color')?.touched" class="p-error">
-              {{ getErrorMessage('secondary_color') }}
-            </small>
-          </div>
 
-          <div class="color-field">
-            <label>Button Color</label>
-            <div class="color-input">
-              <p-colorPicker 
-                formControlName="button_color" 
-                [inline]="false">
-              </p-colorPicker>
-              <span class="p-float-label">
-                <input 
-                  pInputText 
-                  id="button_color"
-                  formControlName="button_color" 
-                  [class.ng-invalid]="form.get('button_color')?.invalid && form.get('button_color')?.touched">
-                <label for="button_color">Hex Color</label>
-              </span>
+            <div class="logo-controls">
+              <p-fileUpload
+                mode="basic"
+                chooseLabel="Choose Logo"
+                [auto]="false"
+                accept="image/png,image/jpeg,image/svg+xml"
+                [maxFileSize]="2097152"
+                (onSelect)="onFileSelected($event)"
+                [disabled]="loading">
+              </p-fileUpload>
+              <p-button label="Upload Logo" icon="pi pi-cloud-upload" (onClick)="uploadLogo()" [disabled]="!logoFile || loading"></p-button>
+              <p class="helper-copy">Use PNG, JPG, or SVG up to 2MB. Wide marks tend to read better in the hosted verification flow.</p>
             </div>
-            <small *ngIf="form.get('button_color')?.invalid && form.get('button_color')?.touched" class="p-error">
-              {{ getErrorMessage('button_color') }}
-            </small>
-            <small *ngIf="contrastWarnings['button_color']" class="warning">
-              <i class="pi pi-exclamation-triangle"></i>
-              {{ contrastWarnings['button_color'] }}
-            </small>
           </div>
-        </form>
-      </ng-template>
-      <ng-template pTemplate="footer">
-        <div class="card-actions">
-          <p-button 
-            label="Save Colors" 
-            icon="pi pi-check" 
-            (onClick)="saveColors()" 
-            [disabled]="form.invalid || ((loading$ | async) ?? false)">
-          </p-button>
-          <p-button 
-            label="Reset to Default" 
-            icon="pi pi-refresh" 
-            [outlined]="true"
-            severity="secondary"
-            (onClick)="resetBranding()">
-          </p-button>
-        </div>
-      </ng-template>
-    </p-card>
+        </ng-template>
+      </p-card>
 
-    <app-branding-preview [config]="config$ | async"></app-branding-preview>
+      <p-card styleClass="branding-card">
+        <ng-template pTemplate="header">
+          <div class="section-header">
+            <div>
+              <h2>Color System</h2>
+              <p>Assign color roles once and keep the hosted experience consistent.</p>
+            </div>
+          </div>
+        </ng-template>
+        <ng-template pTemplate="content">
+          <div class="preset-row">
+            <button type="button" class="preset-card" *ngFor="let preset of presets" (click)="applyPreset(preset)">
+              <div class="preset-swatch-group">
+                <span class="preset-swatch" [style.background]="preset.primary_color"></span>
+                <span class="preset-swatch" [style.background]="preset.secondary_color"></span>
+                <span class="preset-swatch" [style.background]="preset.button_color"></span>
+              </div>
+              <div class="preset-copy">
+                <strong>{{ preset.name }}</strong>
+                <span>{{ preset.summary }}</span>
+              </div>
+            </button>
+          </div>
+
+          <form [formGroup]="form" class="color-form">
+            <div class="color-field" *ngFor="let field of ['primary_color', 'secondary_color', 'button_color']">
+              <div class="color-field-header">
+                <label [for]="field">{{ field === 'primary_color' ? 'Primary Color' : field === 'secondary_color' ? 'Secondary Color' : 'Button Color' }}</label>
+                <span class="color-chip" [style.background]="form.get(field)?.value"></span>
+              </div>
+              <div class="color-input-row">
+                <p-colorPicker [formControlName]="field" [inline]="false"></p-colorPicker>
+                <input pInputText [id]="field" [formControlName]="field" [class.ng-invalid]="form.get(field)?.invalid && form.get(field)?.touched">
+              </div>
+              <small *ngIf="form.get(field)?.invalid && form.get(field)?.touched" class="p-error">{{ getErrorMessage(field) }}</small>
+              <small *ngIf="contrastWarnings[field]" class="warning-copy">{{ contrastWarnings[field] }}</small>
+            </div>
+          </form>
+        </ng-template>
+      </p-card>
+    </section>
+
+    <aside class="branding-side-column">
+      <p-card styleClass="branding-card branding-summary-card">
+        <ng-template pTemplate="content">
+          <div class="summary-block">
+            <span class="summary-label">Primary Contrast</span>
+            <strong>{{ primaryContrastRatio | number:'1.1-1' }}:1</strong>
+            <span class="summary-status">{{ contrastLabel(primaryContrastRatio) }}</span>
+          </div>
+          <div class="summary-block">
+            <span class="summary-label">Button Contrast</span>
+            <strong>{{ buttonContrastRatio | number:'1.1-1' }}:1</strong>
+            <span class="summary-status">{{ contrastLabel(buttonContrastRatio) }}</span>
+          </div>
+          <div class="summary-block">
+            <span class="summary-label">Unsaved Changes</span>
+            <strong>{{ hasUnsavedChanges ? 'Pending' : 'Synced' }}</strong>
+            <span class="summary-status">{{ hasUnsavedChanges ? 'Review before saving' : 'Matches current configuration' }}</span>
+          </div>
+        </ng-template>
+      </p-card>
+
+      <app-branding-preview [config]="previewConfig"></app-branding-preview>
+    </aside>
   </div>
 </div>

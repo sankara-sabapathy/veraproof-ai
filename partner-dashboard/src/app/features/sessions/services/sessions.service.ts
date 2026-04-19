@@ -8,7 +8,9 @@ import {
   CreateSessionResponse,
   VerificationResult,
   SessionQueryParams,
-  SessionListResponse
+  SessionListResponse,
+  SessionArtifactRecord,
+  SessionArtifactDownload
 } from '../../../core/models/interfaces';
 
 @Injectable({
@@ -87,5 +89,21 @@ export class SessionsService {
    */
   getOpticalFlowUrl(sessionId: string): Observable<{ url: string }> {
     return this.apiService.get<{ url: string }>(`/api/v1/sessions/${sessionId}/optical-flow`);
+  }
+
+  getSessionArtifacts(sessionId: string): Observable<SessionArtifactRecord[]> {
+    return this.apiService.get<SessionArtifactRecord[]>(`/api/v1/sessions/${sessionId}/artifacts`);
+  }
+
+  getSessionArtifact(sessionId: string, artifactId: string): Observable<SessionArtifactDownload> {
+    return this.apiService.get<SessionArtifactDownload>(`/api/v1/sessions/${sessionId}/artifacts/${artifactId}`);
+  }
+
+  getSessionReport(sessionId: string): Observable<SessionArtifactDownload> {
+    return this.apiService.get<SessionArtifactDownload>(`/api/v1/sessions/${sessionId}/report`);
+  }
+
+  getSessionArtifactBundle(sessionId: string): Observable<SessionArtifactDownload> {
+    return this.apiService.get<SessionArtifactDownload>(`/api/v1/sessions/${sessionId}/artifacts/bundle`);
   }
 }

@@ -1,135 +1,24 @@
-<div class="api-keys-container">
-  <div class="header">
-    <h2>API Keys</h2>
-    <p-button 
-      label="Generate API Key" 
-      icon="pi pi-plus" 
-      (onClick)="onCreateKey()">
-    </p-button>
-  </div>
-
-  <p-card>
-    <!-- Search Field -->
-    <div class="search-field">
-      <span class="p-input-icon-left p-input-icon-right">
-        <i class="pi pi-search"></i>
-        <input 
-          pInputText 
-          type="text" 
-          placeholder="Search by key or environment..." 
-          [(ngModel)]="searchTerm"
-          (ngModelChange)="onSearch($event)"
-          class="w-full">
-        <i class="pi pi-times clear-icon" 
-           *ngIf="searchTerm" 
-           (click)="searchTerm = ''; onSearch('')"
-           style="cursor: pointer;"></i>
-      </span>
+<div class="vp-page api-keys-container">
+  <app-page-header title="API Keys" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Generate API Key" icon="pi pi-plus" (onClick)="onCreateKey()"></p-button>
     </div>
+  </app-page-header>
 
-    <!-- Loading Spinner -->
-    <div *ngIf="loading$ | async" class="loading-container">
-      <app-loading-spinner [diameter]="50" message="Loading API keys..."></app-loading-spinner>
-    </div>
-
-    <!-- Data Table -->
-    <div *ngIf="!(loading$ | async)">
-      <p-table 
-        [value]="filteredKeys" 
-        [tableStyle]="{ 'min-width': '50rem' }"
-        styleClass="p-datatable-striped">
-        
-        <!-- Environment Column -->
-        <ng-template pTemplate="header">
-          <tr>
-            <th>Environment</th>
-            <th>API Key</th>
-            <th>Created</th>
-            <th>Usage</th>
-            <th>Last Used</th>
-            <th>Actions</th>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="body" let-key>
-          <tr>
-            <!-- Environment -->
-            <td>
-              <div class="chip-container">
-                <p-chip 
-                  [label]="key.environment | titlecase"
-                  [styleClass]="key.environment === 'sandbox' ? 'chip-sandbox' : 'chip-production'">
-                </p-chip>
-                <p-chip 
-                  *ngIf="isRevoked(key)"
-                  label="Revoked"
-                  styleClass="chip-revoked">
-                </p-chip>
-              </div>
-            </td>
-
-            <!-- API Key -->
-            <td>
-              <div class="key-value-container">
-                <code class="key-value">{{ getMaskedKey(key.api_key) }}</code>
-                <p-button 
-                  icon="pi pi-copy" 
-                  [text]="true"
-                  [rounded]="true"
-                  size="small"
-                  (onClick)="copyToClipboard(key.api_key)"
-                  pTooltip="Copy to clipboard"
-                  tooltipPosition="top"
-                  [disabled]="isRevoked(key)">
-                </p-button>
-              </div>
-            </td>
-
-            <!-- Created -->
-            <td>{{ formatDate(key.created_at) }}</td>
-
-            <!-- Usage -->
-            <td>
-              <div class="usage-stats">
-                <span class="usage-count">{{ key.total_calls | number }}</span>
-                <span class="usage-label">calls</span>
-              </div>
-            </td>
-
-            <!-- Last Used -->
-            <td>{{ formatDate(key.last_used_at) }}</td>
-
-            <!-- Actions -->
-            <td>
-              <p-button 
-                icon="pi pi-ellipsis-v" 
-                [text]="true"
-                [rounded]="true"
-                size="small"
-                (onClick)="menu.toggle($event)"
-                [disabled]="isRevoked(key)">
-              </p-button>
-              <p-menu #menu [model]="getMenuItems(key)" [popup]="true"></p-menu>
-            </td>
-          </tr>
-        </ng-template>
-
-        <!-- Empty State -->
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td colspan="6" class="no-data">
-              <div class="no-data-message">
-                <i class="pi pi-key" style="font-size: 4rem; color: var(--surface-400);"></i>
-                <p>No API keys found</p>
-                <p-button 
-                  label="Generate Your First API Key" 
-                  (onClick)="onCreateKey()">
-                </p-button>
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-    </div>
+  <p-card styleClass="api-keys-card">
+    <app-data-table
+      [columns]="columns"
+      [data]="apiKeys"
+      [loading]="loading"
+      [errorMessage]="errorMessage"
+      errorTitle="API keys unavailable"
+      errorActionLabel="Retry"
+      searchPlaceholder="Search API keys..."
+      emptyTitle="No API keys generated"
+      emptyDescription="Generate a key when you are ready to connect a client or test the verification API."
+      emptyActionLabel="Generate API Key"
+      (emptyAction)="onCreateKey()"
+      (errorAction)="loadApiKeys()">
+    </app-data-table>
   </p-card>
 </div>

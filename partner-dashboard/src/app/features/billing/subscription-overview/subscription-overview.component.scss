@@ -1,97 +1,144 @@
-.subscription-overview {
-  padding: 24px;
+.billing-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.card-header {
-  font-size: 1.25rem;
-  font-weight: 600;
-  padding: 1rem 1.5rem;
+.page-actions {
+  display: inline-flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+::ng-deep .billing-card {
+  border: 1px solid var(--vp-border, #e2e8f0);
+  border-radius: var(--vp-radius-lg, 12px);
+  box-shadow: var(--vp-shadow-sm);
+  overflow: hidden;
+}
+
+::ng-deep .billing-card .p-card-header {
+  padding: 0 !important;
+  border: none;
+}
+
+::ng-deep .billing-card .p-card-body {
+  padding: 0 !important;
+}
+
+::ng-deep .billing-card .p-card-content {
+  padding: 1.5rem !important;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--vp-border-light, #f1f5f9);
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--vp-text, #1e293b);
+}
+
+.section-header p {
+  margin: 0.25rem 0 0;
+  color: var(--vp-text-secondary, #64748b);
+  font-size: 0.875rem;
+}
+
+::ng-deep .plan-chip {
+  background: var(--vp-bg-alt, #f1f5f9);
+  color: var(--vp-text, #1e293b);
+  border: 1px solid var(--vp-border, #e2e8f0);
+  font-weight: 700;
 }
 
 .subscription-details {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 1rem;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
 }
 
 .label {
   font-weight: 500;
-  color: var(--text-color-secondary);
+  color: var(--vp-text-secondary, #64748b);
 }
 
 .value {
   font-weight: 600;
-}
-
-.plan-chip {
-  background-color: var(--primary-color);
-  color: var(--primary-color-text);
+  color: var(--vp-text, #1e293b);
+  text-align: right;
 }
 
 .quota-progress {
-  margin: 16px 0;
+  margin: 0.25rem 0 0.5rem;
 }
 
 .progress-label {
   display: block;
   text-align: right;
-  margin-top: 8px;
-  font-size: 14px;
-  color: var(--text-color-secondary);
-}
-
-// Progress bar color variants
-::ng-deep {
-  .usage-success .p-progressbar-value {
-    background-color: var(--green-500);
-  }
-  
-  .usage-warning .p-progressbar-value {
-    background-color: var(--orange-500);
-  }
-  
-  .usage-danger .p-progressbar-value {
-    background-color: var(--red-500);
-  }
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--vp-text-secondary, #64748b);
+  font-weight: 600;
 }
 
 .warning-card {
-  background-color: #fff3e0;
-  margin-top: 16px;
-  border: 1px solid #ffe0b2;
+  margin-top: 1rem;
+  border: 1px solid rgba(245, 158, 11, 0.16);
+  border-radius: var(--vp-radius, 8px);
+  background: var(--vp-warning-bg, #fffbeb);
+  padding: 1rem;
 }
 
 .warning-content {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
 
-  .warning-icon {
-    flex-shrink: 0;
-    font-size: 1.5rem;
-    color: var(--orange-500);
-  }
+.warning-icon {
+  color: var(--vp-warning, #f59e0b);
+  font-size: 1rem;
+  margin-top: 0.125rem;
+}
 
-  p {
-    margin: 0;
-  }
+.warning-content p {
+  margin: 0;
+  color: #9a6700;
+  line-height: 1.6;
 }
 
 .card-actions {
   display: flex;
-  gap: 12px;
-  padding: 0.5rem 0;
+  justify-content: flex-start;
+  gap: 0.75rem;
 }
 
-::ng-deep {
-  p-divider {
-    margin: 16px 0;
+@media (max-width: 768px) {
+  .page-actions,
+  .section-header,
+  .detail-row {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .value,
+  .progress-label {
+    text-align: left;
   }
 }

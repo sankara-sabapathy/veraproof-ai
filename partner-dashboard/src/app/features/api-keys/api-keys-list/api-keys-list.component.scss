@@ -1,157 +1,85 @@
 .api-keys-container {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-
-    h2 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 500;
-    }
-  }
-
-  .search-field {
-    width: 100%;
-    max-width: 500px;
-    margin-bottom: 16px;
-
-    .w-full {
-      width: 100%;
-    }
-
-    .clear-icon {
-      color: var(--text-color-secondary);
-      
-      &:hover {
-        color: var(--text-color);
-      }
-    }
-  }
-
-  .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 48px;
-  }
-
-  .chip-container {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  :host ::ng-deep {
-    .chip-sandbox {
-      background-color: #e3f2fd;
-      color: #1976d2;
-    }
-
-    .chip-production {
-      background-color: #e8f5e9;
-      color: #388e3c;
-    }
-
-    .chip-revoked {
-      background-color: #ffebee;
-      color: #d32f2f;
-    }
-
-    .menu-item-danger {
-      color: var(--red-500);
-      
-      .p-menuitem-icon {
-        color: var(--red-500);
-      }
-    }
-  }
-
-  .key-value-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .key-value {
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      background-color: var(--surface-100);
-      padding: 4px 8px;
-      border-radius: 4px;
-      color: var(--text-color);
-    }
-  }
-
-  .usage-stats {
-    display: flex;
-    flex-direction: column;
-
-    .usage-count {
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--text-color);
-    }
-
-    .usage-label {
-      font-size: 12px;
-      color: var(--text-color-secondary);
-    }
-  }
-
-  .no-data {
-    text-align: center;
-    padding: 48px 24px;
-
-    .no-data-message {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-
-      p {
-        margin: 0;
-        font-size: 16px;
-        color: var(--text-color-secondary);
-      }
-    }
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-// Responsive styles
+.page-actions {
+  display: inline-flex;
+  gap: 0.75rem;
+}
+
+::ng-deep .api-keys-card {
+  border: 1px solid var(--vp-border, #e2e8f0);
+  border-radius: var(--vp-radius-lg, 12px);
+  box-shadow: var(--vp-shadow-sm);
+  overflow: hidden;
+}
+
+::ng-deep .api-keys-card .p-card-body,
+::ng-deep .api-keys-card .p-card-content {
+  padding: 0 !important;
+}
+
+::ng-deep .environment-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+::ng-deep .environment-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+::ng-deep .environment-pill--sandbox {
+  background: var(--vp-warning-bg, #fffbeb);
+  color: #9a6700;
+}
+
+::ng-deep .environment-pill--production {
+  background: var(--vp-success-bg, #ecfdf5);
+  color: var(--vp-success, #10b981);
+}
+
+::ng-deep .environment-pill--revoked {
+  background: var(--vp-error-bg, #fef2f2);
+  color: var(--vp-error, #ef4444);
+}
+
+::ng-deep .usage-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+::ng-deep .usage-count {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--vp-text, #1e293b);
+}
+
+::ng-deep .usage-label {
+  font-size: 0.75rem;
+  color: var(--vp-text-muted, #94a3b8);
+  font-weight: 600;
+}
+
+::ng-deep .menu-item-danger {
+  color: var(--vp-error, #ef4444);
+}
+
+::ng-deep .menu-item-danger .p-menuitem-icon {
+  color: var(--vp-error, #ef4444);
+}
+
 @media (max-width: 768px) {
-  .api-keys-container {
-    padding: 16px;
-
-    .header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
-
-      :host ::ng-deep p-button {
-        width: 100%;
-        
-        button {
-          width: 100%;
-        }
-      }
-    }
-
-    .search-field {
-      max-width: 100%;
-    }
-
-    :host ::ng-deep .p-datatable {
-      font-size: 12px;
-
-      th, td {
-        padding: 8px 4px;
-      }
-    }
+  .page-actions {
+    width: 100%;
   }
 }

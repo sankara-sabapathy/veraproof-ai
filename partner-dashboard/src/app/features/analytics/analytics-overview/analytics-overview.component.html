@@ -1,125 +1,80 @@
-<div class="analytics-container">
-  <div class="header">
-    <h1>Analytics</h1>
-    <div class="actions">
-      <p-button 
-        label="Export CSV" 
-        icon="pi pi-download" 
-        (onClick)="exportCSV()" 
-        [disabled]="loading"
-        severity="primary">
-      </p-button>
-      <p-button 
-        icon="pi pi-refresh" 
-        (onClick)="refresh()" 
-        [disabled]="loading"
-        [text]="true"
-        [rounded]="true">
-      </p-button>
+<div class="vp-page analytics-overview">
+  <app-page-header title="Analytics" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Export CSV" icon="pi pi-download" severity="primary" [disabled]="loading" (onClick)="exportCSV()"></p-button>
+      <p-button icon="pi pi-refresh" [text]="true" [rounded]="true" [disabled]="loading" (onClick)="refresh()" aria-label="Refresh analytics"></p-button>
     </div>
-  </div>
+  </app-page-header>
 
-  <div *ngIf="loading" class="loading-container">
-    <app-loading-spinner message="Loading analytics..."></app-loading-spinner>
-  </div>
+  <app-loading-spinner *ngIf="loading && !stats && !error" message="Loading analytics..."></app-loading-spinner>
 
-  <div *ngIf="error" class="error-container">
-    <mat-card>
-      <mat-card-content>
-        <p class="error-message">{{ error }}</p>
-        <p-button label="Retry" (onClick)="refresh()" severity="primary"></p-button>
-      </mat-card-content>
-    </mat-card>
-  </div>
+  <app-content-state
+    *ngIf="error && !loading"
+    title="Analytics unavailable"
+    [description]="error"
+    icon="pi-chart-line"
+    actionLabel="Retry"
+    tone="error"
+    (action)="refresh()">
+  </app-content-state>
 
-  <div *ngIf="!loading && !error && stats" class="content">
-    <!-- Key Metrics -->
-    <div class="stats-grid">
-      <app-stat-card
-        title="Total Sessions"
-        [value]="stats.total_sessions"
-        icon="verified_user"
-        iconColor="primary">
-      </app-stat-card>
+  <div *ngIf="!loading && !error && stats" class="analytics-content">
+    <section class="stats-grid">
+      <app-stat-card title="Total Sessions" [value]="stats.total_sessions" icon="chart-bar" iconColor="primary"></app-stat-card>
+      <app-stat-card title="Success Rate" [value]="(stats.success_rate | number:'1.1-1') + '%'" icon="check-circle" iconColor="accent"></app-stat-card>
+      <app-stat-card title="Average Trust Score" [value]="stats.average_trust_score | number:'1.1-1'" icon="star-fill" iconColor="primary"></app-stat-card>
+      <app-stat-card title="Sessions Today" [value]="stats.sessions_today" icon="calendar" iconColor="accent"></app-stat-card>
+    </section>
 
-      <app-stat-card
-        title="Success Rate"
-        [value]="(stats.success_rate | number:'1.1-1') + '%'"
-        icon="check_circle"
-        iconColor="accent">
-      </app-stat-card>
-
-      <app-stat-card
-        title="Average Trust Score"
-        [value]="stats.average_trust_score | number:'1.1-1'"
-        icon="analytics"
-        iconColor="primary">
-      </app-stat-card>
-
-      <app-stat-card
-        title="Sessions Today"
-        [value]="stats.sessions_today"
-        icon="today"
-        iconColor="accent">
-      </app-stat-card>
-    </div>
-
-    <!-- Quota Usage -->
-    <mat-card class="quota-card">
-      <mat-card-header>
-        <mat-icon mat-card-avatar>data_usage</mat-icon>
-        <mat-card-title>Quota Usage</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="quota-info">
-          <div class="quota-numbers">
-            <span class="current">{{ stats.current_usage | number }}</span>
-            <span class="separator">/</span>
-            <span class="total">{{ stats.monthly_quota | number }}</span>
-            <span class="label">sessions</span>
+    <p-card styleClass="section-card quota-card">
+      <ng-template pTemplate="header">
+        <div class="section-header">
+          <div>
+            <h2>Quota Usage</h2>
+            <p>{{ usage.environmentLabel }} usage for the active billing window</p>
           </div>
-          <div class="quota-percentage">{{ usagePercentage | number:'1.0-0' }}%</div>
         </div>
-        <mat-progress-bar 
-          mode="determinate" 
-          [value]="usagePercentage"
-          [color]="quotaWarningColor">
-        </mat-progress-bar>
-        <div *ngIf="showQuotaWarning" class="quota-warning">
-          <mat-icon [color]="quotaWarningColor">warning</mat-icon>
-          <span *ngIf="usagePercentage < 100">
-            You have used {{ usagePercentage | number:'1.0-0' }}% of your monthly quota
-          </span>
-          <span *ngIf="usagePercentage >= 100">
-            You have exceeded your monthly quota
-          </span>
+      </ng-template>
+      <ng-template pTemplate="content">
+        <div class="quota-body">
+          <div class="quota-info">
+            <div class="quota-numbers">
+              <span class="current">{{ usage.currentUsage | number }}</span>
+              <span class="separator">/</span>
+              <span class="total">{{ usage.monthlyQuota | number }}</span>
+              <span class="label">sessions</span>
+            </div>
+            <div class="quota-percentage">{{ usage.usagePercentage | number:'1.0-0' }}% used</div>
+          </div>
+          <p-progressBar [value]="usage.usagePercentage" [showValue]="false"></p-progressBar>
+          <div *ngIf="showQuotaWarning" class="quota-warning">
+            <i class="pi pi-exclamation-triangle"></i>
+            <span *ngIf="usage.usagePercentage < 100">Usage is approaching the monthly quota for this environment.</span>
+            <span *ngIf="usage.usagePercentage >= 100">This environment has reached its monthly quota.</span>
+          </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </ng-template>
+    </p-card>
 
-    <!-- Period Selector -->
-    <div class="period-selector">
-      <p-dropdown 
-        [(ngModel)]="selectedPeriod" 
-        [options]="periodOptions" 
-        optionLabel="label" 
+    <section class="period-toolbar">
+      <div class="period-copy">
+        <h2>Trend View</h2>
+        <p>Switch the time grain for usage and outcome reporting.</p>
+      </div>
+      <p-dropdown
+        [(ngModel)]="selectedPeriod"
+        [options]="periodOptions"
+        optionLabel="label"
         optionValue="value"
         (onChange)="onPeriodChange($event.value)"
         placeholder="Select Time Period"
-        [style]="{'width': '200px'}">
+        [style]="{ width: '200px' }">
       </p-dropdown>
-    </div>
+    </section>
 
-    <!-- Charts -->
-    <div class="charts-grid">
-      <app-usage-chart 
-        [data]="usageTrend" 
-        [period]="selectedPeriod">
-      </app-usage-chart>
-
-      <app-outcome-chart 
-        [data]="outcomeDistribution">
-      </app-outcome-chart>
-    </div>
+    <section class="charts-grid">
+      <app-usage-chart [data]="usageTrend" [period]="selectedPeriod"></app-usage-chart>
+      <app-outcome-chart [data]="outcomeDistribution"></app-outcome-chart>
+    </section>
   </div>
 </div>

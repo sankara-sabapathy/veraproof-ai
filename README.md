@@ -1,4 +1,4 @@
-# VeraProof AI - Physics-First Fraud Detection Platform
+# VeraProof AI - AI-First Verification & Fraud Detection Platform
 
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
 [![AWS](https://img.shields.io/badge/AWS-ap--south--1-orange.svg)](https://aws.amazon.com)
@@ -8,13 +8,13 @@
 
 ## Overview
 
-VeraProof AI is an enterprise-grade, physics-first fraud detection platform that uses sensor fusion (IMU + Optical Flow) to verify the authenticity of video submissions. Unlike traditional AI-based deepfake detection, VeraProof prioritizes physical sensor data correlation for Tier 1 triage, achieving sub-3-second latency.
+VeraProof AI is an enterprise-grade, AI-first verification platform built for cross-industry use cases (e.g., identity verification, item condition checks like food delivery). While it uses sensor fusion (IMU + Optical Flow) for ultra-fast Tier 1 triage, its core leverages advanced multimodal AI models (via AWS Bedrock) to assess authenticity through prompt-driven video/frame analysis and compute a definitive, multi-dimensional Trust Score.
 
 ### Core Philosophy
 
-1. **Physics-First**: Sensor Fusion (IMU + Optical Flow) over probabilistic AI pixel detection
-2. **Sub-3-Second Latency**: Hard requirement for B2B API (Tier 1 analysis)
-3. **Mobile-Only**: Block desktop/laptop access at frontend
+1. **AI-First Verification**: Deep AI analysis combined with generative insights to establish comprehensive authenticity.
+2. **Tier 1 Physics Triage**: Sensor Fusion (IMU + Optical Flow) provides an initial sub-3-second latency check for immediate filtration.
+3. **Platform as a Service**: Built for external B2B integrations with platforms like food delivery, ride-sharing, and finance.
 4. **Pan & Return Protocol**: Baseline → Pan Right → Return Center → Pearson correlation (r ≥ 0.85)
 
 ## Architecture
@@ -25,12 +25,12 @@ VeraProof AI is an enterprise-grade, physics-first fraud detection platform that
 │  (Camera + IMU) │     │  Interface (JS)  │     │   (FastAPI)     │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
                                                            │
-                        ┌──────────────────────────────────┼────────────────┐
-                        │                                  │                │
-                   ┌────▼────┐                      ┌─────▼─────┐   ┌─────▼─────┐
-                   │   RDS   │                      │    S3     │   │  Cognito  │
-                   │PostgreSQL│                      │ Artifacts │   │   Auth    │
-                   └─────────┘                      └───────────┘   └───────────┘
+                        ┌──────────────────────────────────┼────────────────────────────────┐
+                        │                                  │                                │
+                   ┌────▼────┐                      ┌─────▼─────┐                     ┌─────▼─────┐
+                   │   RDS   │                      │    S3     │                     │Bedrock AI │
+                   │PostgreSQL│                      │ Artifacts │                     │ Multimodal│
+                   └─────────┘                      └───────────┘                     └───────────┘
 ```
 
 ## Deployment Options
@@ -60,14 +60,13 @@ Configure resources via CDK context - no separate deployment scripts needed:
 
 ## Features
 
-### Core Verification
-- ✅ Real-time video capture (250ms chunks)
-- ✅ IMU data collection (60Hz)
-- ✅ Optical flow analysis (Lucas-Kanade)
-- ✅ Sensor fusion (Pearson correlation)
-- ✅ WebSocket bi-directional communication
-- ✅ Sub-3-second Tier 1 analysis
-- ✅ AI forensics (Tier 2) for suspicious cases
+### Core Verification (AI-First)
+- ✅ **AI Forensics (Tier 2 Primary)**: Deep reasoning via Amazon Nova Lite / Bedrock
+- ✅ **Fast Gateway Triage (Tier 1)**: Sub-3-second IMU/Optical flow baseline
+- ✅ **Sparse Frame Extraction**: Cost-effective multimodal Bedrock payload generation
+- ✅ **Asynchronous Evaluation**: Handled via Background Workers
+- ✅ **Comprehensive Webhooks**: For server-to-server final Trust Score reporting
+- ✅ **Bi-directional WebSockets**: For real-time phase updates
 
 ### Partner Dashboard
 - ✅ Professional signup/login

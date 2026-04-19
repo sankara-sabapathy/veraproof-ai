@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { DatePipe } from '@angular/common';
 import { of, throwError } from 'rxjs';
 import { InvoiceListComponent } from './invoice-list.component';
 import { BillingService, Invoice } from '../services/billing.service';
@@ -63,7 +64,8 @@ describe('InvoiceListComponent', () => {
       providers: [
         { provide: BillingService, useValue: mockBillingService },
         { provide: BillingStateService, useValue: mockStateService },
-        { provide: NotificationService, useValue: mockNotificationService }
+        { provide: NotificationService, useValue: mockNotificationService },
+        DatePipe
       ]
     }).compileComponents();
 
@@ -77,55 +79,55 @@ describe('InvoiceListComponent', () => {
 
   it('should load invoices on init', () => {
     mockBillingService.getInvoices.and.returnValue(of(mockInvoices));
-    
+
     component.ngOnInit();
-    
+
     expect(mockStateService.setLoading).toHaveBeenCalledWith(true);
     expect(mockBillingService.getInvoices).toHaveBeenCalled();
   });
 
   it('should set invoices in state on successful load', () => {
     mockBillingService.getInvoices.and.returnValue(of(mockInvoices));
-    
+
     component.loadInvoices();
-    
+
     expect(mockStateService.setInvoices).toHaveBeenCalledWith(mockInvoices);
   });
 
   it('should handle error when loading invoices fails', () => {
     const error = new Error('Network error');
     mockBillingService.getInvoices.and.returnValue(throwError(() => error));
-    
+
     component.loadInvoices();
-    
+
     expect(mockStateService.setError).toHaveBeenCalledWith('Network error');
     expect(mockNotificationService.error).toHaveBeenCalledWith('Failed to load invoices');
   });
 
-  it('should initialize columns after view init', () => {
+  it('should initialize columns on creation', () => {
     mockBillingService.getInvoices.and.returnValue(of(mockInvoices));
-    
+
     // Manually trigger the lifecycle hooks
     component.ngOnInit();
-    component.ngAfterViewInit();
-    
-    expect(component.columns.length).toBe(4);
-    expect(component.columns[0].key).toBe('invoice_number');
-    expect(component.columns[1].key).toBe('date');
-    expect(component.columns[2].key).toBe('amount');
-    expect(component.columns[3].key).toBe('status');
+
+    expect(component.columns.length).toBe(5);
+    expect((component.columns[0] as any).field).toBe('invoice_number');
+    expect((component.columns[1] as any).field).toBe('date');
+    expect((component.columns[2] as any).field).toBe('amount');
+    expect((component.columns[3] as any).field).toBe('status');
+    expect((component.columns[4] as any).headerName).toBe('Actions');
   });
 
   it('should download invoice successfully', () => {
     const mockBlob = new Blob(['test'], { type: 'application/pdf' });
     mockBillingService.downloadInvoice.and.returnValue(of(mockBlob));
-    
+
     spyOn(window.URL, 'createObjectURL').and.returnValue('blob:test-url');
     spyOn(window.URL, 'revokeObjectURL');
-    
+
     const invoice = mockInvoices[0];
     component.downloadInvoice(invoice);
-    
+
     expect(mockBillingService.downloadInvoice).toHaveBeenCalledWith(invoice.invoice_id);
     expect(mockNotificationService.success).toHaveBeenCalledWith('Invoice downloaded');
     expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
@@ -133,42 +135,10 @@ describe('InvoiceListComponent', () => {
 
   it('should handle error when downloading invoice fails', () => {
     mockBillingService.downloadInvoice.and.returnValue(throwError(() => new Error('Download failed')));
-    
+
     const invoice = mockInvoices[0];
     component.downloadInvoice(invoice);
-    
+
     expect(mockNotificationService.error).toHaveBeenCalledWith('Failed to download invoice');
-  });
-
-  it('should return correct status color for paid status', () => {
-    expect(component.getStatusColor('paid')).toBe('success');
-  });
-
-  it('should return correct status color for pending status', () => {
-    expect(component.getStatusColor('pending')).toBe('warning');
-  });
-
-  it('should return correct status color for overdue status', () => {
-    expect(component.getStatusColor('overdue')).toBe('danger');
-  });
-
-  it('should return info color for unknown status', () => {
-    expect(component.getStatusColor('unknown')).toBe('info');
-  });
-
-  it('should return correct status severity for paid status', () => {
-    expect(component.getStatusSeverity('paid')).toBe('success');
-  });
-
-  it('should return correct status severity for pending status', () => {
-    expect(component.getStatusSeverity('pending')).toBe('warning');
-  });
-
-  it('should return correct status severity for overdue status', () => {
-    expect(component.getStatusSeverity('overdue')).toBe('danger');
-  });
-
-  it('should return info severity for unknown status', () => {
-    expect(component.getStatusSeverity('unknown')).toBe('info');
   });
 });

@@ -1,12 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { DatePipe } from '@angular/common';
 import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
-import { TableModule } from 'primeng/table';
-import { ChipModule } from 'primeng/chip';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { MenuModule } from 'primeng/menu';
-import { CardModule } from 'primeng/card';
-import { TooltipModule } from 'primeng/tooltip';
 import { FormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
@@ -16,7 +10,7 @@ import { ApiKeysStateService } from '../services/api-keys-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ConfirmationDialogService } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { ApiKey } from '../../../core/models/interfaces';
-import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
+import { ConfirmationService } from 'primeng/api';
 
 describe('ApiKeysListComponent', () => {
   let component: ApiKeysListComponent;
@@ -79,29 +73,30 @@ describe('ApiKeysListComponent', () => {
       imports: [
         ApiKeysListComponent,
         BrowserAnimationsModule,
-        TableModule,
-        ChipModule,
-        ButtonModule,
-        InputTextModule,
-        MenuModule,
-        CardModule,
-        TooltipModule,
-        FormsModule,
-        LoadingSpinnerComponent
+        FormsModule
       ],
       providers: [
         DialogService,
+        DatePipe,
         { provide: ApiKeysService, useValue: mockApiKeysService },
         { provide: ApiKeysStateService, useValue: mockStateService },
         { provide: NotificationService, useValue: mockNotificationService },
-        { provide: ConfirmationDialogService, useValue: mockConfirmationDialog }
+        { provide: ConfirmationDialogService, useValue: mockConfirmationDialog },
+        ConfirmationService
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ApiKeysListComponent);
     component = fixture.componentInstance;
-    
-    // Set up clipboard spy after component creation (check if already spied)
+
+    // Set up clipboard spy after component creation
+    if (!(navigator as any).clipboard) {
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: () => Promise.resolve() },
+        configurable: true
+      });
+    }
+
     if (!(navigator.clipboard.writeText as any).and) {
       clipboardSpy = spyOn(navigator.clipboard, 'writeText').and.returnValue(Promise.resolve());
     } else {
@@ -122,29 +117,16 @@ describe('ApiKeysListComponent', () => {
   it('should populate apiKeys array with keys from state', () => {
     fixture.detectChanges();
     expect(component.apiKeys).toEqual(mockApiKeys);
-    expect(component.filteredKeys).toEqual(mockApiKeys);
   });
 
-  it('should filter keys based on search term', () => {
-    fixture.detectChanges();
-    component.onSearch('sandbox');
-    expect(component.filteredKeys.length).toBe(2);
-    expect(component.filteredKeys.every(k => k.environment === 'sandbox')).toBe(true);
-  });
-
-  it('should filter keys by api_key', () => {
-    fixture.detectChanges();
-    component.onSearch('prod');
-    expect(component.filteredKeys.length).toBe(1);
-    expect(component.filteredKeys[0].environment).toBe('production');
-  });
-
-  it('should show all keys when search term is empty', () => {
-    fixture.detectChanges();
-    component.onSearch('sandbox');
-    expect(component.filteredKeys.length).toBe(2);
-    component.onSearch('');
-    expect(component.filteredKeys.length).toBe(3);
+  it('should initialize AG Grid columns', () => {
+    expect(component.columns.length).toBe(6);
+    expect((component.columns[0] as any).field).toBe('environment');
+    expect((component.columns[1] as any).field).toBe('api_key');
+    expect((component.columns[2] as any).field).toBe('created_at');
+    expect((component.columns[3] as any).field).toBe('usage_count');
+    expect((component.columns[4] as any).field).toBe('last_used_at');
+    expect((component.columns[5] as any).headerName).toBe('Actions');
   });
 
   it('should mask API key showing only last 4 characters', () => {
@@ -159,7 +141,7 @@ describe('ApiKeysListComponent', () => {
 
   it('should format date correctly', () => {
     const formatted = component.formatDate('2024-01-15T10:30:00Z');
-    expect(formatted).toContain('1/15/2024');
+    expect(formatted).toContain('1/15/24');
   });
 
   it('should return "Never" for null date', () => {
@@ -170,6 +152,12 @@ describe('ApiKeysListComponent', () => {
   it('should identify revoked keys', () => {
     expect(component.isRevoked(mockApiKeys[0])).toBe(false);
     expect(component.isRevoked(mockApiKeys[2])).toBe(true);
+  });
+
+  it('should capitalize strings', () => {
+    expect(component.capitalize('sandbox')).toBe('Sandbox');
+    expect(component.capitalize('production')).toBe('Production');
+    expect(component.capitalize('')).toBe('');
   });
 
   it('should show warning when trying to revoke already revoked key', () => {
@@ -216,28 +204,28 @@ describe('ApiKeysListComponent', () => {
 
   it('should copy key to clipboard successfully', async () => {
     clipboardSpy.and.returnValue(Promise.resolve());
-    
+
     await component.copyToClipboard('test_key');
-    
+
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test_key');
     expect(mockNotificationService.success).toHaveBeenCalledWith('Copied to clipboard');
   });
 
   it('should handle clipboard copy failure', async () => {
     clipboardSpy.and.returnValue(Promise.reject(new Error('Clipboard error')));
-    
+
     await component.copyToClipboard('test_key');
-    
+
     // Wait for promise to reject
     await new Promise(resolve => setTimeout(resolve, 10));
-    
+
     expect(mockNotificationService.error).toHaveBeenCalledWith('Failed to copy to clipboard');
   });
 
   it('should generate menu items for a key', () => {
     const activeKey = mockApiKeys[0];
     const menuItems = component.getMenuItems(activeKey);
-    
+
     expect(menuItems.length).toBe(1);
     expect(menuItems[0].label).toBe('Revoke Key');
     expect(menuItems[0].icon).toBe('pi pi-ban');
@@ -246,11 +234,10 @@ describe('ApiKeysListComponent', () => {
 
   it('should open create dialog when onCreateKey is called', () => {
     fixture.detectChanges();
-    
+
     const dialogRefSpy = jasmine.createSpyObj<DynamicDialogRef>('DynamicDialogRef', ['close']);
     dialogRefSpy.onClose = of(undefined);
-    
-    // Spy on the component's private dialogService
+
     spyOn(component['dialogService'], 'open').and.returnValue(dialogRefSpy);
 
     component.onCreateKey();
@@ -265,9 +252,9 @@ describe('ApiKeysListComponent', () => {
     fixture.detectChanges();
     spyOn(component['destroy$'], 'next');
     spyOn(component['destroy$'], 'complete');
-    
+
     component.ngOnDestroy();
-    
+
     expect(component['destroy$'].next).toHaveBeenCalled();
     expect(component['destroy$'].complete).toHaveBeenCalled();
   });

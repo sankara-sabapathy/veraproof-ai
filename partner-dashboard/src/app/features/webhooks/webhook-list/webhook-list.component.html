@@ -1,116 +1,24 @@
-<div class="webhook-list">
-  <div class="header">
-    <h2>Webhooks</h2>
-    <p-button 
-      label="Add Webhook" 
-      icon="pi pi-plus" 
-      (onClick)="openCreateDialog()">
-    </p-button>
-  </div>
+<div class="vp-page webhook-list">
+  <app-page-header title="Webhooks" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <p-button label="Add Webhook" icon="pi pi-plus" (onClick)="openCreateDialog()"></p-button>
+    </div>
+  </app-page-header>
 
-  <p-card *ngIf="webhooks$ | async as webhooks; else loading">
-    <p-table 
-      [value]="webhooks" 
-      styleClass="p-datatable-striped"
-      [tableStyle]="{'min-width': '50rem'}">
-      
-      <ng-template pTemplate="header">
-        <tr>
-          <th>URL</th>
-          <th style="width: 100px">Status</th>
-          <th style="width: 250px">Events</th>
-          <th style="width: 150px">Statistics</th>
-          <th style="width: 200px">Actions</th>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="body" let-webhook>
-        <tr>
-          <td>
-            <div class="url-cell">
-              <span class="url">{{ webhook.url }}</span>
-              <p-chip 
-                *ngIf="!webhook.enabled" 
-                label="Disabled" 
-                styleClass="chip-warn">
-              </p-chip>
-            </div>
-          </td>
-          <td>
-            <p-inputSwitch 
-              [(ngModel)]="webhook.enabled"
-              (onChange)="toggleWebhook(webhook)">
-            </p-inputSwitch>
-          </td>
-          <td>
-            <div class="events-cell">
-              <p-chip 
-                *ngFor="let event of webhook.events" 
-                [label]="event"
-                styleClass="event-chip">
-              </p-chip>
-            </div>
-          </td>
-          <td>
-            <div class="stats">
-              <span class="success">✓ {{ webhook.success_count }}</span>
-              <span class="failure">✗ {{ webhook.failure_count }}</span>
-            </div>
-          </td>
-          <td>
-            <div class="actions">
-              <p-button 
-                icon="pi pi-play" 
-                [text]="true" 
-                [rounded]="true"
-                (onClick)="testWebhook(webhook)" 
-                pTooltip="Test Webhook">
-              </p-button>
-              <p-button 
-                icon="pi pi-history" 
-                [text]="true" 
-                [rounded]="true"
-                (onClick)="viewLogs(webhook)" 
-                pTooltip="View Logs">
-              </p-button>
-              <p-button 
-                icon="pi pi-pencil" 
-                [text]="true" 
-                [rounded]="true"
-                (onClick)="openEditDialog(webhook)" 
-                pTooltip="Edit">
-              </p-button>
-              <p-button 
-                icon="pi pi-trash" 
-                [text]="true" 
-                [rounded]="true"
-                severity="danger"
-                (onClick)="deleteWebhook(webhook)" 
-                pTooltip="Delete">
-              </p-button>
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-      
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="5">
-            <div class="no-data">
-              <i class="pi pi-inbox" style="font-size: 3rem"></i>
-              <p>No webhooks configured</p>
-              <p-button 
-                label="Add Your First Webhook" 
-                (onClick)="openCreateDialog()">
-              </p-button>
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
+  <p-card styleClass="webhook-card">
+    <app-data-table
+      [columns]="columns"
+      [data]="webhooks"
+      [loading]="loading"
+      [errorMessage]="errorMessage"
+      errorTitle="Webhooks unavailable"
+      errorActionLabel="Retry"
+      searchPlaceholder="Search webhooks..."
+      emptyTitle="No webhooks configured"
+      emptyDescription="Add a webhook to receive verification events in your own systems."
+      emptyActionLabel="Add Webhook"
+      (emptyAction)="openCreateDialog()"
+      (errorAction)="loadWebhooks()">
+    </app-data-table>
   </p-card>
-
-  <ng-template #loading>
-    <app-loading-spinner message="Loading webhooks..."></app-loading-spinner>
-  </ng-template>
 </div>

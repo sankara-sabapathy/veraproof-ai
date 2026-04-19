@@ -1,12 +1,40 @@
 /**
  * Main entry point for VeraProof AI Verification Interface
  */
-import { DeviceDetector } from './device-detector.js?v=9';
-import { VideoCapture } from './video-capture.js?v=9';
-import { IMUCollector } from './imu-collector.js?v=9';
-import { WSManager } from './ws-manager.js?v=9';
-import { ChallengeController } from './challenge-controller.js?v=9';
-import { UIController } from './ui-controller.js?v=9';
+let DeviceDetector;
+let VideoCapture;
+let IMUCollector;
+let WSManager;
+let ChallengeController;
+let UIController;
+
+async function loadModules() {
+  const assetVersion = encodeURIComponent(window.VERAPROOF_CONFIG?.version || 'local-dev');
+  const modulePath = (name) => `./${name}.js?v=${assetVersion}`;
+
+  const [
+    deviceDetectorModule,
+    videoCaptureModule,
+    imuCollectorModule,
+    wsManagerModule,
+    challengeControllerModule,
+    uiControllerModule
+  ] = await Promise.all([
+    import(modulePath('device-detector')),
+    import(modulePath('video-capture')),
+    import(modulePath('imu-collector')),
+    import(modulePath('ws-manager')),
+    import(modulePath('challenge-controller')),
+    import(modulePath('ui-controller'))
+  ]);
+
+  ({ DeviceDetector } = deviceDetectorModule);
+  ({ VideoCapture } = videoCaptureModule);
+  ({ IMUCollector } = imuCollectorModule);
+  ({ WSManager } = wsManagerModule);
+  ({ ChallengeController } = challengeControllerModule);
+  ({ UIController } = uiControllerModule);
+}
 
 class VerificationApp {
   constructor() {
@@ -17,8 +45,13 @@ class VerificationApp {
     this.challengeController = null;
     this.sessionId = null;
     this.returnUrl = null;
+    this.wsToken = null;
     this.imuBuffer = [];
     this.imuBatchSize = 10; // Send IMU data in batches of 10 samples
+    this.consentDialogCleanup = null;
+    this.lastFocusedElement = null;
+    this.captureFinalizationPromise = null;
+    this.captureFinalized = false;
   }
 
   /**
@@ -29,6 +62,7 @@ class VerificationApp {
     const params = new URLSearchParams(window.location.search);
     this.sessionId = params.get('session_id');
     this.returnUrl = params.get('return_url');
+    this.wsToken = params.get('ws_token');
 
     // If no session_id, show landing page
     if (!this.sessionId) {
@@ -45,21 +79,12 @@ class VerificationApp {
    */
   setupLandingPage() {
     const startBtn = document.getElementById('start-verification-btn');
-    const partnerLink = document.getElementById('partner-login-link');
 
     if (startBtn) {
       startBtn.addEventListener('click', () => {
         this.ui.showError({
           message: 'Please access this page through a partner verification link.'
         });
-      });
-    }
-
-    if (partnerLink) {
-      partnerLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        // Redirect to partner dashboard (to be implemented)
-        window.location.href = '/partner-dashboard';
       });
     }
   }
@@ -74,7 +99,7 @@ class VerificationApp {
 
       // Perform initial device compatibility check (without requesting permissions yet)
       const initialCheck = await this.performInitialCheck();
-      
+
       if (!initialCheck.canProceed) {
         this.ui.showDeviceStatus(initialCheck.result);
         return;
@@ -82,7 +107,7 @@ class VerificationApp {
 
       // Show button to request permissions
       this.ui.showPermissionButton(() => this.requestPermissionsAndContinue());
-      
+
     } catch (error) {
       console.error('Verification error:', error);
       this.ui.showError({ message: error.message });
@@ -132,13 +157,157 @@ class VerificationApp {
   }
 
   /**
-   * Request permissions and continue if granted
+   * Keep background content out of keyboard/screen-reader flow while dialog is open.
+   */
+  setAppInertState(modalOpen) {
+    const app = document.getElementById('app');
+    const modal = document.getElementById('consent-modal');
+
+    if (!app || !modal) return;
+
+    const modalHost = modal.parentElement;
+    const modalPage = modal.closest('.page');
+
+    Array.from(app.children).forEach((child) => {
+      if (modalOpen) {
+        if (child === modalPage) {
+          child.removeAttribute('aria-hidden');
+          child.removeAttribute('inert');
+        } else {
+          child.setAttribute('aria-hidden', 'true');
+          child.setAttribute('inert', '');
+        }
+      } else {
+        child.removeAttribute('aria-hidden');
+        child.removeAttribute('inert');
+      }
+    });
+
+    if (!modalHost) return;
+
+    Array.from(modalHost.children).forEach((child) => {
+      if (child === modal) return;
+
+      if (modalOpen) {
+        child.setAttribute('aria-hidden', 'true');
+        child.setAttribute('inert', '');
+      } else {
+        child.removeAttribute('aria-hidden');
+        child.removeAttribute('inert');
+      }
+    });
+  }
+
+  /**
+   * Open consent dialog with focus trapping.
+   */
+  openConsentDialog() {
+    const consentModal = document.getElementById('consent-modal');
+    const agreeBtn = document.getElementById('consent-agree-btn');
+    const declineBtn = document.getElementById('consent-decline-btn');
+
+    if (!consentModal || !agreeBtn || !declineBtn) {
+      return Promise.reject(new Error('Consent dialog is unavailable.'));
+    }
+
+    this.lastFocusedElement = document.activeElement;
+    consentModal.classList.remove('hidden');
+    this.setAppInertState(true);
+
+    const focusableSelector = [
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+
+    const getFocusable = () => Array.from(consentModal.querySelectorAll(focusableSelector));
+
+    const cleanup = () => {
+      document.removeEventListener('keydown', onKeyDown);
+      agreeBtn.removeEventListener('click', onAgree);
+      declineBtn.removeEventListener('click', onDecline);
+      consentModal.classList.add('hidden');
+      this.setAppInertState(false);
+      this.consentDialogCleanup = null;
+
+      if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
+        this.lastFocusedElement.focus();
+      }
+    };
+
+    const onAgree = () => {
+      cleanup();
+      resolvePromise(true);
+    };
+
+    const onDecline = () => {
+      cleanup();
+      rejectPromise(new Error('User declined privacy consent.'));
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onDecline();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    let resolvePromise;
+    let rejectPromise;
+
+    const promise = new Promise((resolve, reject) => {
+      resolvePromise = resolve;
+      rejectPromise = reject;
+    });
+
+    document.addEventListener('keydown', onKeyDown);
+    agreeBtn.addEventListener('click', onAgree);
+    declineBtn.addEventListener('click', onDecline);
+
+    this.consentDialogCleanup = cleanup;
+
+    const focusable = getFocusable();
+    if (focusable.length > 0) {
+      focusable[0].focus();
+    } else {
+      consentModal.focus();
+    }
+
+    return promise;
+  }
+
+  /**
+   * Request permissions, display explicit consent, and continue if granted
    */
   async requestPermissionsAndContinue() {
     try {
       this.ui.showStatusMessage('Requesting permissions...', 'info');
 
-      // Perform full device check (this will request permissions)
+      // Perform full device check (this will request camera/motion permissions)
       const checkResult = await DeviceDetector.performDeviceCheck();
       this.ui.showDeviceStatus(checkResult);
 
@@ -146,20 +315,33 @@ class VerificationApp {
         return;
       }
 
-      // Permissions granted, continue
-      this.ui.showStatusMessage('Permissions granted! Starting verification...', 'success');
-      
-      // Wait a moment
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Hide permission button and display Consent Modal
+      document.getElementById('request-permissions-btn').classList.add('hidden');
 
-      // Initialize components
-      await this.initializeComponents();
+      const userConsent = await this.openConsentDialog();
 
-      // Start verification
-      await this.runVerification();
+      if (userConsent) {
+        this.ui.showStatusMessage('Consent granted! Starting verification...', 'success');
+
+        // Wait a moment
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Initialize components and boot the camera tracks
+        const initSuccess = await this.initializeComponents();
+        if (!initSuccess) {
+          return; // Halt if initialization failed. The user has been shown a retry prompt.
+        }
+
+        // Start verification playbook
+        await this.runVerification();
+      }
     } catch (error) {
-      console.error('Permission request error:', error);
-      this.ui.showError({ message: `Permission error: ${error.message}` });
+      console.error('Permission / Consent error:', error);
+      this.ui.showError({ message: error.message });
+      // Redirect to partner dashboard after 3 seconds on decline
+      setTimeout(() => {
+        window.location.href = this.returnUrl ? this.returnUrl : '/';
+      }, 3000);
     }
   }
 
@@ -177,30 +359,34 @@ class VerificationApp {
       this.imuCollector = new IMUCollector(60); // 60Hz sampling
 
       // Initialize WebSocket manager
-      this.wsManager = new WSManager(this.sessionId);
-      
+      this.wsManager = new WSManager(this.sessionId, undefined, this.wsToken);
+
       // Test backend connection first (for self-signed cert acceptance)
       await this.testBackendConnection();
-      
-      await this.wsManager.connect();
 
-      // Initialize challenge controller
+      // Initialize challenge controller before the websocket connects so
+      // incoming playbook messages always have a live handler target.
       this.challengeController = new ChallengeController(this.wsManager);
 
-      // Setup event handlers
+      // Setup event handlers before the websocket connects. The backend starts
+      // the playbook immediately after connect, so the UI must already be listening.
       this.setupEventHandlers();
+
+      return true;
     } catch (error) {
       console.error('Component initialization error:', error);
-      
+
       // Check if it's a certificate/connection error
-      if (error.message.includes('WebSocket') || error.message.includes('certificate')) {
-        this.ui.showError({ 
+      if (error.message.includes('WebSocket') || error.message.includes('certificate') || error.message.includes('connection') || error.message.includes('Cannot connect')) {
+        this.ui.showError({
           message: 'Connection failed. Please ensure you have accepted the security certificate. Click "Try Again" and accept any certificate warnings.',
           showRetry: true
         });
       } else {
-        throw error;
+        this.ui.showError({ message: error.message });
       }
+
+      return false;
     }
   }
 
@@ -210,31 +396,36 @@ class VerificationApp {
    */
   async testBackendConnection() {
     // Skip certificate check in production
-    if (!window.location.hostname.includes('localhost') && window.location.port !== '3443') {
+    const isLocalDev = window.location.hostname === 'localhost' ||
+      window.location.port === '3443' ||
+      window.location.hostname.match(/^(192|172|10)\./);
+
+    if (!isLocalDev) {
       console.log('Production environment detected, skipping certificate check');
       return;
     }
-    
+
     const apiUrl = this.wsManager.apiUrl;
     const healthUrl = `${apiUrl.replace('wss:', 'https:').replace('ws:', 'http:')}/health`;
-    
+
     try {
-      const response = await fetch(healthUrl, { 
+      const response = await fetch(healthUrl, {
         mode: 'cors',
         credentials: 'omit'
       });
-      
+
       if (!response.ok) {
         throw new Error('Backend health check failed');
       }
-      
+
       console.log('Backend connection test successful');
     } catch (error) {
       console.error('Backend connection test failed:', error);
-      
+
       // Only redirect to cert helper in local development
-      if (window.location.hostname === 'localhost' || window.location.port === '3443') {
+      if (isLocalDev) {
         const params = new URLSearchParams(window.location.search);
+        params.set('health_url', healthUrl);
         window.location.href = `/cert-helper.html?${params.toString()}`;
         throw new Error('Redirecting to certificate setup...');
       } else {
@@ -244,13 +435,86 @@ class VerificationApp {
     }
   }
 
+  async renderInstruction(message) {
+    const lens = message.payload?.lens;
+
+    if (lens) {
+      try {
+        const newStream = await this.videoCapture.switchCamera(lens);
+        if (newStream) {
+          this.ui.setupVideoPreview(newStream);
+        }
+      } catch (error) {
+        console.warn(`Camera switch to ${lens} failed; continuing with current stream.`, error);
+        this.ui.showStatusMessage('Camera switch was unavailable on this device. Continuing verification.', 'info');
+      }
+    }
+
+    this.challengeController.executeInstruction(message.payload);
+
+    if (this.wsManager?.ws?.readyState === WebSocket.OPEN) {
+      this.wsManager.ws.send(JSON.stringify({ type: 'instruction_acknowledged' }));
+    }
+  }
+
+  async handleFinalizeRecording(payload = {}) {
+    const message = payload?.message || 'Finalizing recording. Keep this page open for a moment.';
+    this.ui.showStatusMessage(message, payload?.type || 'info');
+
+    try {
+      await this.stopRecording();
+    } catch (error) {
+      console.error('Capture finalization error:', error);
+      this.ui.showStatusMessage('Recording finalization hit a transport issue. VeraProof will continue with the buffered capture.', 'info');
+    }
+  }
+
+  async stopRecording() {
+    if (this.captureFinalizationPromise) {
+      return this.captureFinalizationPromise;
+    }
+
+    this.captureFinalizationPromise = (async () => {
+      if (this.imuCollector) {
+        this.imuCollector.stop();
+      }
+
+      if (this.videoCapture) {
+        await this.videoCapture.stop();
+      }
+
+      if (this.imuBuffer.length > 0 && this.wsManager) {
+        this.wsManager.sendIMUBatch(this.imuBuffer);
+        this.imuBuffer = [];
+      }
+
+      if (this.wsManager && this.wsManager.hasPendingRecordingTransport()) {
+        const finalization = await this.wsManager.finalizeRecording();
+        if (!finalization?.acknowledged) {
+          console.warn('Backend did not acknowledge recording finalization before timeout.');
+        }
+      }
+
+      this.captureFinalized = true;
+
+      if (this.recordingInterval) {
+        clearInterval(this.recordingInterval);
+      }
+
+      this.ui.stopPreparationCountdown();
+      this.ui.stopRecordingTimer();
+    })();
+
+    return this.captureFinalizationPromise;
+  }
+
   /**
    * Setup event handlers
    */
   setupEventHandlers() {
     // Handle video chunks
     this.videoCapture.onChunk((blob) => {
-      this.wsManager.sendVideoChunk(blob);
+      void this.wsManager.sendVideoChunk(blob);
     });
 
     // Handle IMU data
@@ -292,9 +556,30 @@ class VerificationApp {
         this.ui.applyBranding(message.payload);
         break;
 
+      case 'playbook_started':
+        this.ui.startRecordingTimer(message.payload?.session_duration || 15);
+        break;
+
+      case 'instruction':
+        // A single instruction payload from the Playbook.
+        // Render the instruction even if camera switching fails on the device.
+        if (message.payload) {
+          this.renderInstruction(message);
+        }
+        break;
+
       case 'phase_change':
-        // Server can override phase changes if needed
-        this.ui.showInstructions(message.payload);
+        // Phase change is informational - update the UI but do NOT stop recording
+        if (message.payload) {
+          this.challengeController.emitPhaseChange(message.payload);
+        }
+        break;
+
+      case 'finalize_recording':
+        void this.handleFinalizeRecording(message.payload);
+        break;
+
+      case 'recording_finalized':
         break;
 
       case 'result':
@@ -325,32 +610,39 @@ class VerificationApp {
       // Wait a moment for UI to settle
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Start video recording
-      this.videoCapture.start();
+      this.ui.showInstructions({
+        title: 'Get Ready',
+        instruction: 'Recording will begin after the countdown completes.',
+        phase: 'baseline'
+      });
 
-      // Start IMU collection
+      await this.ui.runPreparationCountdown(5);
+
+      // Start the video pipeline recording the blob (async: waits for any pending camera switch)
+      await this.videoCapture.start();
+      this.wsManager?.markRecordingStarted();
+
+      // Start IMU loop
       this.imuCollector.start();
 
-      // Start challenge sequence
+      // Enter waiting mode before opening the websocket so the first
+      // backend playbook instruction lands on a ready verification interface.
       this.challengeController.startChallenge();
+
+      await this.wsManager.connect();
+
     } catch (error) {
       console.error('Verification run error:', error);
       this.ui.showError({ message: error.message });
     }
   }
 
+
   /**
    * Handle verification result
    */
   handleVerificationResult(result) {
-    // Stop recording
-    this.stopRecording();
-
-    // Flush remaining IMU data
-    if (this.imuBuffer.length > 0) {
-      this.wsManager.sendIMUBatch(this.imuBuffer);
-      this.imuBuffer = [];
-    }
+    void this.stopRecording();
 
     // Show result
     this.ui.showResult(result);
@@ -363,45 +655,53 @@ class VerificationApp {
    * Handle verification error
    */
   handleVerificationError(error) {
-    // Stop recording
-    this.stopRecording();
+    void this.stopRecording();
 
     // Show error
     this.ui.showError(error);
   }
 
   /**
-   * Stop all recording
-   */
-  stopRecording() {
-    if (this.videoCapture) {
-      this.videoCapture.stop();
-    }
-
-    if (this.imuCollector) {
-      this.imuCollector.stop();
-    }
-  }
-
-  /**
    * Cleanup on page unload
    */
   cleanup() {
-    this.stopRecording();
+    void this.stopRecording();
 
-    if (this.wsManager) {
-      this.wsManager.close();
+    if (this.consentDialogCleanup) {
+      this.consentDialogCleanup();
     }
   }
 }
 
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', async () => {
-  const app = new VerificationApp();
-  await app.init();
+async function bootApp() {
+  try {
+    await loadModules();
+    const app = new VerificationApp();
+    await app.init();
 
-  // Cleanup on page unload
-  window.addEventListener('beforeunload', () => {
-    app.cleanup();
-  });
-});
+    window.addEventListener('beforeunload', () => {
+      app.cleanup();
+    });
+  } catch (error) {
+    console.error('Verification bootstrap error:', error);
+    const errorMessage = document.getElementById('error-message');
+    const errorPage = document.getElementById('error-page');
+
+    if (errorMessage) {
+      errorMessage.textContent = 'Verification interface failed to start. Please refresh and try again.';
+    }
+
+    if (errorPage) {
+      document.querySelectorAll('.page').forEach((page) => page.classList.remove('active'));
+      errorPage.classList.add('active');
+    }
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    void bootApp();
+  }, { once: true });
+} else {
+  void bootApp();
+}

@@ -11,11 +11,12 @@ import { TooltipModule } from 'primeng/tooltip';
 import { ApiKeysService } from '../services/api-keys.service';
 import { ApiKeysStateService } from '../services/api-keys-state.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { ApiKeyResponse, ApiKey } from '../../../core/models/interfaces';
+import { ApiKeyResponse, ApiKey, TenantEnvironmentSlug } from '../../../core/models/interfaces';
+import { TenantEnvironmentService } from '../../../core/services/tenant-environment.service';
 
 interface EnvironmentOption {
   label: string;
-  value: 'sandbox' | 'production';
+  value: TenantEnvironmentSlug;
   icon: string;
   description: string;
 }
@@ -43,6 +44,7 @@ export class ApiKeyCreateDialogComponent implements OnInit {
   private apiKeysService = inject(ApiKeysService);
   private stateService = inject(ApiKeysStateService);
   private notificationService = inject(NotificationService);
+  private tenantEnvironmentService = inject(TenantEnvironmentService);
 
   createForm!: FormGroup;
   loading = false;
@@ -66,8 +68,9 @@ export class ApiKeyCreateDialogComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    const activeEnvironment = this.tenantEnvironmentService.getActiveEnvironmentSlug() ?? 'sandbox';
     this.createForm = this.fb.group({
-      environment: ['sandbox', Validators.required]
+      environment: [activeEnvironment, Validators.required]
     });
   }
 
@@ -77,14 +80,13 @@ export class ApiKeyCreateDialogComponent implements OnInit {
     }
 
     this.loading = true;
-    const environment = this.createForm.value.environment as 'sandbox' | 'production';
+    const environment = this.createForm.value.environment as TenantEnvironmentSlug;
 
     this.apiKeysService.generateKey(environment).subscribe({
       next: (response) => {
         this.generatedKey = response;
         this.loading = false;
-        
-        // Add the new key to state (without the secret)
+
         const newKey: ApiKey = {
           key_id: response.key_id,
           api_key: response.api_key,
@@ -95,13 +97,26 @@ export class ApiKeyCreateDialogComponent implements OnInit {
           revoked_at: null
         };
         this.stateService.addKey(newKey);
-        
+
         this.notificationService.success('API key generated successfully');
       },
       error: (error) => {
         this.loading = false;
-        const errorMessage = error.message || 'Unable to generate API key. Please try again.';
+
+        let errorMessage = 'Unable to generate API key. Please try again.';
+        if (error.error && error.error.detail) {
+          errorMessage = error.error.detail;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
         this.notificationService.error(errorMessage);
+
+        if (errorMessage.includes('limit of 5 active')) {
+          setTimeout(() => {
+            this.onClose();
+          }, 2000);
+        }
       }
     });
   }
@@ -117,7 +132,6 @@ export class ApiKeyCreateDialogComponent implements OnInit {
   }
 
   onClose(): void {
-    // If key was generated but not copied, show warning
     if (this.generatedKey && !this.keyCopied) {
       this.showCloseWarning = true;
     } else {

@@ -1,9 +1,13 @@
+const devApiUrl = (() => {
+  if (typeof window === 'undefined') {
+    return 'http://localhost:8100';
+  }
+
+  const host = window.location.hostname || 'localhost';
+  return `http://${host}:8100`;
+})();
+
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8100',
-  cognito: {
-    userPoolId: 'ap-south-1_l4nlq0n8y',
-    clientId: '2b7tq4gj7426iamis9snrrh2fo',
-    region: 'ap-south-1'
-  }
+  apiUrl: devApiUrl,
 };

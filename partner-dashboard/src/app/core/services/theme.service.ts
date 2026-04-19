@@ -3,38 +3,40 @@ import { Injectable, signal } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private currentTheme = signal<'light' | 'dark'>('light');
-  
+  private readonly themeHrefByMode: Record<'light' | 'dark', string> = {
+    light: './assets/themes/lara-light-blue/theme.css',
+    dark: './assets/themes/lara-dark-blue/theme.css',
+  };
+
   /**
    * Get the current theme as a readonly signal
    */
   readonly theme = this.currentTheme.asReadonly();
-  
+
   /**
    * Switch between light and dark themes
    * Dynamically loads the appropriate PrimeNG theme CSS file
    * @param theme - The theme to switch to ('light' or 'dark')
    */
   switchTheme(theme: 'light' | 'dark'): void {
-    const themeLink = document.getElementById('app-theme') as HTMLLinkElement;
-    
+    const themeLink = document.getElementById('app-theme') as HTMLLinkElement | null;
+    const themeHref = this.themeHrefByMode[theme];
+
     if (themeLink) {
-      themeLink.href = `lara-${theme}-blue/theme.css`;
+      themeLink.href = themeHref;
     } else {
-      // Create the theme link element if it doesn't exist
       const newThemeLink = document.createElement('link');
       newThemeLink.id = 'app-theme';
       newThemeLink.rel = 'stylesheet';
-      newThemeLink.href = `lara-${theme}-blue/theme.css`;
+      newThemeLink.href = themeHref;
       document.head.appendChild(newThemeLink);
     }
-    
+
     this.currentTheme.set(theme);
     localStorage.setItem('theme', theme);
-    
-    // Update data-theme attribute on document element for custom CSS variables
     document.documentElement.setAttribute('data-theme', theme);
   }
-  
+
   /**
    * Load the saved theme from localStorage
    * Called on app initialization to restore user's theme preference
@@ -44,3 +46,4 @@ export class ThemeService {
     this.switchTheme(savedTheme);
   }
 }
+

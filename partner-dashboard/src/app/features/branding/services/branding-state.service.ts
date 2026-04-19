@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { BrandingConfig } from './branding.service';
 
@@ -28,7 +28,7 @@ export class BrandingStateService {
   }
 
   setConfig(config: BrandingConfig): void {
-    this.patchState({ config, loading: false });
+    this.patchState({ config, loading: false, error: null });
   }
 
   setError(error: string): void {

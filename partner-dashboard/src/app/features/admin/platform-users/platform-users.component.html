@@ -1,0 +1,77 @@
+<div class="platform-users-page">
+  <div class="page-header">
+    <div>
+      <h1>Platform Users</h1>
+      <p>Manage platform administrator access for the metadata-only admin surface.</p>
+    </div>
+  </div>
+
+  <p-card header="Invite Platform Admin" styleClass="panel-card invite-card">
+    <div class="invite-row">
+      <input pInputText type="email" [(ngModel)]="inviteEmail" placeholder="admin@veraproof.ai" />
+      <button pButton type="button" label="Invite" [loading]="inviteLoading" (click)="inviteUser()"></button>
+    </div>
+    <p class="help-text">The invited user signs in with Google using the same email and is provisioned as a platform admin.</p>
+  </p-card>
+
+  <div class="grid-layout">
+    <p-card header="Current Platform Admins" styleClass="panel-card">
+      <div class="table-shell" *ngIf="!loading; else usersLoading">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of platformUsers">
+              <td>
+                <div class="primary-cell">{{ user.email }}</div>
+                <div class="secondary-cell" *ngIf="user.full_name">{{ user.full_name }}</div>
+              </td>
+              <td><p-tag [value]="user.status"></p-tag></td>
+              <td>{{ user.created_at | date:'short' }}</td>
+            </tr>
+            <tr *ngIf="platformUsers.length === 0">
+              <td colspan="3" class="empty-state">No platform admins found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </p-card>
+
+    <p-card header="Pending Invitations" styleClass="panel-card">
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Expires</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let invitation of invitations">
+              <td>{{ invitation.email }}</td>
+              <td><p-tag [value]="invitation.status"></p-tag></td>
+              <td>{{ invitation.expires_at ? (invitation.expires_at | date:'short') : 'Never' }}</td>
+              <td class="actions-cell">
+                <button *ngIf="invitation.status === 'pending'" pButton type="button" label="Revoke" class="p-button-text p-button-sm" (click)="revokeInvitation(invitation)"></button>
+              </td>
+            </tr>
+            <tr *ngIf="invitations.length === 0">
+              <td colspan="4" class="empty-state">No platform invitations yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </p-card>
+  </div>
+</div>
+
+<ng-template #usersLoading>
+  <div class="empty-state">Loading platform users...</div>
+</ng-template>

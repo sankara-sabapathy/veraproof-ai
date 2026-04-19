@@ -38,6 +38,11 @@ export interface WebhookLog {
   success: boolean;
   error_message?: string;
   retry_count: number;
+  url?: string;
+  method?: string;
+  request_headers?: Record<string, string>;
+  request_body?: any;
+  response_body?: string;
 }
 
 export interface LogQueryParams {
@@ -53,7 +58,7 @@ export interface LogQueryParams {
 export class WebhooksService {
   private readonly baseUrl = '/api/v1/webhooks';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService) { }
 
   listWebhooks(): Observable<Webhook[]> {
     return this.api.get<Webhook[]>(this.baseUrl);

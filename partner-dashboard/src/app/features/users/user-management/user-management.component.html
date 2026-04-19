@@ -1,0 +1,153 @@
+<div class="vp-page users-page">
+  <app-page-header title="Users" [subtitle]="pageSubtitle">
+    <div pageHeaderActions class="page-actions">
+      <span class="header-meta">{{ pendingInvitationCount }} pending invitation{{ pendingInvitationCount === 1 ? '' : 's' }}</span>
+    </div>
+  </app-page-header>
+
+  <section class="summary-grid" aria-label="User management summary">
+    <article class="summary-card">
+      <span class="summary-label">Active Members</span>
+      <strong>{{ activeMembersCount }}</strong>
+      <span class="summary-copy">People with access to this tenant today.</span>
+    </article>
+    <article class="summary-card">
+      <span class="summary-label">Administrators</span>
+      <strong>{{ adminCount }}</strong>
+      <span class="summary-copy">Members who can manage invitations and roles.</span>
+    </article>
+    <article class="summary-card">
+      <span class="summary-label">Pending Invites</span>
+      <strong>{{ pendingInvitationCount }}</strong>
+      <span class="summary-copy">Outstanding invitations awaiting sign-in.</span>
+    </article>
+  </section>
+
+  <p-card styleClass="users-card invite-card">
+    <ng-template pTemplate="header">
+      <div class="section-header">
+        <div>
+          <h2>Invite User</h2>
+          <p>Add a tenant user by email and assign the initial org role.</p>
+        </div>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="content">
+      <div class="invite-layout">
+        <div class="invite-copy">
+          <span class="invite-kicker">Invitation workflow</span>
+          <p>Invite by exact email address. The new user joins this tenant automatically after authenticating with Google.</p>
+        </div>
+        <div class="invite-form-shell">
+          <div class="invite-row">
+            <input pInputText type="email" [(ngModel)]="inviteEmail" placeholder="user@company.com" />
+            <p-dropdown [options]="roleOptions" [(ngModel)]="inviteRole" optionLabel="label" optionValue="value"></p-dropdown>
+            <button pButton type="button" label="Invite User" [loading]="inviteLoading" (click)="inviteUser()"></button>
+          </div>
+        </div>
+      </div>
+      <p class="help-text">Invited users sign in with Google using the same email address and are added to this tenant automatically.</p>
+    </ng-template>
+  </p-card>
+
+  <div class="grid-layout">
+    <p-card styleClass="users-card">
+      <ng-template pTemplate="header">
+        <div class="section-header">
+          <div>
+            <h2>Members</h2>
+            <p>Current tenant members and role assignments.</p>
+          </div>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="content">
+        <div class="table-shell" *ngIf="!loading && members.length > 0; else membersState">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let member of members">
+                <td>
+                  <div class="primary-cell">{{ member.email }}</div>
+                  <div class="secondary-cell" *ngIf="member.full_name">{{ member.full_name }}</div>
+                </td>
+                <td>
+                  <p-tag [value]="roleLabel(member.role_slug)" [severity]="roleSeverity(member.role_slug)"></p-tag>
+                </td>
+                <td>
+                  <p-tag [value]="memberStatusLabel(member.status)" [severity]="memberStatusSeverity(member.status)"></p-tag>
+                </td>
+                <td class="actions-cell">
+                  <button pButton type="button" label="Set Admin" class="p-button-text p-button-sm" (click)="changeRole(member, 'org_admin')"></button>
+                  <button pButton type="button" label="Set Viewer" class="p-button-text p-button-sm" (click)="changeRole(member, 'org_viewer')"></button>
+                  <button pButton type="button" [label]="member.status === 'active' ? 'Deactivate' : 'Activate'" class="p-button-text p-button-sm" (click)="toggleMemberStatus(member)"></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-template>
+    </p-card>
+
+    <p-card styleClass="users-card">
+      <ng-template pTemplate="header">
+        <div class="section-header">
+          <div>
+            <h2>Pending Invitations</h2>
+            <p>Invitations that are still awaiting acceptance or expiry.</p>
+          </div>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="content">
+        <div class="table-shell" *ngIf="invitations.length > 0; else invitationState">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Expires</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let invitation of invitations">
+                <td>{{ invitation.email }}</td>
+                <td><p-tag [value]="roleLabel(invitation.role_slug)" [severity]="roleSeverity(invitation.role_slug)"></p-tag></td>
+                <td><p-tag [value]="invitationStatusLabel(invitation.status)" [severity]="invitationStatusSeverity(invitation.status)"></p-tag></td>
+                <td>{{ invitation.expires_at ? (invitation.expires_at | date:'short') : 'Never' }}</td>
+                <td class="actions-cell">
+                  <button *ngIf="invitation.status === 'pending'" pButton type="button" label="Revoke" class="p-button-text p-button-sm" (click)="revokeInvitation(invitation)"></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-template>
+    </p-card>
+  </div>
+</div>
+
+<ng-template #membersState>
+  <div *ngIf="loading" class="table-state">Loading members...</div>
+  <app-content-state
+    *ngIf="!loading"
+    title="No members yet"
+    description="Invite your first teammate to start sharing tenant access and operational responsibilities."
+    icon="pi-users">
+  </app-content-state>
+</ng-template>
+
+<ng-template #invitationState>
+  <app-content-state
+    title="No pending invitations"
+    description="When you invite a new teammate, the request will appear here until they sign in or you revoke it."
+    icon="pi-send">
+  </app-content-state>
+</ng-template>

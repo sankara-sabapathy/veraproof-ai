@@ -1,10 +1,42 @@
-<div class="sidebar-header">
-  <div class="logo-container">
-    <i class="pi pi-shield logo-icon"></i>
-    <h2 class="logo-text">VeraProof AI</h2>
+<nav class="vp-sidebar" [class.vp-sidebar--mobile]="isMobile">
+  <div class="mobile-sidebar-header" *ngIf="isMobile">
+    <div class="mobile-sidebar-brand">
+      <span class="mobile-sidebar-title">Navigation</span>
+      <span class="mobile-sidebar-subtitle">Choose a workspace module</span>
+    </div>
+    <button type="button" class="mobile-sidebar-close" (click)="onDismiss()" aria-label="Close navigation menu">
+      <i class="pi pi-times"></i>
+    </button>
   </div>
-</div>
 
-<p-divider></p-divider>
+  <div class="nav-section">
+    <span class="nav-label">Main</span>
+    <ul class="nav-list">
+      <li *ngFor="let item of visibleNavItems" class="nav-item" [class.active]="isActiveRoute(item.route)">
+        <a [routerLink]="item.route" (click)="onNavItemClicked()">
+          <i [class]="item.icon"></i>
+          <span>{{ item.label }}</span>
+        </a>
+      </li>
+    </ul>
+  </div>
 
-<p-menu [model]="menuItems" styleClass="sidebar-menu"></p-menu>
+  <div class="nav-section" *ngIf="showAdminSection">
+    <span class="nav-label">Administration</span>
+    <ul class="nav-list">
+      <li *ngFor="let item of adminNavItems" class="nav-item" [class.active]="isActiveRoute(item.route)">
+        <a [routerLink]="item.route" (click)="onNavItemClicked()">
+          <i [class]="item.icon"></i>
+          <span>{{ item.label }}</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="env-badge">
+      <span class="env-dot"></span>
+      <span>Development</span>
+    </div>
+  </div>
+</nav>

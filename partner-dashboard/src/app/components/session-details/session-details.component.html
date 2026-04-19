@@ -1,147 +1,280 @@
-<div class="session-details-container">
-  <div class="header">
-    <div class="header-content">
-      <p-button 
-        icon="pi pi-arrow-left" 
-        [text]="true"
-        (onClick)="goBack()"
-        label="Back to Sessions">
-      </p-button>
-      <h1>Session Details</h1>
+<div class="session-details-page" *ngIf="!loading && session">
+  <header class="page-header">
+    <div class="page-title">
+      <button class="back-btn" (click)="goBack()">
+        <i class="pi pi-arrow-left"></i>
+        <span>Sessions</span>
+      </button>
+      <div>
+        <h1>Session details</h1>
+        <div class="session-id-row">
+          <span class="session-id">{{ session.session_id }}</span>
+          <button class="copy-id-btn" (click)="copyToClipboard(session.session_id, 'Session ID')" title="Copy session ID">
+            <i class="pi pi-copy"></i>
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div *ngIf="loading" class="loading-container">
-    <p-progressSpinner></p-progressSpinner>
-  </div>
+    <div class="page-meta">
+      <span class="created-date">
+        <i class="pi pi-calendar"></i>
+        {{ session.created_at | date:'medium' }}
+      </span>
+      <span class="status-badge" [ngClass]="getStatusBadgeClass(session.verification_status || session.state)">
+        <span class="status-dot"></span>
+        {{ getDisplayState() | uppercase }}
+      </span>
+    </div>
+  </header>
 
-  <div *ngIf="!loading && session" class="content">
-    <p-tabView>
-      <!-- Overview Tab -->
-      <p-tabPanel header="Overview" leftIcon="pi pi-info-circle">
-        <div class="tab-content">
-          <div class="cards-grid">
-            <p-card header="Session Information">
-              <div class="detail-row">
-                <span class="label">Session ID:</span>
-                <span class="value">{{ session.session_id }}</span>
-              </div>
-              <div class="detail-row">
-                <span class="label">Created:</span>
-                <span class="value">{{ session.created_at | date:'medium' }}</span>
-              </div>
-              <div class="detail-row">
-                <span class="label">Status:</span>
-                <p-chip 
-                  [label]="session.status | uppercase" 
-                  [styleClass]="getStatusClass(session.status)">
-                </p-chip>
-              </div>
-            </p-card>
+  <section class="scores-strip">
+    <article class="score-card">
+      <span class="score-label">Tier 1 physics</span>
+      <span class="score-value" [style.color]="getScoreColor(getPhysicsScore())">
+        {{ getPhysicsScore() != null ? getPhysicsScore() : '--' }}
+      </span>
+      <span class="score-sub">Gyro vs optical flow</span>
+    </article>
 
-            <p-card header="Trust Scores">
-              <div class="score-item">
-                <span class="label">Tier 1 (Sensor Fusion):</span>
-                <span class="score" [style.color]="getScoreColor(session.tier_1_score)">
-                  {{ session.tier_1_score }}/100
-                </span>
-              </div>
-              <div class="score-item" *ngIf="session.tier_2_score">
-                <span class="label">Tier 2 (AI Forensics):</span>
-                <span class="score" [style.color]="getScoreColor(session.tier_2_score)">
-                  {{ session.tier_2_score }}/100
-                </span>
-              </div>
-              <div class="score-item final">
-                <span class="label">Final Trust Score:</span>
-                <span class="score final-score" [style.color]="getScoreColor(session.final_trust_score)">
-                  {{ session.final_trust_score }}/100
-                </span>
-              </div>
-              <div class="score-item">
-                <span class="label">Pearson Correlation:</span>
-                <span class="score">{{ session.correlation_value.toFixed(3) }}</span>
-              </div>
-            </p-card>
+    <article class="score-card">
+      <span class="score-label">Tier 2 vision</span>
+      <span class="score-value" [style.color]="getScoreColor(getVisionScore())">
+        {{ getVisionScore() != null ? getVisionScore() : '--' }}
+      </span>
+      <span class="score-sub">AWS Rekognition context</span>
+    </article>
+
+    <article class="score-card">
+      <span class="score-label">Tier 3 forensic</span>
+      <span class="score-value" [style.color]="getScoreColor(getUnifiedScore())">
+        {{ getUnifiedScore() != null ? getUnifiedScore() : '--' }}
+      </span>
+      <span class="score-sub">Unified trust outcome</span>
+    </article>
+
+    <article class="score-card">
+      <span class="score-label">Correlation</span>
+      <span class="score-value correlation-value">
+        {{ session.correlation_value != null ? session.correlation_value.toFixed(3) : '--' }}
+      </span>
+      <span class="score-sub">Sensor motion sync</span>
+    </article>
+  </section>
+
+  <section class="section-card">
+    <div class="section-header">
+      <h2>Verification timeline</h2>
+      <p>Observed milestones across the verification pipeline.</p>
+    </div>
+    <div class="section-body">
+      <div class="custom-timeline">
+        <div class="timeline-item" *ngFor="let event of timelineEvents">
+          <div class="timeline-dot" [style.background]="event.color"></div>
+          <div class="timeline-body">
+            <span class="timeline-label">{{ event.status }}</span>
+            <span class="timeline-date">{{ event.date | date:'short' }}</span>
           </div>
         </div>
-      </p-tabPanel>
-
-      <!-- Timeline Tab -->
-      <p-tabPanel header="Timeline" leftIcon="pi pi-clock">
-        <div class="tab-content">
-          <p-card header="Verification Timeline">
-            <p-timeline [value]="timelineEvents" align="alternate">
-              <ng-template pTemplate="content" let-event>
-                <div class="timeline-content">
-                  <p-chip 
-                    [label]="event.status" 
-                    [styleClass]="'timeline-chip ' + event.color">
-                  </p-chip>
-                  <small class="timeline-date">{{ event.date | date:'short' }}</small>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="marker" let-event>
-                <span class="timeline-marker" [style.background-color]="event.color">
-                  <i [class]="event.icon"></i>
-                </span>
-              </ng-template>
-            </p-timeline>
-          </p-card>
-        </div>
-      </p-tabPanel>
-
-      <!-- Artifacts Tab -->
-      <p-tabPanel header="Artifacts" leftIcon="pi pi-download">
-        <div class="tab-content">
-          <p-card header="Session Artifacts">
-            <div *ngIf="hasArtifacts(); else noArtifacts" class="artifacts-grid">
-              <p-button 
-                *ngIf="session.artifacts.video_url"
-                label="Download Video" 
-                icon="pi pi-video"
-                severity="secondary"
-                (onClick)="downloadArtifact(session.artifacts.video_url, 'video')">
-              </p-button>
-              <p-button 
-                *ngIf="session.artifacts.imu_data_url"
-                label="Download IMU Data" 
-                icon="pi pi-chart-line"
-                severity="secondary"
-                (onClick)="downloadArtifact(session.artifacts.imu_data_url, 'imu')">
-              </p-button>
-              <p-button 
-                *ngIf="session.artifacts.optical_flow_url"
-                label="Download Optical Flow" 
-                icon="pi pi-image"
-                severity="secondary"
-                (onClick)="downloadArtifact(session.artifacts.optical_flow_url, 'flow')">
-              </p-button>
-            </div>
-            <ng-template #noArtifacts>
-              <div class="empty-state">
-                <i class="pi pi-inbox" style="font-size: 3rem; color: #94a3b8;"></i>
-                <p>No artifacts available</p>
-                <small>Artifacts are not available in sandbox mode</small>
-              </div>
-            </ng-template>
-          </p-card>
-        </div>
-      </p-tabPanel>
-    </p-tabView>
-  </div>
-
-  <div *ngIf="!loading && !session" class="error-state">
-    <p-card>
-      <div class="empty-state">
-        <i class="pi pi-exclamation-triangle" style="font-size: 3rem; color: #f59e0b;"></i>
-        <p>Session not found</p>
-        <p-button 
-          label="Back to Sessions" 
-          icon="pi pi-arrow-left"
-          (onClick)="goBack()">
-        </p-button>
       </div>
-    </p-card>
+    </div>
+  </section>
+
+  <section class="detail-grid-layout">
+    <article class="section-card">
+      <div class="section-header">
+        <h2>Session information</h2>
+        <p>Verification metadata and transport state.</p>
+      </div>
+      <div class="section-body">
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span class="detail-label">Session ID</span>
+            <span class="detail-value detail-value-mono">{{ session.session_id }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Created</span>
+            <span class="detail-value">{{ session.created_at | date:'medium' }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value">{{ getDisplayState() }}</span>
+          </div>
+          <div class="detail-row" *ngIf="session.return_url">
+            <span class="detail-label">Return URL</span>
+            <span class="detail-value detail-value-wrap">{{ session.return_url }}</span>
+          </div>
+          <div class="detail-row" *ngIf="session.metadata['verification_profile']">
+            <span class="detail-label">Verification profile</span>
+            <span class="detail-value">{{ session.metadata['verification_profile'] }}</span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="section-card">
+      <div class="section-header">
+        <h2>Forensic reasoning</h2>
+        <p>Generated rationale from the multi-tier verification stack.</p>
+      </div>
+      <div class="section-body">
+        <div class="reasoning-block" *ngIf="session.reasoning; else noReasoning">
+          <p>{{ session.reasoning }}</p>
+        </div>
+
+        <div class="reasoning-secondary" *ngIf="hasDistinctModelSummary()">
+          <span class="detail-label">Model summary</span>
+          <p>{{ session.ai_explanation?.['summary'] }}</p>
+        </div>
+
+        <ng-template #noReasoning>
+          <div class="empty-inline">
+            <i class="pi pi-hourglass"></i>
+            <p>Final AI reasoning is not available yet.</p>
+          </div>
+        </ng-template>
+      </div>
+    </article>
+  </section>
+
+  <section class="section-card" *ngIf="hasVideoEvidence()">
+    <div class="section-header">
+      <h2>Video evidence</h2>
+      <p>Secure playback for the original verification source.</p>
+    </div>
+    <div class="section-body">
+      <div *ngIf="videoLoading" class="video-state">
+        <div class="loading-spinner"></div>
+        <p>Loading video...</p>
+      </div>
+      <div *ngIf="videoError && !videoLoading" class="video-state">
+        <i class="pi pi-exclamation-circle"></i>
+        <p>Video playback is unavailable right now.</p>
+        <button class="back-btn" (click)="loadVideoArtifact()">
+          <i class="pi pi-refresh"></i>
+          <span>Retry</span>
+        </button>
+      </div>
+      <div *ngIf="videoUrl && !videoLoading && !videoError" class="video-wrapper">
+        <video [src]="videoUrl" controls playsinline preload="metadata"></video>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-card">
+    <div class="section-header">
+      <h2>Evidence package</h2>
+      <p>Downloadable artifacts and stored provider outputs for this session.</p>
+    </div>
+    <div class="section-body">
+      <div class="evidence-toolbar">
+        <p class="toolbar-copy">Report and bundle generation are available once forensic analysis completes.</p>
+        <div class="toolbar-actions">
+          <button
+            pButton
+            type="button"
+            label="Download report"
+            icon="pi pi-file-pdf"
+            class="p-button-outlined"
+            [loading]="isActionBusy('report')"
+            [disabled]="!canDownload(reportCard)"
+            (click)="reportCard && handleCardDownload(reportCard)"></button>
+          <button
+            pButton
+            type="button"
+            label="Download all artifacts"
+            icon="pi pi-download"
+            [loading]="isActionBusy('bundle')"
+            [disabled]="!canDownload(bundleCard)"
+            (click)="bundleCard && handleCardDownload(bundleCard)"></button>
+        </div>
+      </div>
+
+      <div class="evidence-loading" *ngIf="evidenceLoading">
+        <div class="loading-spinner"></div>
+        <p>Refreshing artifact inventory...</p>
+      </div>
+
+      <div class="artifact-list" *ngIf="!evidenceLoading && hasEvidenceArtifacts(); else noArtifacts">
+        <div class="artifact-row" *ngFor="let card of evidenceCards">
+          <div class="artifact-summary">
+            <div>
+              <h3>{{ card.label }}</h3>
+              <p>{{ card.description }}</p>
+            </div>
+            <span class="artifact-status" [attr.data-status]="card.status">{{ artifactStatusLabel(card) }}</span>
+          </div>
+
+          <div class="artifact-meta" *ngIf="card.artifact">
+            <span>{{ card.artifact.file_name }}</span>
+            <span>{{ formatBytes(card.artifact.size_bytes) }}</span>
+          </div>
+
+          <div class="artifact-actions">
+            <button
+              pButton
+              type="button"
+              label="Download"
+              icon="pi pi-download"
+              class="p-button-text"
+              [disabled]="!canDownload(card)"
+              [loading]="isActionBusy(card.key)"
+              (click)="handleCardDownload(card)"></button>
+
+            <button
+              *ngIf="canPreview(card)"
+              pButton
+              type="button"
+              [label]="isPreviewOpen(card.key) ? 'Hide preview' : 'Preview JSON'"
+              icon="pi pi-eye"
+              class="p-button-text"
+              [disabled]="!card.available"
+              (click)="togglePreview(card)"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview-panel" *ngIf="previewTitle">
+        <div class="preview-head">
+          <h3>{{ previewTitle }}</h3>
+          <button class="copy-id-btn" *ngIf="previewContent" (click)="copyToClipboard(previewContent, previewTitle)">
+            <i class="pi pi-copy"></i>
+          </button>
+        </div>
+        <div class="evidence-loading" *ngIf="previewLoading">
+          <div class="loading-spinner"></div>
+          <p>Loading preview...</p>
+        </div>
+        <pre *ngIf="!previewLoading && previewContent">{{ previewContent }}</pre>
+      </div>
+
+      <ng-template #noArtifacts>
+        <div class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <p>No artifacts available for this session yet.</p>
+          <small>Artifacts appear after media export and forensic analysis complete.</small>
+        </div>
+      </ng-template>
+    </div>
+  </section>
+</div>
+
+<div *ngIf="loading" class="loading-page">
+  <p-progressSpinner></p-progressSpinner>
+</div>
+
+<div *ngIf="!loading && !session" class="session-details-page">
+  <div class="section-card">
+    <div class="section-body">
+      <div class="empty-state">
+        <i class="pi pi-exclamation-triangle"></i>
+        <p>Session not found</p>
+        <button class="back-btn" (click)="goBack()">
+          <i class="pi pi-arrow-left"></i>
+          <span>Back to sessions</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
+

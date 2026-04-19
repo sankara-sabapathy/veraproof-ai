@@ -57,7 +57,7 @@ For local testing without a real session:
 
 1. Create a test session via API:
    ```bash
-   curl -X POST http://localhost:8000/api/v1/sessions/create \
+   curl -X POST http://localhost:8100/api/v1/sessions/create \
      -H "X-API-Key: test_sandbox_key" \
      -H "Content-Type: application/json" \
      -d '{"metadata": {}, "return_url": "https://example.com/callback"}'

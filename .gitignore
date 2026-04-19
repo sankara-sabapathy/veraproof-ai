@@ -110,7 +110,12 @@ VERIFICATION_FIXES.md
 FINAL_SUMMARY.md
 DESKTOP_TEST_INSTRUCTIONS.md
 
-# Test files (temporary/ad-hoc only - proper test suites should be committed)
+# Debug scripts (moved to scripts folder for local use only, not committed)
+scripts/get_logs.py
+scripts/setup_session.py
+scripts/get_session_url.ps1
+scripts/test_*.ps1
+scripts/test_*.sh
 test.html
 test_api.py
 backend/test_config.py
@@ -120,3 +125,8 @@ backend/test_session_flow.py
 
 # Scripts folder is kept for local development
 # (scripts/ folder is version controlled)
+
+# Agent context
+.agent/
+.agents/
+.codex/
